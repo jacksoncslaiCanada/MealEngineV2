@@ -8,8 +8,9 @@ from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, No
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import RawRecipe
+from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
+from app.scoring import get_or_create_source, mark_source_ingested
 
 RECIPE_SEARCH_QUERIES = ["recipe", "how to cook", "easy dinner recipe"]
 
@@ -78,15 +79,22 @@ def fetch_youtube_recipes(
             snippet = item["snippet"]
             title = snippet.get("title", "")
             description = snippet.get("description", "")
+            channel_id = snippet.get("channelId", "")
+            channel_title = snippet.get("channelTitle", channel_id)
             transcript = transcript_fetcher(video_id)
 
+            raw_content = _build_raw_content(title, description, transcript)
             records.append(
                 RawRecipeSchema(
                     source="youtube",
                     source_id=video_id,
-                    raw_content=_build_raw_content(title, description, transcript),
+                    raw_content=raw_content,
                     url=f"https://www.youtube.com/watch?v={video_id}",
                     fetched_at=datetime.now(timezone.utc),
+                    source_handle=channel_id,
+                    source_display_name=channel_title,
+                    engagement_score=None,  # requires videos.list statistics call; added later
+                    has_transcript=bool(transcript),
                 )
             )
 
@@ -113,10 +121,24 @@ def save_youtube_recipes(
     )
 
     saved: list[RawRecipeSchema] = []
+    saved_per_source: dict[str, int] = {}
+
     for record in records:
-        exists = db.query(RawRecipe).filter_by(source_id=record.source_id).first()
-        if exists:
+        if db.query(RawRecipe).filter_by(source_id=record.source_id).first():
             continue
+
+        source_fk = None
+        if record.source_handle:
+            source = get_or_create_source(
+                db,
+                platform="youtube",
+                handle=record.source_handle,
+                display_name=record.source_display_name,
+            )
+            source_fk = source.id
+            saved_per_source[record.source_handle] = (
+                saved_per_source.get(record.source_handle, 0) + 1
+            )
 
         row = RawRecipe(
             source=record.source,
@@ -124,10 +146,20 @@ def save_youtube_recipes(
             raw_content=record.raw_content,
             url=record.url,
             fetched_at=record.fetched_at,
+            source_fk=source_fk,
+            engagement_score=record.engagement_score,
+            content_length=len(record.raw_content),
+            has_transcript=record.has_transcript,
         )
         db.add(row)
         db.commit()
         db.refresh(row)
         saved.append(RawRecipeSchema.model_validate(row))
+
+    # Update last_ingested_at and content_count for each channel we wrote to
+    for handle, count in saved_per_source.items():
+        source = db.query(Source).filter_by(platform="youtube", handle=handle).first()
+        if source:
+            mark_source_ingested(db, source, count)
 
     return saved

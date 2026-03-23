@@ -103,45 +103,79 @@ A source with consistently high-engagement recent content scores near 1.0. A sou
 
 The discovery sweep runs as a separate, cheaper step after the weekly ingest. It does not ingest content — it only finds new candidates.
 
-### Reddit discovery
+### Why it is nearly free
+
+The sweep reuses the same API calls already made during ingestion. For YouTube, search queries are already being run to fetch videos — the sweep just reads the channel metadata from those same results. For Reddit, the hot-post feeds are already being fetched — the sweep reads the subreddit name from each result. No extra API quota is consumed beyond a small number of additional lookup calls.
+
+### Reddit discovery — two directions
+
+**Direction 1: Sideways from known sources (author cross-posting)**
+
+You are already ingesting from `r/EatCheapAndHealthy`. A top post there was written by `u/MealPrepKing`. The sweep checks that user's recent post history (public, no auth needed). If they also post frequently to `r/Bento` or `r/veganrecipes` — subreddits not already in your `sources` table — those subreddits become candidates. The logic: if a prolific contributor to one known-good subreddit is also active elsewhere, that community is worth investigating.
+
+**Direction 2: Keyword search across Reddit**
+
+Reddit's search endpoint is queried for `"recipe"` and `"cooking"`. Results come from many different subreddits. Any subreddit that appears 3+ times in those results and is not already in `sources` is inserted as a candidate. This catches entirely new communities that have no connection to your existing sources.
 
 ```
 For each ACTIVE Reddit source:
     1. Fetch its current top posts
-    2. For each post, check the author's profile (public)
-    3. If author posts frequently to other cooking-related subreddits
-       that are NOT in the sources table → add as candidate
+    2. For each post, note the author
+    3. Fetch that author's recent post history
+    4. For each subreddit they post to:
+        - If subreddit not in sources table AND cooking-adjacent → candidate
 
 Also:
-    4. Search Reddit for "recipe" and "cooking" and inspect
-       which subreddits the results come from
-    5. Any subreddit with ≥ 3 results and NOT already in sources → candidate
+    5. Search Reddit for "recipe" and "cooking"
+    6. Tally which subreddits appear in results
+    7. Any subreddit with ≥ 3 results and NOT in sources → candidate
 ```
 
-### YouTube discovery
+### YouTube discovery — channel extraction
+
+The sweep reuses the same search queries (`"recipe"`, `"easy dinner recipe"`, etc.) already used for ingestion. Instead of saving the videos, it looks at which **channel** each video belongs to.
+
+For any channel not already in `sources`:
+1. Check how many of its videos are recipe-tagged — fewer than 5 means too little signal, skip it
+2. Pull its last 5 videos and compute their average `engagement_score`
+3. If average > 0.6 → auto-promote directly to `active`; it will be ingested next Sunday
+4. If average ≤ 0.6 → insert as `candidate`; sits in the queue until it earns more signal
 
 ```
 For each active search query:
     1. Run the query (same as current fetch)
-    2. Extract the channel_id from each result
+    2. Extract channel_id from each result video
     3. For any channel NOT already in sources:
-        a. Count how many recipe-tagged videos it has
-        b. If count ≥ 5 → insert as candidate with status = "candidate"
+        a. Fetch channel's video count for recipe-tagged content
+        b. If count < 5 → skip (insufficient signal)
         c. Fetch last 5 videos, compute average engagement_score
-        d. If avg engagement_score > 0.6 → auto-promote to "active"
-           otherwise leave as "candidate" for manual review
+        d. If avg engagement_score > 0.6 → insert with status = "active"
+           else → insert with status = "candidate"
 ```
 
-### What happens to candidates
+### What lands in the database after a sweep
 
-After each discovery sweep:
-- Candidates with `quality_score > 0.6` (enough data to judge) are auto-promoted to `active`
-- Candidates with `quality_score ≤ 0.6` sit in the candidate queue
-- A short weekly report lists new candidates for optional human review
+- 0–N new rows in `sources` with `status = "candidate"` or `status = "active"`
+- No content rows are written — the sweep is read-only with respect to `raw_recipes`
+- A summary is printed to stdout: `"Discovery: 3 new candidates, 1 auto-promoted to active"`
 
-You only need to intervene if you want to:
-- Reject a candidate that auto-promotion would otherwise promote
-- Manually promote a candidate before it earns enough score
+### The human review moment (optional)
+
+After the sweep, review candidates with a simple query:
+
+```sql
+SELECT display_name, platform, quality_score, added_at
+FROM sources
+WHERE status = 'candidate'
+ORDER BY quality_score DESC;
+```
+
+Options:
+- Leave them alone — auto-promotion handles high scorers over time
+- Set `status = 'rejected'` for anything clearly off-topic
+- Set `status = 'active'` to manually fast-track a promising source
+
+You only need to intervene for edge cases. The system handles the rest.
 
 ---
 
