@@ -5,9 +5,11 @@ The production `sources` table has a pre-existing check constraint
 Every SQLAlchemy INSERT fails with CheckViolation because the ORM inserts
 rows with status='active'.
 
-This migration drops the old constraint and creates a new one that covers
-the four status values used by the Phase 1 application:
-  candidate | active | paused | rejected
+This migration:
+  1. Drops the old constraint (if present).
+  2. Normalises any rows whose status is not in the Phase 1 set to 'active'
+     so the new constraint can be added without a CheckViolation.
+  3. Creates a new constraint covering: candidate | active | paused | rejected
 
 The upgrade is idempotent:
   - If the old constraint doesn't exist the DROP is skipped.
@@ -19,9 +21,8 @@ Create Date: 2026-03-23 00:00:00.000000
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
-from sqlalchemy import inspect as sa_inspect, text
+from sqlalchemy import text
 
 revision: str = "d3e4f5a6b7c8"
 down_revision: Union[str, None] = "c2d3e4f5a6b7"
@@ -54,13 +55,22 @@ def upgrade() -> None:
     if _constraint_exists(bind, "sources", _CONSTRAINT_NAME):
         op.drop_constraint(_CONSTRAINT_NAME, "sources", type_="check")
 
+    # Normalise any stray status values so the new constraint can be applied.
+    # Rows with an unrecognised status are mapped to 'active' (safest default).
+    values_sql = ", ".join(f"'{v}'" for v in _VALID_STATUSES)
+    bind.execute(
+        text(
+            f"UPDATE sources SET status = 'active' "
+            f"WHERE status NOT IN ({values_sql})"
+        )
+    )
+
     # Only add if still absent (e.g. already on a clean schema).
     if not _constraint_exists(bind, "sources", _CONSTRAINT_NAME):
-        values = ", ".join(f"'{v}'" for v in _VALID_STATUSES)
         op.create_check_constraint(
             _CONSTRAINT_NAME,
             "sources",
-            f"status IN ({values})",
+            f"status IN ({values_sql})",
         )
 
 
