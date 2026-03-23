@@ -39,6 +39,23 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("platform", "handle", name="uq_source_platform_handle"),
         )
+    else:
+        # Table already existed (e.g. created by Base.metadata.create_all before this
+        # migration ran).  Add any columns that are missing so the schema is complete.
+        existing_sources_cols = {c["name"] for c in inspector.get_columns("sources")}
+        _add_if_missing = [
+            ("platform",         sa.Column("platform",       sa.String(16),              nullable=True)),
+            ("handle",           sa.Column("handle",         sa.String(256),             nullable=True)),
+            ("display_name",     sa.Column("display_name",   sa.String(256),             nullable=True)),
+            ("status",           sa.Column("status",         sa.String(16),              nullable=True, server_default="active")),
+            ("quality_score",    sa.Column("quality_score",  sa.Float(),                 nullable=True)),
+            ("content_count",    sa.Column("content_count",  sa.Integer(),               nullable=True, server_default="0")),
+            ("added_at",         sa.Column("added_at",       sa.DateTime(timezone=True), nullable=True)),
+            ("last_ingested_at", sa.Column("last_ingested_at", sa.DateTime(timezone=True), nullable=True)),
+        ]
+        for col_name, col_def in _add_if_missing:
+            if col_name not in existing_sources_cols:
+                op.add_column("sources", col_def)
 
     existing_columns = {c["name"] for c in inspector.get_columns("raw_recipes")}
 
