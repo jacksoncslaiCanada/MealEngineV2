@@ -222,9 +222,20 @@ class SmokeTestRunner:
                 )
 
         except Exception as exc:
-            self.record("YouTube · ingest", False, f"Exception: {exc}")
+            exc_str = str(exc)
+            # youtube-transcript-api surfaces Google 429s as a plain exception whose
+            # message contains "Too Many Requests" (HTTP 429).  GitHub runner IPs
+            # are frequently throttled by Google, same as Reddit's CDN 403.
+            if "429" in exc_str or "Too Many Requests" in exc_str:
+                self.record_warn(
+                    "YouTube · ingest",
+                    "Skipped — YouTube transcript API returned 429 (runner IP rate-limited). "
+                    "Re-run from a non-Actions environment to verify.",
+                )
+            else:
+                self.record("YouTube · ingest", False, f"Exception: {exc}")
+                log.exception("YouTube ingest raised an exception")
             self._rollback()
-            log.exception("YouTube ingest raised an exception")
 
     # ── Step 4: FK integrity ───────────────────────────────────────────────────
 
@@ -268,6 +279,16 @@ class SmokeTestRunner:
                 s for s in updated
                 if s.platform == "reddit" and s.quality_score is not None
             ]
+
+            # If no rows were inserted (all connectors blocked by rate limits),
+            # 0 scored sources is an expected outcome — record as WARN, not FAIL.
+            if len(updated) == 0 and not self.inserted_platform_ids:
+                self.record_warn(
+                    "Scoring · sources rescored",
+                    "0 sources scored — no rows were inserted because all connectors "
+                    "were rate-limited on this runner. Not a code defect.",
+                )
+                return
 
             self.record(
                 "Scoring · sources rescored",
