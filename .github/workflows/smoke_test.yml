@@ -1,0 +1,109 @@
+name: Production Smoke Test
+
+# Manual trigger only — run this before starting Phase 2 or after any
+# schema migration to verify the live database is healthy.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL     — PostgreSQL connection string
+#   YOUTUBE_API_KEY  — YouTube Data API v3 key (optional; YouTube step is
+#                      skipped automatically when the key is absent)
+#
+# What this tests (Phase 1 end-to-end):
+#   1. Schema integrity  — all expected columns exist on sources + raw_recipes
+#   2. Reddit ingest     — connector writes ≥1 real row to the DB (r/recipes, limit=5)
+#   3. YouTube ingest    — connector writes ≥1 real row (skipped if no API key)
+#   4. FK integrity      — every inserted recipe has a non-NULL source_fk
+#   5. Quality scoring   — recompute_source_scores() updates quality_score
+#
+# All test rows are deleted by the script's teardown step.
+# Results are written to the job summary and saved as a downloadable artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_youtube:
+        description: "Skip YouTube ingest check (saves API quota)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  smoke-test:
+    name: Run Phase 1 smoke test
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      SKIP_YOUTUBE: ${{ inputs.skip_youtube }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check database connectivity
+        run: |
+          python - <<'EOF'
+          import sys
+          from sqlalchemy import create_engine, text
+          from app.config import settings
+
+          if not settings.database_url or settings.database_url.startswith("postgresql://user:password"):
+              print("ERROR: DATABASE_URL secret is not configured.")
+              sys.exit(1)
+
+          try:
+              engine = create_engine(settings.database_url)
+              with engine.connect() as conn:
+                  conn.execute(text("SELECT 1"))
+              print("Database connection OK.")
+          except Exception as e:
+              print(f"ERROR: Could not connect to the database: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Run database migrations
+        run: alembic upgrade head
+
+      - name: Run smoke test
+        # Exit code 1 = one or more checks failed.  We use continue-on-error
+        # so the summary and artifact steps always run, even on failure.
+        id: smoke
+        continue-on-error: true
+        run: python scripts/smoke_test.py
+
+      - name: Write job summary
+        if: always()
+        run: |
+          if [ -f smoke_test_report.md ]; then
+            cat smoke_test_report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ❌ Smoke test did not produce a report (script may have crashed)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-report
+          path: smoke_test_report.md
+          if-no-files-found: warn
+
+      # Fail the job after the report has been captured
+      - name: Check result
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          echo "One or more smoke test checks failed. See the job summary above."
+          exit 1
