@@ -94,10 +94,19 @@ def test_reddit_fetch_returns_parseable_record():
     """
     Fetch 1 post from r/recipes via the real Reddit JSON API.
     Verifies the connector produces a well-formed record ready for extraction.
+
+    Skipped automatically when Reddit returns 403 (common in CI environments
+    where GitHub Actions IPs are blocked by Reddit).
     """
+    import httpx
     from app.connectors.reddit import fetch_reddit_recipes
 
-    results = list(fetch_reddit_recipes(subreddits=["recipes"], limit=5))
+    try:
+        results = list(fetch_reddit_recipes(subreddits=["recipes"], limit=5))
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 403:
+            pytest.skip(f"Reddit returned 403 — IP likely blocked in CI: {exc.request.url}")
+        raise
 
     assert len(results) >= 1, (
         "Expected at least one self-post from r/recipes. "
@@ -119,10 +128,19 @@ def test_reddit_fetch_and_save(db):
     """
     Fetch 1 Reddit post and save it to DB.
     Verifies the full pipeline: fetch → normalize → persist → query.
+
+    Skipped automatically when Reddit returns 403 (common in CI environments
+    where GitHub Actions IPs are blocked by Reddit).
     """
+    import httpx
     from app.connectors.reddit import save_reddit_recipes
 
-    saved = save_reddit_recipes(db, subreddits=["recipes"], limit=5)
+    try:
+        saved = save_reddit_recipes(db, subreddits=["recipes"], limit=5)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 403:
+            pytest.skip(f"Reddit returned 403 — IP likely blocked in CI: {exc.request.url}")
+        raise
 
     assert len(saved) >= 1, "Expected at least one record to be saved"
 
