@@ -25,6 +25,27 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check database connectivity
+        run: |
+          python - <<'EOF'
+          import sys
+          from sqlalchemy import create_engine, text
+          from app.config import settings
+
+          if not settings.database_url or settings.database_url.startswith("postgresql://user:password"):
+              print("ERROR: DATABASE_URL secret is not configured.")
+              sys.exit(1)
+
+          try:
+              engine = create_engine(settings.database_url)
+              with engine.connect() as conn:
+                  conn.execute(text("SELECT 1"))
+              print("Database connection OK.")
+          except Exception as e:
+              print(f"ERROR: Could not connect to the database: {e}")
+              sys.exit(1)
+          EOF
+
       - name: Run database migrations
         run: alembic upgrade head
 
