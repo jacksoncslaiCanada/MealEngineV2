@@ -10,12 +10,12 @@ Steps:
 - in what form?
 - Links? 
 - Raw data? 
-- Presisence store in data base. 
+- Persistence store in database.
 
 3) Internal sorting
 - Process the data into ingredients
-- Keeping meta linkage as to how each ingredients is link to a recipe
-- Persistence store in data base. 
+- Keeping meta linkage as to how each ingredient is linked to a recipe
+- Persistence store in database.
 
 4) Generate recipe
 - Pre-set recipes for tier 1
