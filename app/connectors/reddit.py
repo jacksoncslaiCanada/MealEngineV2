@@ -1,9 +1,9 @@
-"""Reddit connector — fetches recipe posts from specified subreddits."""
+"""Reddit connector — fetches recipe posts via Reddit's public JSON API (no credentials required)."""
 
 from datetime import datetime, timezone
 from typing import Generator
 
-import praw
+import httpx
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -11,71 +11,74 @@ from app.db.models import RawRecipe
 from app.schemas import RawRecipeSchema
 
 RECIPE_SUBREDDITS = ["recipes", "cooking", "food", "EatCheapAndHealthy"]
+_REDDIT_BASE = "https://www.reddit.com/r/{subreddit}/hot.json"
 
 
-def _build_reddit_client() -> praw.Reddit:
-    return praw.Reddit(
-        client_id=settings.reddit_client_id,
-        client_secret=settings.reddit_client_secret,
-        user_agent=settings.reddit_user_agent,
-    )
-
-
-def _post_to_raw_content(submission) -> str:
-    """Combine post title and selftext into a single content string."""
-    parts = [submission.title]
-    if submission.selftext:
-        parts.append(submission.selftext)
+def _post_to_raw_content(post: dict) -> str:
+    parts = [post["title"]]
+    if post.get("selftext"):
+        parts.append(post["selftext"])
     return "\n\n".join(parts)
 
 
 def fetch_reddit_recipes(
     subreddits: list[str] | None = None,
     limit: int = 25,
-    reddit: praw.Reddit | None = None,
+    client: httpx.Client | None = None,
 ) -> Generator[RawRecipeSchema, None, None]:
     """
     Fetch recipe posts from Reddit and yield normalized RawRecipeSchema objects.
+    Uses the public JSON API — no credentials needed.
 
     Args:
         subreddits: List of subreddit names to fetch from.
         limit: Max posts per subreddit.
-        reddit: Optional pre-built PRAW Reddit instance (used in tests).
+        client: Optional pre-built httpx.Client (used in tests).
     """
     if subreddits is None:
         subreddits = RECIPE_SUBREDDITS
-    if reddit is None:
-        reddit = _build_reddit_client()
 
-    for sub_name in subreddits:
-        subreddit = reddit.subreddit(sub_name)
-        for submission in subreddit.hot(limit=limit):
-            if submission.is_self:  # only text posts (recipes live in self-posts)
+    headers = {"User-Agent": settings.reddit_user_agent}
+    _owns_client = client is None
+    if _owns_client:
+        client = httpx.Client(headers=headers, follow_redirects=True)
+
+    try:
+        for sub_name in subreddits:
+            url = _REDDIT_BASE.format(subreddit=sub_name)
+            response = client.get(url, params={"limit": limit})
+            response.raise_for_status()
+
+            for child in response.json()["data"]["children"]:
+                post = child["data"]
+                if not post.get("is_self"):
+                    continue  # skip link posts
                 yield RawRecipeSchema(
                     source="reddit",
-                    source_id=submission.id,
-                    raw_content=_post_to_raw_content(submission),
-                    url=f"https://www.reddit.com{submission.permalink}",
+                    source_id=post["id"],
+                    raw_content=_post_to_raw_content(post),
+                    url=f"https://www.reddit.com{post['permalink']}",
                     fetched_at=datetime.now(timezone.utc),
                 )
+    finally:
+        if _owns_client:
+            client.close()
 
 
 def save_reddit_recipes(
     db: Session,
     subreddits: list[str] | None = None,
     limit: int = 25,
-    reddit: praw.Reddit | None = None,
+    client: httpx.Client | None = None,
 ) -> list[RawRecipeSchema]:
     """
     Fetch Reddit recipes and persist new ones to the database.
-
     Returns a list of newly inserted records (skips duplicates by source_id).
     """
     saved: list[RawRecipeSchema] = []
 
-    for record in fetch_reddit_recipes(subreddits=subreddits, limit=limit, reddit=reddit):
-        exists = db.query(RawRecipe).filter_by(source_id=record.source_id).first()
-        if exists:
+    for record in fetch_reddit_recipes(subreddits=subreddits, limit=limit, client=client):
+        if db.query(RawRecipe).filter_by(source_id=record.source_id).first():
             continue
 
         row = RawRecipe(

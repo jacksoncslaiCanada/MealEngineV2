@@ -4,8 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/mealengine"
 
-    reddit_client_id: str = ""
-    reddit_client_secret: str = ""
     reddit_user_agent: str = "MealEngineV2/1.0"
 
     youtube_api_key: str = ""
