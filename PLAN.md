@@ -29,6 +29,26 @@
 
 ---
 
+## Phase 1.5 — Source Registry & Scoring
+
+**Goal:** Make sources (channels, subreddits) managed entities with lifecycle tracking, quality scoring, and automatic discovery of new candidates.
+
+See [`docs/source-registry-design.md`](docs/source-registry-design.md) for the full design.
+
+### Sub-phases
+- **1.5a** — `sources` table + migration; add engagement signal columns to `raw_recipes`; seed initial sources
+- **1.5b** — Source quality score computation (weighted recency average of engagement signals)
+- **1.5c** — Discovery sweep (find candidate sources from existing API results; auto-promote above threshold)
+- **1.5d** — GitHub Actions scheduled workflow (weekly ingest → score → discover → promote)
+
+### Tests
+- Unit tests: engagement score formula, quality score recomputation, auto-promotion logic
+- Integration test: discovery sweep finds ≥ 1 new candidate from live APIs
+
+**Gate:** Weekly run ingests from all active sources, scores them, discovers candidates, and produces a summary — without manual intervention.
+
+---
+
 ## Phase 2 — Ingredient Extraction
 
 **Goal:** Parse raw recipe content into structured ingredients, maintaining source linkage.
