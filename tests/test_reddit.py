@@ -8,14 +8,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.models import RawRecipe
+from app.db.models import RawRecipe, Source
 from app.connectors.reddit import fetch_reddit_recipes, save_reddit_recipes
 from app.schemas import RawRecipeSchema
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _make_post(post_id: str, title: str, selftext: str, permalink: str, is_self=True) -> dict:
+def _make_post(
+    post_id: str,
+    title: str,
+    selftext: str,
+    permalink: str,
+    is_self=True,
+    score: int = 100,
+    upvote_ratio: float = 0.95,
+) -> dict:
     return {
         "data": {
             "id": post_id,
@@ -23,6 +31,8 @@ def _make_post(post_id: str, title: str, selftext: str, permalink: str, is_self=
             "selftext": selftext,
             "permalink": permalink,
             "is_self": is_self,
+            "score": score,
+            "upvote_ratio": upvote_ratio,
         }
     }
 
@@ -98,6 +108,32 @@ def test_fetch_multiple_subreddits():
     assert len(results) == 2
 
 
+def test_fetch_includes_source_handle():
+    posts = [_make_post("h1", "Recipe", "body", "/r/EatCheapAndHealthy/h1")]
+    client = _make_client([_make_response(posts)])
+
+    results = list(fetch_reddit_recipes(subreddits=["EatCheapAndHealthy"], limit=5, client=client))
+    assert results[0].source_handle == "EatCheapAndHealthy"
+    assert results[0].source_display_name == "r/EatCheapAndHealthy"
+
+
+def test_fetch_computes_engagement_score():
+    posts = [_make_post("e1", "Popular Recipe", "great", "/r/recipes/e1", score=1000, upvote_ratio=0.98)]
+    client = _make_client([_make_response(posts)])
+
+    results = list(fetch_reddit_recipes(subreddits=["recipes"], limit=5, client=client))
+    assert results[0].engagement_score is not None
+    assert results[0].engagement_score > 0
+
+
+def test_fetch_zero_score_gives_zero_engagement():
+    posts = [_make_post("e2", "New Recipe", "body", "/r/recipes/e2", score=0, upvote_ratio=0.0)]
+    client = _make_client([_make_response(posts)])
+
+    results = list(fetch_reddit_recipes(subreddits=["recipes"], limit=5, client=client))
+    assert results[0].engagement_score == 0.0
+
+
 # ── save_reddit_recipes ───────────────────────────────────────────────────────
 
 def test_save_persists_new_records(in_memory_db):
@@ -121,3 +157,38 @@ def test_save_skips_duplicates(in_memory_db):
 
     assert saved_again == []
     assert in_memory_db.query(RawRecipe).count() == 1
+
+
+def test_save_creates_source_row(in_memory_db):
+    posts = [_make_post("s1", "Recipe", "body", "/r/cooking/s1")]
+    client = _make_client([_make_response(posts)])
+
+    save_reddit_recipes(in_memory_db, subreddits=["cooking"], limit=5, client=client)
+
+    source = in_memory_db.query(Source).filter_by(platform="reddit", handle="cooking").first()
+    assert source is not None
+    assert source.display_name == "r/cooking"
+    assert source.status == "active"
+
+
+def test_save_stores_engagement_and_content_length(in_memory_db):
+    posts = [_make_post("s2", "Recipe", "some body text", "/r/recipes/s2", score=500, upvote_ratio=0.9)]
+    client = _make_client([_make_response(posts)])
+
+    save_reddit_recipes(in_memory_db, subreddits=["recipes"], limit=5, client=client)
+
+    row = in_memory_db.query(RawRecipe).filter_by(source_id="s2").first()
+    assert row.engagement_score is not None
+    assert row.engagement_score > 0
+    assert row.content_length > 0
+
+
+def test_save_links_recipe_to_source_fk(in_memory_db):
+    posts = [_make_post("s3", "Recipe", "body", "/r/food/s3")]
+    client = _make_client([_make_response(posts)])
+
+    save_reddit_recipes(in_memory_db, subreddits=["food"], limit=5, client=client)
+
+    source = in_memory_db.query(Source).filter_by(platform="reddit", handle="food").first()
+    row = in_memory_db.query(RawRecipe).filter_by(source_id="s3").first()
+    assert row.source_fk == source.id

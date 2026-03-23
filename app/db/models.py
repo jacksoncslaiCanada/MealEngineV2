@@ -1,7 +1,35 @@
 from datetime import datetime, timezone
-from sqlalchemy import String, Text, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Text, DateTime, Float, Integer, Boolean, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
+
+
+class Source(Base):
+    """A tracked recipe source — a subreddit or a YouTube channel."""
+
+    __tablename__ = "sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    platform: Mapped[str] = mapped_column(String(16))        # "reddit" | "youtube"
+    handle: Mapped[str] = mapped_column(String(256))         # subreddit name or YouTube channel ID
+    display_name: Mapped[str] = mapped_column(String(256))   # human-readable label
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    # "candidate" | "active" | "paused" | "rejected"
+    quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    content_count: Mapped[int] = mapped_column(Integer, default=0)
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    last_ingested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    recipes: Mapped[list["RawRecipe"]] = relationship("RawRecipe", back_populates="source_ref")
+
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint("platform", "handle", name="uq_source_platform_handle"),
+    )
 
 
 class RawRecipe(Base):
@@ -18,3 +46,14 @@ class RawRecipe(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
+
+    # Source registry linkage
+    source_fk: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sources.id"), nullable=True
+    )
+    source_ref: Mapped["Source | None"] = relationship("Source", back_populates="recipes")
+
+    # Engagement signals captured at fetch time
+    engagement_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    content_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    has_transcript: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
