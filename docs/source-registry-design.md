@@ -232,21 +232,20 @@ DISCOVERY_MIN_VIDEO_COUNT = 5       # Min recipe videos before a YouTube channel
 
 ## Implementation Phases
 
-### Phase 1.5a — Source Registry (next)
-- Create `sources` table + migration
-- Add `source_fk`, `engagement_score`, `content_length`, `has_transcript` to `raw_recipes`
-- Update connectors to write engagement signals and link to source FK
-- Move hardcoded source lists into the `sources` table (seeded via migration)
+### Phase 1.5a — Source Registry ✓
+- `sources` table + migration (`alembic/versions/a9f2b1c3d4e5_add_sources_table.py`)
+- `source_fk`, `engagement_score`, `content_length`, `has_transcript` added to `raw_recipes`
+- Both connectors updated: write engagement signals, link recipes to source FK via `get_or_create_source()`
+- `app/scoring.py`: `compute_reddit_engagement()`, `compute_youtube_engagement()`, `recompute_source_scores()`, `auto_promote_candidates()`, `get_or_create_source()`, `mark_source_ingested()`
+- `SourceSchema` added to `app/schemas.py`; `RawRecipeSchema` extended with `source_handle`, `source_display_name`, `engagement_score`, `has_transcript`
+- Scoring config values added to `app/config.py`
 
-### Phase 1.5b — Scoring
-- Implement `recompute_source_scores()` function
-- Implement engagement score formulas for Reddit and YouTube
+### Phase 1.5b — Discovery Sweep ✓
+- `app/discovery.py`: `discover_reddit_sources()` (author cross-posting + keyword search), `discover_youtube_sources()` (channel extraction with video count and engagement gating), `run_discovery_sweep()` orchestrator
+- `DiscoverySummary` dataclass: `new_candidates`, `auto_promoted`, `skipped`, `new_sources`
+- `_is_cooking_adjacent()` keyword filter for Reddit subreddit names
 
-### Phase 1.5c — Discovery Sweep
-- Implement `run_discovery_sweep()` for Reddit and YouTube
-- Implement auto-promotion logic
-- Add candidate summary report (stdout or log)
-
-### Phase 1.5d — Scheduler
-- GitHub Actions scheduled workflow (Sunday 08:00 UTC)
-- Runs: ingest → score → discover → promote
+### Phase 1.5c — Pipeline & Scheduler ✓
+- `app/pipeline.py`: `run_weekly_pipeline()` orchestrates ingest → score → discover → promote; per-platform error isolation; `PipelineReport` dataclass
+- `scripts/run_pipeline.py`: CLI entry point, exits 0/1 based on errors
+- `.github/workflows/weekly_pipeline.yml`: cron `0 8 * * 0` (Sunday 08:00 UTC) + `workflow_dispatch`

@@ -29,23 +29,22 @@
 
 ---
 
-## Phase 1.5 — Source Registry & Scoring
+## Phase 1.5 — Source Registry & Scoring ✓ Done
 
 **Goal:** Make sources (channels, subreddits) managed entities with lifecycle tracking, quality scoring, and automatic discovery of new candidates.
 
 See [`docs/source-registry-design.md`](docs/source-registry-design.md) for the full design.
 
 ### Sub-phases
-- **1.5a** — `sources` table + migration; add engagement signal columns to `raw_recipes`; seed initial sources
-- **1.5b** — Source quality score computation (weighted recency average of engagement signals)
-- **1.5c** — Discovery sweep (find candidate sources from existing API results; auto-promote above threshold)
-- **1.5d** — GitHub Actions scheduled workflow (weekly ingest → score → discover → promote)
+- **1.5a ✓** — `sources` table + migration; engagement signal columns on `raw_recipes`; connectors updated to write source FK and engagement data; `app/scoring.py` with engagement formulas, quality score recomputation, `get_or_create_source`, `auto_promote_candidates`
+- **1.5b ✓** — Discovery sweep (`app/discovery.py`): Reddit author cross-posting sweep + keyword search; YouTube channel extraction with video count and engagement gating; `run_discovery_sweep()` orchestrator with `DiscoverySummary`
+- **1.5c ✓** — Weekly pipeline (`app/pipeline.py`): ingest → score → discover → promote; CLI entry point (`scripts/run_pipeline.py`); GitHub Actions scheduled workflow (`weekly_pipeline.yml`, Sunday 08:00 UTC)
 
 ### Tests
-- Unit tests: engagement score formula, quality score recomputation, auto-promotion logic
-- Integration test: discovery sweep finds ≥ 1 new candidate from live APIs
+- 47 new unit tests across `test_scoring.py`, `test_discovery.py`, `test_pipeline.py`
+- Coverage: engagement formulas, quality score weighting, auto-promotion, Reddit/YouTube discovery paths, pipeline orchestration and error handling
 
-**Gate:** Weekly run ingests from all active sources, scores them, discovers candidates, and produces a summary — without manual intervention.
+**Gate:** ✓ Weekly run ingests from all active sources, scores them, discovers candidates, and produces a summary — without manual intervention.
 
 ---
 
