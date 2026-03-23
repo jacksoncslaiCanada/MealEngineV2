@@ -1,20 +1,26 @@
 """
-Integration tests — hit real Reddit and YouTube APIs with minimal fetches.
+Integration tests — verify the full ingest pipeline for Reddit and YouTube.
 
-These tests verify that live data can be fetched and parsed correctly before
-moving to Phase 2 (ingredient extraction). They are NOT run in CI.
+Reddit tests use a mock HTTP transport backed by a realistic fixture
+(tests/fixtures/reddit_hot_recipes.json) so they run reliably in CI without
+depending on Reddit's public API, which blocks GitHub Actions IPs.
+
+YouTube tests hit the real API and are skipped when YOUTUBE_API_KEY is absent.
 
 Run manually:
     pytest -m integration -v -s
 
 Requirements:
-    - Reddit: no credentials needed (public JSON API)
+    - Reddit: no credentials needed (mock transport used)
     - YouTube: set YOUTUBE_API_KEY in your .env file (tests skip if key is missing/dummy)
 """
 
+import json
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 
+import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -89,34 +95,48 @@ def _preview(label: str, record):
 
 # ── Reddit integration ────────────────────────────────────────────────────────
 
+_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "reddit_hot_recipes.json"
+
+
+def _reddit_mock_client() -> httpx.Client:
+    """
+    Return an httpx.Client whose transport replays the fixture JSON for every
+    request. This lets the Reddit integration tests run in CI without touching
+    the real Reddit API (which blocks GitHub Actions IPs).
+    """
+    fixture = json.loads(_FIXTURE_PATH.read_text())
+
+    class _FixtureTransport(httpx.BaseTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=fixture)
+
+    return httpx.Client(transport=_FixtureTransport())
+
+
 @pytest.mark.integration
 def test_reddit_fetch_returns_parseable_record():
     """
-    Fetch 1 post from r/recipes via the real Reddit JSON API.
-    Verifies the connector produces a well-formed record ready for extraction.
-
-    Skipped automatically when Reddit returns 403 (common in CI environments
-    where GitHub Actions IPs are blocked by Reddit).
+    Feed the fixture JSON through the real Reddit connector.
+    Verifies that fetch_reddit_recipes parses and normalizes records correctly,
+    and that link posts (is_self=False) are filtered out.
     """
-    import httpx
     from app.connectors.reddit import fetch_reddit_recipes
 
-    try:
-        results = list(fetch_reddit_recipes(subreddits=["recipes"], limit=5))
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 403:
-            pytest.skip(f"Reddit returned 403 — IP likely blocked in CI: {exc.request.url}")
-        raise
+    results = list(fetch_reddit_recipes(
+        subreddits=["recipes"],
+        limit=5,
+        client=_reddit_mock_client(),
+    ))
 
-    assert len(results) >= 1, (
-        "Expected at least one self-post from r/recipes. "
-        "Reddit may be down or blocking requests."
+    # Fixture has 3 self-posts and 1 link post; only self-posts should come through.
+    assert len(results) == 3, (
+        f"Expected 3 self-posts (1 link post filtered), got {len(results)}"
     )
 
     record = results[0]
     _assert_valid_schema(record, "reddit")
 
-    # Reddit-specific structure: raw_content starts with the post title
+    # raw_content must start with the post title
     first_line = record.raw_content.split("\n")[0]
     assert len(first_line) > 0, "First line (title) should not be empty"
 
@@ -126,30 +146,32 @@ def test_reddit_fetch_returns_parseable_record():
 @pytest.mark.integration
 def test_reddit_fetch_and_save(db):
     """
-    Fetch 1 Reddit post and save it to DB.
-    Verifies the full pipeline: fetch → normalize → persist → query.
-
-    Skipped automatically when Reddit returns 403 (common in CI environments
-    where GitHub Actions IPs are blocked by Reddit).
+    Feed the fixture JSON through the full pipeline: fetch → normalize → persist → dedup.
+    Uses a mock HTTP transport so the test is deterministic and CI-safe.
     """
-    import httpx
-    from app.connectors.reddit import save_reddit_recipes
+    from app.connectors.reddit import fetch_reddit_recipes, save_reddit_recipes
 
-    try:
-        saved = save_reddit_recipes(db, subreddits=["recipes"], limit=5)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 403:
-            pytest.skip(f"Reddit returned 403 — IP likely blocked in CI: {exc.request.url}")
-        raise
+    saved = save_reddit_recipes(
+        db,
+        subreddits=["recipes"],
+        limit=5,
+        client=_reddit_mock_client(),
+    )
 
-    assert len(saved) >= 1, "Expected at least one record to be saved"
+    # Fixture has 3 valid self-posts.
+    assert len(saved) == 3, f"Expected 3 saved records, got {len(saved)}"
 
     record = saved[0]
     _assert_valid_schema(record, "reddit")
     _assert_db_roundtrip(db, record.source_id, "reddit")
 
-    # Running save again with the same data must not create duplicates
-    saved_again = save_reddit_recipes(db, subreddits=["recipes"], limit=5)
+    # Re-saving the same fixture must not create duplicate rows.
+    save_reddit_recipes(
+        db,
+        subreddits=["recipes"],
+        limit=5,
+        client=_reddit_mock_client(),
+    )
     total_rows = db.query(RawRecipe).count()
     assert total_rows == len(saved), (
         f"Expected {len(saved)} rows after re-save, got {total_rows}. "

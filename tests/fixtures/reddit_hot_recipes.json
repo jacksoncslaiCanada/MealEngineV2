@@ -1,0 +1,57 @@
+{
+  "kind": "Listing",
+  "data": {
+    "after": "t3_zzzzzz",
+    "before": null,
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "id": "abc111",
+          "title": "Easy one-pan lemon herb chicken",
+          "selftext": "Season chicken thighs with salt, pepper, garlic powder, and dried thyme.\nHeat oil in an oven-safe skillet over medium-high heat.\nSear chicken skin-side down for 5 minutes until golden.\nFlip, add lemon slices and chicken stock, then bake at 400F for 25 minutes.\nRest 5 minutes before serving.",
+          "permalink": "/r/recipes/comments/abc111/easy_one_pan_lemon_herb_chicken/",
+          "is_self": true,
+          "score": 1842,
+          "url": "https://www.reddit.com/r/recipes/comments/abc111/easy_one_pan_lemon_herb_chicken/"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "abc222",
+          "title": "Creamy tomato pasta — 20 minutes, one pot",
+          "selftext": "Cook 300g penne until al dente.\nIn the same pot, sauté garlic in butter, add crushed tomatoes and heavy cream.\nSeason with salt, pepper, and a pinch of red pepper flakes.\nToss pasta back in, finish with fresh basil and parmesan.",
+          "permalink": "/r/recipes/comments/abc222/creamy_tomato_pasta_20_minutes_one_pot/",
+          "is_self": true,
+          "score": 3201,
+          "url": "https://www.reddit.com/r/recipes/comments/abc222/creamy_tomato_pasta_20_minutes_one_pot/"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "abc333",
+          "title": "My grandmother's beef stew recipe (link post — should be ignored)",
+          "selftext": "",
+          "permalink": "/r/recipes/comments/abc333/my_grandmothers_beef_stew/",
+          "is_self": false,
+          "score": 589,
+          "url": "https://externalsite.com/grandmothers-beef-stew"
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "abc444",
+          "title": "Roasted garlic hummus from scratch",
+          "selftext": "Roast a whole head of garlic at 375F for 40 minutes.\nBlend 1 can chickpeas, 3 tbsp tahini, juice of 1 lemon, the roasted garlic, olive oil, and salt.\nAdd ice water a tablespoon at a time until smooth and creamy.\nTop with paprika and a drizzle of olive oil.",
+          "permalink": "/r/recipes/comments/abc444/roasted_garlic_hummus_from_scratch/",
+          "is_self": true,
+          "score": 977,
+          "url": "https://www.reddit.com/r/recipes/comments/abc444/roasted_garlic_hummus_from_scratch/"
+        }
+      }
+    ]
+  }
+}
