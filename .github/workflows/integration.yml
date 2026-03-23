@@ -1,0 +1,39 @@
+name: Integration Tests
+
+# Run manually from the GitHub Actions tab.
+# Requires YOUTUBE_API_KEY to be set as a repository secret
+# (Settings → Secrets and variables → Actions → New repository secret).
+#
+# Reddit tests may fail in CI — Reddit blocks GitHub runner IPs.
+# If that happens the step is still reported but does not fail the workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Reddit ────────────────────────────────────────────────────────────
+      # continue-on-error because Reddit frequently returns 403 for CI runner IPs.
+      - name: Run Reddit integration tests
+        continue-on-error: true
+        run: python -m pytest -m integration -k reddit -v -s
+
+      # ── YouTube ───────────────────────────────────────────────────────────
+      # Skipped automatically if the secret is not set.
+      - name: Run YouTube integration tests
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python -m pytest -m integration -k youtube -v -s
