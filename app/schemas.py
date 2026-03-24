@@ -17,6 +17,7 @@ class RawRecipeSchema(BaseModel):
     # Engagement signals — captured at fetch time, None if unavailable
     engagement_score: float | None = None   # 0–100 normalised score
     has_transcript: bool | None = None      # YouTube only
+    content_length: int | None = None       # byte length of raw_content
 
     model_config = {"from_attributes": True}
 
