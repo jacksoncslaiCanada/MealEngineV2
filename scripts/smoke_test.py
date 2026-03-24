@@ -82,6 +82,8 @@ class SmokeTestRunner:
         self.inserted_platform_ids: list[str] = []
         # source PKs that existed before this test started
         self.pre_existing_source_pks: set[int] = set()
+        # set to True when Reddit returns 403 so scoring can be downgraded to WARN
+        self.reddit_blocked: bool = False
 
     # ── Recording helpers ──────────────────────────────────────────────────────
 
@@ -173,6 +175,7 @@ class SmokeTestRunner:
             if exc.response.status_code == 403:
                 # GitHub-hosted runners are frequently blocked by Reddit's CDN.
                 # This is a known environmental limitation, not a code defect.
+                self.reddit_blocked = True
                 self.record_warn(
                     "Reddit · ingest",
                     f"Skipped — Reddit returned 403 (runner IP blocked by CDN). "
@@ -280,13 +283,15 @@ class SmokeTestRunner:
                 if s.platform == "reddit" and s.quality_score is not None
             ]
 
-            # If no rows were inserted (all connectors blocked by rate limits),
-            # 0 scored sources is an expected outcome — record as WARN, not FAIL.
-            if len(updated) == 0 and not self.inserted_platform_ids:
+            # 0 updated sources is expected when no rows were inserted at all, or
+            # when Reddit was blocked and only YouTube rows exist — YouTube sources
+            # are intentionally never scored because engagement_score=None at ingest.
+            if len(updated) == 0 and (not self.inserted_platform_ids or self.reddit_blocked):
                 self.record_warn(
                     "Scoring · sources rescored",
-                    "0 sources scored — no rows were inserted because all connectors "
-                    "were rate-limited on this runner. Not a code defect.",
+                    "0 sources scored — Reddit was blocked and YouTube sources are "
+                    "excluded from scoring (engagement_score=None at ingest time). "
+                    "Not a code defect.",
                 )
                 return
 
