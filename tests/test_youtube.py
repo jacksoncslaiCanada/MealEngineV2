@@ -36,12 +36,20 @@ def _make_video_item(
     }
 
 
-def _make_youtube_mock(responses: list[dict]) -> MagicMock:
+def _make_youtube_mock(search_responses: list[dict], stats_response: dict | None = None) -> MagicMock:
     """Build a mock YouTube client that returns responses in order per query."""
     client = MagicMock()
-    execute_mock = MagicMock(side_effect=responses)
+    execute_mock = MagicMock(side_effect=search_responses)
     client.search.return_value.list.return_value.execute = execute_mock
+    client.videos.return_value.list.return_value.execute.return_value = (
+        stats_response if stats_response is not None else {"items": []}
+    )
     return client
+
+
+def _make_stats_fetcher(stats: dict[str, tuple[int, int]]):
+    """Return a stats_fetcher callable backed by a static dict."""
+    return lambda video_ids: {vid: stats[vid] for vid in video_ids if vid in stats}
 
 
 def _no_transcript(_video_id: str) -> str:
@@ -287,3 +295,61 @@ def test_save_links_recipe_to_source_fk(in_memory_db):
     source = in_memory_db.query(Source).filter_by(platform="youtube", handle="UCLinkTest").first()
     row = in_memory_db.query(RawRecipe).filter_by(source_id="sv3").first()
     assert row.source_fk == source.id
+
+
+# ── engagement scoring ────────────────────────────────────────────────────────
+
+def test_fetch_sets_engagement_score_when_stats_available():
+    response = _make_search_response([
+        _make_video_item("eng1", "Popular Recipe", "desc"),
+    ])
+    client = _make_youtube_mock([response])
+    stats = _make_stats_fetcher({"eng1": (100_000, 5_000)})
+
+    results = fetch_youtube_recipes(
+        queries=["recipe"],
+        max_results=5,
+        youtube_client=client,
+        transcript_fetcher=_no_transcript,
+        stats_fetcher=stats,
+    )
+
+    assert results[0].engagement_score is not None
+    assert 0.0 < results[0].engagement_score <= 100.0
+
+
+def test_fetch_engagement_score_none_when_stats_unavailable():
+    response = _make_search_response([
+        _make_video_item("eng2", "Recipe", "desc"),
+    ])
+    client = _make_youtube_mock([response])
+    # stats_fetcher returns nothing for this video_id
+    stats = _make_stats_fetcher({})
+
+    results = fetch_youtube_recipes(
+        queries=["recipe"],
+        max_results=5,
+        youtube_client=client,
+        transcript_fetcher=_no_transcript,
+        stats_fetcher=stats,
+    )
+
+    assert results[0].engagement_score is None
+
+
+def test_save_persists_engagement_score(in_memory_db):
+    response = _make_search_response([
+        _make_video_item("eng3", "Recipe", "desc"),
+    ])
+    client = _make_youtube_mock([response])
+    stats = _make_stats_fetcher({"eng3": (50_000, 2_000)})
+
+    save_youtube_recipes(
+        in_memory_db, queries=["recipe"], max_results=5,
+        youtube_client=client, transcript_fetcher=_no_transcript,
+        stats_fetcher=stats,
+    )
+
+    row = in_memory_db.query(RawRecipe).filter_by(source_id="eng3").first()
+    assert row.engagement_score is not None
+    assert row.engagement_score > 0.0
