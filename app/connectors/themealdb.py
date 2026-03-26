@@ -7,10 +7,18 @@ from sqlalchemy.orm import Session
 
 from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
-from app.scoring import get_or_create_source, mark_source_ingested
+from app.scoring import compute_themealdb_completeness, get_or_create_source, mark_source_ingested
 
 RECIPE_SEARCH_QUERIES = ["chicken", "pasta", "beef", "salmon"]
 _THEMEALDB_BASE = "https://www.themealdb.com/api/json/v1/1/search.php"
+
+
+def _count_ingredients(meal: dict) -> int:
+    """Count non-empty ingredient slots (1–20)."""
+    return sum(
+        1 for i in range(1, 21)
+        if (meal.get(f"strIngredient{i}") or "").strip()
+    )
 
 
 def _build_ingredients(meal: dict) -> str:
@@ -82,6 +90,10 @@ def fetch_themealdb_recipes(
                 seen.add(meal_id)
 
                 category = meal.get("strCategory") or "other"
+                ingredient_count = _count_ingredients(meal)
+                instruction_length = len((meal.get("strInstructions") or "").strip())
+                completeness = compute_themealdb_completeness(ingredient_count, instruction_length)
+
                 records.append(
                     RawRecipeSchema(
                         source="themealdb",
@@ -91,7 +103,7 @@ def fetch_themealdb_recipes(
                         fetched_at=datetime.now(timezone.utc),
                         source_handle=category.lower(),
                         source_display_name=category,
-                        engagement_score=None,  # TheMealDB does not provide engagement data
+                        engagement_score=completeness,
                         has_transcript=None,
                     )
                 )
