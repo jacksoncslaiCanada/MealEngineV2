@@ -38,7 +38,7 @@ def _make_meal(
         "strDrinkAlternate": None,
     }
     # Populate ingredient/measure slots (20 max)
-    ing = ingredients or {"soy sauce": "3/4 cup", "chicken": "500g"}
+    ing = ingredients if ingredients is not None else {"soy sauce": "3/4 cup", "chicken": "500g"}
     keys = list(ing.items())
     for i in range(1, 21):
         if i <= len(keys):
@@ -117,13 +117,24 @@ def test_fetch_source_handle_is_lowercased_category():
     assert results[0].source_display_name == "Chicken"
 
 
-def test_fetch_engagement_score_is_none():
+def test_fetch_engagement_score_is_set():
+    # _make_meal() has 2 ingredients and non-empty instructions → score > 0
     meal = _make_meal()
     client = _make_client([_make_response([meal])])
 
     results = fetch_themealdb_recipes(queries=["chicken"], max_results=5, client=client)
 
-    assert results[0].engagement_score is None
+    assert results[0].engagement_score is not None
+    assert 0.0 < results[0].engagement_score <= 100.0
+
+
+def test_fetch_engagement_score_zero_for_empty_recipe():
+    meal = _make_meal(instructions="", ingredients={})
+    client = _make_client([_make_response([meal])])
+
+    results = fetch_themealdb_recipes(queries=["chicken"], max_results=5, client=client)
+
+    assert results[0].engagement_score == 0.0
 
 
 def test_fetch_has_transcript_is_none():

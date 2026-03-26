@@ -43,6 +43,31 @@ def compute_youtube_engagement(views: int, likes: int) -> float:
     return min(math.log10(views + 1) * like_ratio * 10, 100.0)
 
 
+def compute_themealdb_completeness(ingredient_count: int, instruction_length: int) -> float:
+    """
+    Compute a 0–100 completeness score for a TheMealDB recipe.
+
+    Uses ingredient count and instruction text length as proxies for recipe richness.
+    This is used in place of engagement data (which TheMealDB does not provide).
+
+    Args:
+        ingredient_count: Number of non-empty ingredient slots (max 20).
+        instruction_length: Character length of the instruction text.
+    """
+    # Ingredient score: 0–60 points. 10+ ingredients = full score.
+    ingredient_score = min(ingredient_count / 10.0, 1.0) * 60.0
+
+    # Instruction score: 0–40 points. Log scale; 1 000+ chars = full score.
+    if instruction_length > 0:
+        instruction_score = min(
+            math.log10(instruction_length + 1) / math.log10(1001), 1.0
+        ) * 40.0
+    else:
+        instruction_score = 0.0
+
+    return round(ingredient_score + instruction_score, 2)
+
+
 # ── Source quality scoring ────────────────────────────────────────────────────
 
 def recompute_source_scores(

@@ -11,6 +11,7 @@ from app.db.base import Base
 from app.db.models import RawRecipe, Source
 from app.scoring import (
     compute_reddit_engagement,
+    compute_themealdb_completeness,
     compute_youtube_engagement,
     recompute_source_scores,
     auto_promote_candidates,
@@ -91,6 +92,46 @@ def test_reddit_engagement_decreases_with_lower_ratio():
     good = compute_reddit_engagement(score=500, upvote_ratio=0.95)
     poor = compute_reddit_engagement(score=500, upvote_ratio=0.50)
     assert good > poor
+
+
+# ── compute_themealdb_completeness ───────────────────────────────────────────
+
+def test_themealdb_completeness_zero_ingredients_zero_instructions():
+    assert compute_themealdb_completeness(ingredient_count=0, instruction_length=0) == 0.0
+
+
+def test_themealdb_completeness_full_score():
+    # 10 ingredients (60 pts) + 1000-char instructions (40 pts) = 100
+    result = compute_themealdb_completeness(ingredient_count=10, instruction_length=1000)
+    assert result == 100.0
+
+
+def test_themealdb_completeness_capped_at_100():
+    result = compute_themealdb_completeness(ingredient_count=20, instruction_length=10_000)
+    assert result == 100.0
+
+
+def test_themealdb_completeness_typical_recipe():
+    # 8 ingredients, 400-char instructions — expect a meaningful mid-range score
+    result = compute_themealdb_completeness(ingredient_count=8, instruction_length=400)
+    assert 40.0 < result < 100.0
+
+
+def test_themealdb_completeness_increases_with_ingredients():
+    low = compute_themealdb_completeness(ingredient_count=2, instruction_length=200)
+    high = compute_themealdb_completeness(ingredient_count=8, instruction_length=200)
+    assert high > low
+
+
+def test_themealdb_completeness_increases_with_instructions():
+    short = compute_themealdb_completeness(ingredient_count=5, instruction_length=50)
+    long_ = compute_themealdb_completeness(ingredient_count=5, instruction_length=800)
+    assert long_ > short
+
+
+def test_themealdb_completeness_in_range():
+    result = compute_themealdb_completeness(ingredient_count=6, instruction_length=350)
+    assert 0.0 <= result <= 100.0
 
 
 # ── compute_youtube_engagement ────────────────────────────────────────────────
