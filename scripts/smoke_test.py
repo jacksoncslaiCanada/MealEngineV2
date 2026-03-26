@@ -308,7 +308,7 @@ class SmokeTestRunner:
 
             # 0 updated sources is only expected when no rows were inserted at all.
             # YouTube sources score via engagement_score from the statistics API call.
-            # TheMealDB sources have engagement_score=None so they are skipped by the scorer.
+            # TheMealDB sources score via compute_themealdb_completeness() (ingredient count + instruction length).
             if len(updated) == 0 and not self.inserted_platform_ids:
                 self.record_warn(
                     "Scoring · sources rescored",
