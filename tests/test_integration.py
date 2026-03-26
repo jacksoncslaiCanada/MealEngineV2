@@ -26,7 +26,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.models import RawRecipe
+from app.db.models import RawRecipe, Source
 
 
 # ── shared fixture ────────────────────────────────────────────────────────────
@@ -65,6 +65,8 @@ def _assert_valid_schema(record, expected_source: str):
         assert record.url.startswith("https://www.reddit.com/")
     elif expected_source == "youtube":
         assert record.url.startswith("https://www.youtube.com/watch?v=")
+    elif expected_source == "themealdb":
+        assert record.url.startswith("https://www.themealdb.com/meal/")
 
     # fetched_at is timezone-aware (required for Supabase timestamptz column)
     assert isinstance(record.fetched_at, datetime)
@@ -295,3 +297,91 @@ def test_youtube_fetch_and_save(db):
     )
 
     _preview("YouTube save + dedup", saved_record)
+
+
+# ── TheMealDB integration ─────────────────────────────────────────────────────
+
+_THEMEALDB_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "themealdb_search_chicken.json"
+
+
+def _themealdb_mock_client() -> httpx.Client:
+    """
+    Return an httpx.Client whose transport replays the fixture JSON for every
+    request. Lets TheMealDB tests run in CI without touching the live API.
+    """
+    fixture = json.loads(_THEMEALDB_FIXTURE_PATH.read_text())
+
+    class _FixtureTransport(httpx.BaseTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=fixture)
+
+    return httpx.Client(transport=_FixtureTransport())
+
+
+@pytest.mark.integration
+def test_themealdb_fetch_returns_parseable_record():
+    """
+    Feed the fixture JSON through the real TheMealDB connector.
+    Verifies that fetch_themealdb_recipes parses and normalizes records correctly.
+    """
+    from app.connectors.themealdb import fetch_themealdb_recipes
+
+    results = fetch_themealdb_recipes(
+        queries=["chicken"],
+        max_results=5,
+        client=_themealdb_mock_client(),
+    )
+
+    assert len(results) == 3, f"Expected 3 meals from fixture, got {len(results)}"
+
+    record = results[0]
+    _assert_valid_schema(record, "themealdb")
+
+    # raw_content must start with the meal name
+    assert record.raw_content.startswith("Meal:"), (
+        f"Expected raw_content to start with 'Meal:', got: {record.raw_content[:50]!r}"
+    )
+    assert "Ingredients:" in record.raw_content
+    assert "Instructions:" in record.raw_content
+
+    _preview("TheMealDB live fetch", record)
+
+
+@pytest.mark.integration
+def test_themealdb_fetch_and_save(db):
+    """
+    Feed the fixture JSON through the full pipeline: fetch → normalize → persist → dedup.
+    """
+    from app.connectors.themealdb import save_themealdb_recipes
+
+    saved = save_themealdb_recipes(
+        db,
+        queries=["chicken"],
+        max_results=5,
+        client=_themealdb_mock_client(),
+    )
+
+    assert len(saved) == 3, f"Expected 3 saved records, got {len(saved)}"
+
+    record = saved[0]
+    _assert_valid_schema(record, "themealdb")
+    _assert_db_roundtrip(db, record.source_id, "themealdb")
+
+    # Source row must be created
+    source = db.query(Source).filter_by(platform="themealdb", handle="chicken").first()
+    assert source is not None, "Source row for 'chicken' category not created"
+
+    # Re-saving the same fixture must not create duplicate rows
+    save_themealdb_recipes(
+        db,
+        queries=["chicken"],
+        max_results=5,
+        client=_themealdb_mock_client(),
+    )
+    total_rows = db.query(RawRecipe).count()
+    assert total_rows == len(saved), (
+        f"Expected {len(saved)} rows after re-save, got {total_rows}. "
+        "Deduplication may be broken."
+    )
+
+    _preview("TheMealDB save + dedup", record)

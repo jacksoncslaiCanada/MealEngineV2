@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
-from app.scoring import get_or_create_source, mark_source_ingested
+from app.scoring import compute_youtube_engagement, get_or_create_source, mark_source_ingested
 
 RECIPE_SEARCH_QUERIES = ["recipe", "how to cook", "easy dinner recipe"]
 
@@ -37,11 +37,33 @@ def _build_raw_content(title: str, description: str, transcript: str) -> str:
     return "\n\n".join(parts)
 
 
+def _fetch_statistics(youtube_client, video_ids: list[str]) -> dict[str, tuple[int, int]]:
+    """Batch-fetch view and like counts for a list of video IDs.
+
+    Returns a dict mapping video_id -> (views, likes).
+    """
+    if not video_ids:
+        return {}
+    response = youtube_client.videos().list(
+        part="statistics",
+        id=",".join(video_ids),
+    ).execute()
+    result: dict[str, tuple[int, int]] = {}
+    for item in response.get("items", []):
+        vid = item["id"]
+        stats = item.get("statistics", {})
+        views = int(stats.get("viewCount", 0))
+        likes = int(stats.get("likeCount", 0))
+        result[vid] = (views, likes)
+    return result
+
+
 def fetch_youtube_recipes(
     queries: list[str] | None = None,
     max_results: int = 10,
     youtube_client: Any = None,
     transcript_fetcher=None,
+    stats_fetcher=None,
 ) -> list[RawRecipeSchema]:
     """
     Search YouTube for recipe videos and return normalized RawRecipeSchema objects.
@@ -51,6 +73,7 @@ def fetch_youtube_recipes(
         max_results: Max results per query.
         youtube_client: Optional pre-built client (used in tests).
         transcript_fetcher: Optional callable(video_id) -> str (used in tests).
+        stats_fetcher: Optional callable(video_ids) -> dict[str, tuple[int, int]] (used in tests).
     """
     if queries is None:
         queries = RECIPE_SEARCH_QUERIES
@@ -58,9 +81,12 @@ def fetch_youtube_recipes(
         youtube_client = _build_youtube_client()
     if transcript_fetcher is None:
         transcript_fetcher = _fetch_transcript
+    if stats_fetcher is None:
+        stats_fetcher = lambda ids: _fetch_statistics(youtube_client, ids)
 
     seen: set[str] = set()
-    records: list[RawRecipeSchema] = []
+    # Collect raw data before stats so we can batch the statistics call
+    intermediate: list[dict] = []
 
     for query in queries:
         response = youtube_client.search().list(
@@ -77,26 +103,41 @@ def fetch_youtube_recipes(
             seen.add(video_id)
 
             snippet = item["snippet"]
-            title = snippet.get("title", "")
-            description = snippet.get("description", "")
-            channel_id = snippet.get("channelId", "")
-            channel_title = snippet.get("channelTitle", channel_id)
-            transcript = transcript_fetcher(video_id)
+            intermediate.append({
+                "video_id": video_id,
+                "title": snippet.get("title", ""),
+                "description": snippet.get("description", ""),
+                "channel_id": snippet.get("channelId", ""),
+                "channel_title": snippet.get("channelTitle", snippet.get("channelId", "")),
+                "transcript": transcript_fetcher(video_id),
+            })
 
-            raw_content = _build_raw_content(title, description, transcript)
-            records.append(
-                RawRecipeSchema(
-                    source="youtube",
-                    source_id=video_id,
-                    raw_content=raw_content,
-                    url=f"https://www.youtube.com/watch?v={video_id}",
-                    fetched_at=datetime.now(timezone.utc),
-                    source_handle=channel_id,
-                    source_display_name=channel_title,
-                    engagement_score=None,  # requires videos.list statistics call; added later
-                    has_transcript=bool(transcript),
-                )
+    # Batch-fetch statistics for all collected video IDs in one API call
+    stats = stats_fetcher(list(seen))
+
+    records: list[RawRecipeSchema] = []
+    for data in intermediate:
+        views_likes = stats.get(data["video_id"])
+        if views_likes is not None:
+            views, likes = views_likes
+            engagement = compute_youtube_engagement(views, likes)
+        else:
+            engagement = None
+
+        raw_content = _build_raw_content(data["title"], data["description"], data["transcript"])
+        records.append(
+            RawRecipeSchema(
+                source="youtube",
+                source_id=data["video_id"],
+                raw_content=raw_content,
+                url=f"https://www.youtube.com/watch?v={data['video_id']}",
+                fetched_at=datetime.now(timezone.utc),
+                source_handle=data["channel_id"],
+                source_display_name=data["channel_title"],
+                engagement_score=engagement,
+                has_transcript=bool(data["transcript"]),
             )
+        )
 
     return records
 
@@ -107,6 +148,7 @@ def save_youtube_recipes(
     max_results: int = 10,
     youtube_client: Any = None,
     transcript_fetcher=None,
+    stats_fetcher=None,
 ) -> list[RawRecipeSchema]:
     """
     Fetch YouTube recipes and persist new ones to the database.
@@ -118,6 +160,7 @@ def save_youtube_recipes(
         max_results=max_results,
         youtube_client=youtube_client,
         transcript_fetcher=transcript_fetcher,
+        stats_fetcher=stats_fetcher,
     )
 
     saved: list[RawRecipeSchema] = []
