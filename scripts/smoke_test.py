@@ -8,12 +8,14 @@ Checks:
   2. Reddit ingest     — connector writes ≥1 real row (r/recipes, limit=5).
                          A 403 from Reddit (known GitHub runner IP block) is
                          recorded as a warning, not a failure.
-  3. YouTube ingest    — connector writes ≥1 real row (skipped when
+  3. TheMealDB ingest  — connector writes ≥1 real row (no credentials needed;
+                         always runs).
+  4. YouTube ingest    — connector writes ≥1 real row (skipped when
                          SKIP_YOUTUBE=true or YOUTUBE_API_KEY is absent).
-  4. FK integrity      — every row we inserted has a non-NULL `source_fk`.
-  5. Quality scoring   — recompute_source_scores() writes a quality_score to
-                         at least one Reddit source (YouTube sources are
-                         intentionally skipped because engagement_score=None).
+  5. FK integrity      — every row we inserted has a non-NULL `source_fk`.
+  6. Quality scoring   — recompute_source_scores() updates quality_score for
+                         at least one source (YouTube and TheMealDB sources
+                         are scored when engagement_score is available).
 
 All rows written by this test are deleted in the finally block.
 A Markdown report is written to smoke_test_report.md; the workflow uploads
@@ -40,6 +42,7 @@ from app.config import settings
 from app.db.models import RawRecipe, Source
 from app.db.session import SessionLocal, engine
 from app.connectors.reddit import save_reddit_recipes
+from app.connectors.themealdb import save_themealdb_recipes
 from app.connectors.youtube import save_youtube_recipes
 from app.scoring import recompute_source_scores
 
@@ -192,15 +195,42 @@ class SmokeTestRunner:
             self._rollback()
             log.exception("Reddit ingest raised an exception")
 
-    # ── Step 3: YouTube ingest ─────────────────────────────────────────────────
+    # ── Step 3: TheMealDB ingest ───────────────────────────────────────────────
+
+    def run_themealdb_ingest(self) -> None:
+        log.info("── Step 3: TheMealDB ingest ──────────────────────────────────────")
+        try:
+            saved = save_themealdb_recipes(self.db, queries=["chicken"], max_results=3)
+            self.inserted_platform_ids.extend(r.source_id for r in saved)
+
+            self.record(
+                "TheMealDB · rows written",
+                len(saved) >= 1,
+                f"{len(saved)} new recipe(s) inserted (max_results=3)",
+            )
+
+            if saved:
+                sample = saved[0]
+                self.record(
+                    "TheMealDB · content_length > 0",
+                    (sample.content_length or 0) > 0,
+                    f"First row content_length = {sample.content_length}",
+                )
+
+        except Exception as exc:
+            self.record("TheMealDB · ingest", False, f"Exception: {exc}")
+            self._rollback()
+            log.exception("TheMealDB ingest raised an exception")
+
+    # ── Step 4: YouTube ingest ─────────────────────────────────────────────────
 
     def run_youtube_ingest(self) -> None:
         if self.skip_youtube:
-            log.info("── Step 3: YouTube ingest (SKIPPED) ─────────────────────────────")
+            log.info("── Step 4: YouTube ingest (SKIPPED) ─────────────────────────────")
             self.record_warn("YouTube · ingest", "Skipped — SKIP_YOUTUBE=true or no API key")
             return
 
-        log.info("── Step 3: YouTube ingest ────────────────────────────────────────")
+        log.info("── Step 4: YouTube ingest ────────────────────────────────────────")
         try:
             saved = save_youtube_recipes(self.db, queries=["easy recipe"], max_results=3)
             self.inserted_platform_ids.extend(r.source_id for r in saved)
@@ -240,10 +270,10 @@ class SmokeTestRunner:
                 log.exception("YouTube ingest raised an exception")
             self._rollback()
 
-    # ── Step 4: FK integrity ───────────────────────────────────────────────────
+    # ── Step 5: FK integrity ───────────────────────────────────────────────────
 
     def check_fk_integrity(self) -> None:
-        log.info("── Step 4: FK integrity ──────────────────────────────────────────")
+        log.info("── Step 5: FK integrity ──────────────────────────────────────────")
 
         if not self.inserted_platform_ids:
             self.record_warn(
@@ -268,47 +298,43 @@ class SmokeTestRunner:
             f"{total - null_fk_count}/{total} inserted row(s) have source_fk set",
         )
 
-    # ── Step 5: Quality scoring ────────────────────────────────────────────────
+    # ── Step 6: Quality scoring ────────────────────────────────────────────────
 
     def check_scoring(self) -> None:
-        log.info("── Step 5: Quality scoring ───────────────────────────────────────")
+        log.info("── Step 6: Quality scoring ───────────────────────────────────────")
 
         try:
             updated = recompute_source_scores(self.db)
 
-            # Only Reddit sources will score here — YouTube engagement_score is
-            # None at ingest time, so those sources are intentionally excluded.
-            reddit_scored = [
-                s for s in updated
-                if s.platform == "reddit" and s.quality_score is not None
-            ]
-
-            # 0 updated sources is expected when no rows were inserted at all, or
-            # when Reddit was blocked and only YouTube rows exist — YouTube sources
-            # are intentionally never scored because engagement_score=None at ingest.
-            if len(updated) == 0 and (not self.inserted_platform_ids or self.reddit_blocked):
+            # 0 updated sources is only expected when no rows were inserted at all.
+            # YouTube sources score via engagement_score from the statistics API call.
+            # TheMealDB sources have engagement_score=None so they are skipped by the scorer.
+            if len(updated) == 0 and not self.inserted_platform_ids:
                 self.record_warn(
                     "Scoring · sources rescored",
-                    "0 sources scored — Reddit was blocked and YouTube sources are "
-                    "excluded from scoring (engagement_score=None at ingest time). "
+                    "0 sources scored — no rows were inserted (all connectors blocked or skipped). "
                     "Not a code defect.",
                 )
                 return
 
+            by_platform: dict[str, int] = {}
+            for s in updated:
+                by_platform[s.platform] = by_platform.get(s.platform, 0) + 1
+            platform_summary = ", ".join(f"{v} {k}" for k, v in sorted(by_platform.items()))
+
             self.record(
                 "Scoring · sources rescored",
                 len(updated) > 0,
-                f"{len(updated)} source(s) updated; "
-                f"{len(reddit_scored)} Reddit source(s) received a quality_score",
+                f"{len(updated)} source(s) updated ({platform_summary})",
             )
 
-            if reddit_scored:
-                sample = reddit_scored[0]
-                in_range = 0.0 <= (sample.quality_score or 0) <= 1.0
+            scored_sample = next((s for s in updated if s.quality_score is not None), None)
+            if scored_sample:
+                in_range = 0.0 <= (scored_sample.quality_score or 0) <= 1.0
                 self.record(
                     "Scoring · score in 0.0–1.0 range",
                     in_range,
-                    f"{sample.display_name!r} quality_score = {sample.quality_score}",
+                    f"{scored_sample.display_name!r} quality_score = {scored_sample.quality_score}",
                 )
 
         except Exception as exc:
@@ -437,6 +463,7 @@ class SmokeTestRunner:
         try:
             self.check_schema()
             self.run_reddit_ingest()
+            self.run_themealdb_ingest()
             self.run_youtube_ingest()
             self.check_fk_integrity()
             self.check_scoring()
