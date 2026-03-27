@@ -1,0 +1,882 @@
+[
+  {
+    "meal_id": "52772",
+    "meal_name": "Teriyaki Chicken Casserole",
+    "raw_content": "Meal: Teriyaki Chicken Casserole\n\nCategory: Chicken\n\nCuisine: Japanese\n\nIngredients:\n- 3/4 cup soy sauce\n- 1/2 cup water\n- 1/4 cup brown sugar\n- 1/2 tsp ground ginger\n- 1/2 tsp minced garlic\n- 4 tbs cornstarch\n- 2 lbs chicken thighs\n- 1 head broccoli\n- 1 cup carrots\n- 1 cup snap peas\n- 1 onion\n\nInstructions:\nPreheat oven to 350F. Combine soy sauce, water, brown sugar, ginger and garlic. Bring to a boil. Add cornstarch slurry to thicken. Place broccoli, carrots, snap peas and onions in pan. Top with chicken thighs. Pour sauce over. Cover and bake 45 min, then uncover 15 min. Serve over rice.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "soy sauce",
+        "quantity": "3/4",
+        "unit": "cup"
+      },
+      {
+        "ingredient_name": "water",
+        "quantity": "1/2",
+        "unit": "cup"
+      },
+      {
+        "ingredient_name": "brown sugar",
+        "quantity": "1/4",
+        "unit": "cup"
+      },
+      {
+        "ingredient_name": "ground ginger",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "minced garlic",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cornstarch",
+        "quantity": "4",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "chicken thighs",
+        "quantity": "2",
+        "unit": "lbs"
+      },
+      {
+        "ingredient_name": "broccoli",
+        "quantity": "1",
+        "unit": "head"
+      },
+      {
+        "ingredient_name": "carrots",
+        "quantity": "1",
+        "unit": "cup"
+      },
+      {
+        "ingredient_name": "snap peas",
+        "quantity": "1",
+        "unit": "cup"
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "52795",
+    "meal_name": "Chicken Handi",
+    "raw_content": "Meal: Chicken Handi\n\nCategory: Chicken\n\nCuisine: Indian\n\nIngredients:\n- 500g chicken\n- 2 medium onion\n- 2 tomatoes\n- 1 tbs ginger garlic paste\n- 150g yoghurt\n- 1/2 tsp turmeric\n- 1 tsp cumin\n- 1 tsp coriander powder\n- 1/2 tsp garam masala\n- 3 tbs oil\n\nInstructions:\nHeat oil. Cook onions until golden. Add ginger garlic paste, cook 2 min. Add tomatoes until soft. Add spices. Add chicken, cook 5 min on high. Reduce heat, add yoghurt, cook 20 min. Garnish with coriander.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "chicken",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "tomatoes",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "ginger garlic paste",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "yoghurt",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "turmeric",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cumin",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "coriander powder",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "garam masala",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "oil",
+        "quantity": "3",
+        "unit": "tbs"
+      }
+    ]
+  },
+  {
+    "meal_id": "53049",
+    "meal_name": "Chicken Couscous",
+    "raw_content": "Meal: Chicken Couscous\n\nCategory: Chicken\n\nCuisine: Moroccan\n\nIngredients:\n- 1kg chicken\n- 300g couscous\n- 1 large onion\n- 400g chickpeas\n- 500ml chicken stock\n- 1 tsp cumin\n- 1 tsp coriander\n- 1/2 tsp cinnamon\n- 2 tbs olive oil\n\nInstructions:\nBrown chicken in oil. Remove. Cook onion until soft. Add spices 1 min. Return chicken, add stock. Simmer 30 min. Add chickpeas and vegetables 15 min. Serve over couscous.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "chicken",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "couscous",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "chickpeas",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "chicken stock",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "cumin",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "coriander",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cinnamon",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "2",
+        "unit": "tbs"
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_004",
+    "meal_name": "Spaghetti Carbonara",
+    "raw_content": "Meal: Spaghetti Carbonara\n\nCategory: Pasta\n\nCuisine: Italian\n\nIngredients:\n- 400g spaghetti\n- 150g pancetta\n- 4 eggs\n- 100g parmesan\n- 1 tsp black pepper\n- 1 tsp salt\n- 2 cloves garlic\n\nInstructions:\nCook spaghetti in salted water until al dente. Fry pancetta until crispy. Whisk eggs with parmesan and black pepper. Drain pasta, reserving pasta water. Off heat, add pancetta then egg mixture, tossing quickly. Add pasta water to loosen. Serve with extra parmesan.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "spaghetti",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "pancetta",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "eggs",
+        "quantity": "4",
+        "unit": null
+      },
+      {
+        "ingredient_name": "parmesan",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "black pepper",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "salt",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "2",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_005",
+    "meal_name": "Beef Stroganoff",
+    "raw_content": "Meal: Beef Stroganoff\n\nCategory: Beef\n\nCuisine: Russian\n\nIngredients:\n- 500g beef sirloin\n- 1 large onion\n- 250g mushrooms\n- 2 cloves garlic\n- 200ml beef stock\n- 200g sour cream\n- 2 tbs butter\n- 1 tbs worcestershire sauce\n- 300g egg noodles\n- 1 tsp dijon mustard\n\nInstructions:\nSeason beef strips. Sear in hot butter until browned, remove. Saute onion and mushrooms until golden. Add garlic and cook 1 min. Add beef stock and Worcestershire sauce. Return beef. Stir in sour cream off heat. Season and serve over egg noodles.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "beef sirloin",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "mushrooms",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "beef stock",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "sour cream",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "butter",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "worcestershire sauce",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "egg noodles",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "dijon mustard",
+        "quantity": "1",
+        "unit": "tsp"
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_006",
+    "meal_name": "Salmon Teriyaki",
+    "raw_content": "Meal: Salmon Teriyaki\n\nCategory: Seafood\n\nCuisine: Japanese\n\nIngredients:\n- 4 pieces salmon fillet\n- 3 tbs soy sauce\n- 2 tbs mirin\n- 2 tbs sake\n- 1 tbs sugar\n- 1 tsp sesame oil\n- 1 tbs sesame seeds\n- 400g steamed rice\n- 2 spring onion\n\nInstructions:\nMix soy sauce, mirin, sake and sugar for the teriyaki sauce. Marinate salmon 30 min. Sear salmon 3 min each side. Add sauce and glaze. Serve with steamed rice and sesame seeds.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "salmon fillet",
+        "quantity": "4",
+        "unit": null
+      },
+      {
+        "ingredient_name": "soy sauce",
+        "quantity": "3",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "mirin",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "sake",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "sugar",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "sesame oil",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "sesame seeds",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "steamed rice",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "spring onion",
+        "quantity": "2",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_007",
+    "meal_name": "Shakshuka",
+    "raw_content": "Meal: Shakshuka\n\nCategory: Breakfast\n\nCuisine: North African\n\nIngredients:\n- 6 eggs\n- 800g canned tomatoes\n- 1 onion\n- 1 red pepper\n- 3 cloves garlic\n- 1 tsp cumin\n- 1 tsp paprika\n- 1/4 tsp cayenne pepper\n- 2 tbs olive oil\n- handful parsley\n- 100g feta cheese\n\nInstructions:\nHeat olive oil. Saute onion and peppers until soft. Add garlic and cook 1 min. Add spices. Pour in tomatoes and simmer 10 min. Make wells and crack in eggs. Cover and cook until whites are set. Garnish with parsley and feta.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "eggs",
+        "quantity": "6",
+        "unit": null
+      },
+      {
+        "ingredient_name": "canned tomatoes",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "red pepper",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "3",
+        "unit": null
+      },
+      {
+        "ingredient_name": "cumin",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "paprika",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cayenne pepper",
+        "quantity": "1/4",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "parsley",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "feta cheese",
+        "quantity": null,
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_008",
+    "meal_name": "Pad Thai",
+    "raw_content": "Meal: Pad Thai\n\nCategory: Pasta\n\nCuisine: Thai\n\nIngredients:\n- 200g rice noodles\n- 200g tofu\n- 2 eggs\n- 100g bean sprouts\n- 2 shallots\n- 2 cloves garlic\n- 3 tbs fish sauce\n- 2 tbs tamarind paste\n- 1 tbs sugar\n- 2 tbs vegetable oil\n- 50g peanuts\n- 1 lime\n\nInstructions:\nSoak rice noodles in warm water 20 min, drain. Fry tofu until golden, remove. Saute shallots and garlic. Push to side. Scramble eggs. Add noodles, sauce (fish sauce, tamarind, sugar), tofu and bean sprouts. Toss. Serve with lime, peanuts, green onion and chilli.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "rice noodles",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "tofu",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "eggs",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "bean sprouts",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "shallots",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "fish sauce",
+        "quantity": "3",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "tamarind paste",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "sugar",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "vegetable oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "peanuts",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "lime",
+        "quantity": "1",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_009",
+    "meal_name": "Pasta Bolognese",
+    "raw_content": "Meal: Pasta Bolognese\n\nCategory: Pasta\n\nCuisine: Italian\n\nIngredients:\n- 500g beef mince\n- 400g spaghetti\n- 1 onion\n- 2 stalks celery\n- 1 carrot\n- 3 cloves garlic\n- 150ml red wine\n- 400g canned tomatoes\n- 2 tbs tomato paste\n- 2 tbs olive oil\n- 50g parmesan\n- 1 tsp dried oregano\n\nInstructions:\nBrown mince in oil. Remove. Saute onion, celery, carrot until soft. Add garlic. Return mince. Add wine and let evaporate. Add tomatoes, tomato paste and herbs. Simmer 45 min. Cook pasta. Serve with parmesan.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "beef mince",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "spaghetti",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "celery",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "carrot",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "3",
+        "unit": null
+      },
+      {
+        "ingredient_name": "red wine",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "canned tomatoes",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "tomato paste",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "parmesan",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "dried oregano",
+        "quantity": "1",
+        "unit": "tsp"
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_010",
+    "meal_name": "Mushroom Risotto",
+    "raw_content": "Meal: Mushroom Risotto\n\nCategory: Vegetarian\n\nCuisine: Italian\n\nIngredients:\n- 300g arborio rice\n- 300g mushrooms\n- 2 shallots\n- 2 cloves garlic\n- 1.2L vegetable stock\n- 150ml white wine\n- 80g parmesan\n- 50g butter\n- 2 tbs olive oil\n- 4 sprigs fresh thyme\n\nInstructions:\nHeat stock in a saucepan. Saute shallots in butter. Add arborio rice and toast 2 min. Add wine and stir until absorbed. Add warm stock one ladle at a time, stirring constantly. After 18 min add mushrooms. Finish with parmesan and remaining butter. Season and serve.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "arborio rice",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "mushrooms",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "shallots",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "vegetable stock",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "white wine",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "parmesan",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "butter",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "fresh thyme",
+        "quantity": "4",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_011",
+    "meal_name": "Fish and Chips",
+    "raw_content": "Meal: Fish and Chips\n\nCategory: Seafood\n\nCuisine: British\n\nIngredients:\n- 600g white fish fillet\n- 1kg potatoes\n- 200g plain flour\n- 1 tsp baking powder\n- 300ml cold beer\n- 1L vegetable oil\n- 1 tsp salt\n- 1 lemon\n- 4 tbs tartar sauce\n\nInstructions:\nMake batter: whisk flour, baking powder, salt and cold beer. Cut potatoes into chips, par-boil 5 min, drain and dry. Fry chips at 130C until tender. Increase oil to 180C. Coat fish in batter and fry until golden 4-5 min. Finish chips at 180C until crispy. Serve with lemon.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "white fish fillet",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "potatoes",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "plain flour",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "baking powder",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cold beer",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "vegetable oil",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "salt",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "lemon",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "tartar sauce",
+        "quantity": "4",
+        "unit": "tbs"
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_012",
+    "meal_name": "Lamb Tagine",
+    "raw_content": "Meal: Lamb Tagine\n\nCategory: Lamb\n\nCuisine: Moroccan\n\nIngredients:\n- 800g lamb shoulder\n- 1 large onion\n- 3 cloves garlic\n- 400g canned tomatoes\n- 300ml lamb stock\n- 100g dried apricots\n- 400g chickpeas\n- 2 tsp ras el hanout\n- 1 tbs honey\n- 2 tbs olive oil\n- 300g couscous\n\nInstructions:\nBrown lamb in oil in a tagine. Remove. Cook onion until soft. Add garlic and spices, cook 1 min. Return lamb. Add tomatoes, stock, dried apricots and honey. Cover and simmer 1.5 hours. Stir in chickpeas. Serve with couscous.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "lamb shoulder",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "3",
+        "unit": null
+      },
+      {
+        "ingredient_name": "canned tomatoes",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "lamb stock",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "dried apricots",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "chickpeas",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "ras el hanout",
+        "quantity": "2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "honey",
+        "quantity": "1",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "couscous",
+        "quantity": null,
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_013",
+    "meal_name": "Vegetable Curry",
+    "raw_content": "Meal: Vegetable Curry\n\nCategory: Vegetarian\n\nCuisine: Indian\n\nIngredients:\n- 2 onion\n- 3 cloves garlic\n- 1 inch fresh ginger\n- 3 tbs curry paste\n- 400ml coconut milk\n- 400g canned tomatoes\n- 2 large potato\n- 1/2 head cauliflower\n- 200g spinach\n- 2 tbs vegetable oil\n- 300g basmati rice\n\nInstructions:\nFry onion until golden. Add garlic and ginger, cook 2 min. Add curry paste and cook 1 min. Add coconut milk and tomatoes. Add potato, cauliflower, spinach. Simmer 25 min until tender. Serve with rice and naan.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "onion",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "3",
+        "unit": null
+      },
+      {
+        "ingredient_name": "fresh ginger",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "curry paste",
+        "quantity": "3",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "coconut milk",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "canned tomatoes",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "potato",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "cauliflower",
+        "quantity": "1/2",
+        "unit": "head"
+      },
+      {
+        "ingredient_name": "spinach",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "vegetable oil",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "basmati rice",
+        "quantity": null,
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_014",
+    "meal_name": "Beef Tacos",
+    "raw_content": "Meal: Beef Tacos\n\nCategory: Beef\n\nCuisine: Mexican\n\nIngredients:\n- 500g beef mince\n- 1 onion\n- 2 cloves garlic\n- 2 tsp chilli powder\n- 1 tsp cumin\n- 1 tsp smoked paprika\n- 2 tbs tomato paste\n- 100ml beef stock\n- 8 corn tortillas\n- 1/4 lettuce\n- 100g cheddar cheese\n- 150g sour cream\n- 1 lime\n\nInstructions:\nBrown beef mince with onion. Add garlic, chilli powder, cumin, smoked paprika. Add tomato paste and beef stock, simmer 10 min. Warm tortillas. Serve with lettuce, tomato, cheese, sour cream and lime.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "beef mince",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "onion",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "garlic",
+        "quantity": "2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "chilli powder",
+        "quantity": "2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "cumin",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "smoked paprika",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "tomato paste",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "beef stock",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "corn tortillas",
+        "quantity": "8",
+        "unit": null
+      },
+      {
+        "ingredient_name": "lettuce",
+        "quantity": "1/4",
+        "unit": null
+      },
+      {
+        "ingredient_name": "cheddar cheese",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "sour cream",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "lime",
+        "quantity": "1",
+        "unit": null
+      }
+    ]
+  },
+  {
+    "meal_id": "gt_015",
+    "meal_name": "Greek Salad",
+    "raw_content": "Meal: Greek Salad\n\nCategory: Vegetarian\n\nCuisine: Greek\n\nIngredients:\n- 1 cucumber\n- 4 tomatoes\n- 100g kalamata olives\n- 1/2 red onion\n- 200g feta cheese\n- 4 tbs olive oil\n- 2 tbs red wine vinegar\n- 1 tsp dried oregano\n- 1/2 tsp salt\n- 1/4 tsp black pepper\n\nInstructions:\nCombine cucumber, tomatoes, olives, and red onion. Drizzle with olive oil and red wine vinegar. Season with oregano, salt and pepper. Top with feta cheese. Serve immediately or chill 30 min.",
+    "expected_ingredients": [
+      {
+        "ingredient_name": "cucumber",
+        "quantity": "1",
+        "unit": null
+      },
+      {
+        "ingredient_name": "tomatoes",
+        "quantity": "4",
+        "unit": null
+      },
+      {
+        "ingredient_name": "kalamata olives",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "red onion",
+        "quantity": "1/2",
+        "unit": null
+      },
+      {
+        "ingredient_name": "feta cheese",
+        "quantity": null,
+        "unit": null
+      },
+      {
+        "ingredient_name": "olive oil",
+        "quantity": "4",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "red wine vinegar",
+        "quantity": "2",
+        "unit": "tbs"
+      },
+      {
+        "ingredient_name": "dried oregano",
+        "quantity": "1",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "salt",
+        "quantity": "1/2",
+        "unit": "tsp"
+      },
+      {
+        "ingredient_name": "black pepper",
+        "quantity": "1/4",
+        "unit": "tsp"
+      }
+    ]
+  }
+]
