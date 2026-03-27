@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     youtube_api_key: str = ""
 
+    anthropic_api_key: str = ""
+
     # Source scoring configuration
     source_quality_threshold: float = 0.6   # auto-promote candidates above this score
     source_score_window: int = 20            # number of recent recipes used to compute score
