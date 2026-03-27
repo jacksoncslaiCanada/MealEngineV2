@@ -18,10 +18,14 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
+import anthropic
+
+from app.config import settings
 from app.connectors.reddit import save_reddit_recipes
 from app.connectors.youtube import save_youtube_recipes
 from app.db.models import Source
 from app.discovery import DiscoverySummary, run_discovery_sweep
+from app.extractor import extract_all_unprocessed
 from app.schemas import RawRecipeSchema
 from app.scoring import auto_promote_candidates, recompute_source_scores
 
@@ -38,6 +42,7 @@ class PipelineReport:
     discovery: DiscoverySummary
     promoted: list[Source]
     elapsed_seconds: float
+    ingredients_extracted: int = 0
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -48,10 +53,12 @@ class PipelineReport:
         logger.info(
             "Pipeline complete in %.1fs — "
             "ingested %d new recipes (%d Reddit, %d YouTube), "
+            "extracted %d ingredients, "
             "rescored %d sources, "
             "%d new candidates, %d auto-promoted",
             self.elapsed_seconds,
             self.total_new, self.reddit_new, self.youtube_new,
+            self.ingredients_extracted,
             self.sources_rescored,
             self.discovery.new_candidates, self.discovery.auto_promoted,
         )
@@ -59,6 +66,7 @@ class PipelineReport:
             f"\n=== Weekly Pipeline Complete ({self.elapsed_seconds:.1f}s) ===\n"
             f"  Ingested   : {self.total_new} new recipes "
             f"({self.reddit_new} Reddit, {self.youtube_new} YouTube)\n"
+            f"  Extracted  : {self.ingredients_extracted} ingredient(s)\n"
             f"  Rescored   : {self.sources_rescored} sources\n"
             f"  Discovered : {self.discovery.new_candidates} new candidates, "
             f"{self.discovery.auto_promoted} auto-promoted, "
@@ -77,6 +85,7 @@ def run_weekly_pipeline(
     db: Session,
     reddit_client: httpx.Client | None = None,
     youtube_client: Any = None,
+    anthropic_client: anthropic.Anthropic | None = None,
 ) -> PipelineReport:
     """
     Run the full weekly pipeline.
@@ -138,21 +147,39 @@ def run_weekly_pipeline(
         logger.exception(msg)
         errors.append(msg)
 
-    # ── Step 2: Score ─────────────────────────────────────────────────────────
-    print("Step 2/4 — Recomputing source quality scores...")
+    # ── Step 2: Extract ingredients ───────────────────────────────────────────
+    print("Step 2/5 — Extracting ingredients from new recipes...")
+    ingredients_extracted = 0
+    if not settings.anthropic_api_key:
+        print("  Skipped — ANTHROPIC_API_KEY not configured")
+        logger.warning("Ingredient extraction skipped: ANTHROPIC_API_KEY not set")
+    else:
+        try:
+            if anthropic_client is None:
+                anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            extracted = extract_all_unprocessed(db, client=anthropic_client)
+            ingredients_extracted = len(extracted)
+            print(f"  Extracted {ingredients_extracted} ingredient(s) from unprocessed recipes")
+        except Exception as exc:  # noqa: BLE001
+            msg = f"Ingredient extraction failed: {exc}"
+            logger.exception(msg)
+            errors.append(msg)
+
+    # ── Step 3: Score ─────────────────────────────────────────────────────────
+    print("Step 3/5 — Recomputing source quality scores...")
     rescored = recompute_source_scores(db)
     print(f"  Rescored {len(rescored)} sources")
 
-    # ── Step 3: Discover ──────────────────────────────────────────────────────
-    print("Step 3/4 — Running discovery sweep...")
+    # ── Step 4: Discover ──────────────────────────────────────────────────────
+    print("Step 4/5 — Running discovery sweep...")
     discovery = run_discovery_sweep(
         db,
         reddit_client=reddit_client,
         youtube_client=youtube_client,
     )
 
-    # ── Step 4: Promote ───────────────────────────────────────────────────────
-    print("Step 4/4 — Promoting high-scoring candidates...")
+    # ── Step 5: Promote ───────────────────────────────────────────────────────
+    print("Step 5/5 — Promoting high-scoring candidates...")
     promoted = auto_promote_candidates(db)
     if promoted:
         for source in promoted:
@@ -162,6 +189,7 @@ def run_weekly_pipeline(
     report = PipelineReport(
         reddit_new=len(reddit_saved),
         youtube_new=len(youtube_saved),
+        ingredients_extracted=ingredients_extracted,
         sources_rescored=len(rescored),
         discovery=discovery,
         promoted=promoted,

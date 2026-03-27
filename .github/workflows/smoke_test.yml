@@ -4,16 +4,20 @@ name: Production Smoke Test
 # schema migration to verify the live database is healthy.
 #
 # Required secrets (Settings → Secrets and variables → Actions):
-#   DATABASE_URL     — PostgreSQL connection string
-#   YOUTUBE_API_KEY  — YouTube Data API v3 key (optional; YouTube step is
-#                      skipped automatically when the key is absent)
+#   DATABASE_URL        — PostgreSQL connection string
+#   YOUTUBE_API_KEY     — YouTube Data API v3 key (optional; YouTube step is
+#                         skipped automatically when the key is absent)
+#   ANTHROPIC_API_KEY   — Anthropic API key (optional; extraction step is
+#                         skipped automatically when the key is absent)
 #
-# What this tests (Phase 1 end-to-end):
-#   1. Schema integrity  — all expected columns exist on sources + raw_recipes
+# What this tests (Phase 1+2 end-to-end):
+#   1. Schema integrity  — all expected columns exist on sources, raw_recipes, ingredients
 #   2. Reddit ingest     — connector writes ≥1 real row to the DB (r/recipes, limit=5)
-#   3. YouTube ingest    — connector writes ≥1 real row (skipped if no API key)
-#   4. FK integrity      — every inserted recipe has a non-NULL source_fk
-#   5. Quality scoring   — recompute_source_scores() updates quality_score
+#   3. TheMealDB ingest  — connector writes ≥1 real row (no credentials needed)
+#   4. YouTube ingest    — connector writes ≥1 real row (skipped if no API key)
+#   5. FK integrity      — every inserted recipe has a non-NULL source_fk
+#   6. Quality scoring   — recompute_source_scores() updates quality_score
+#   7. Extraction        — extract_ingredients() writes ≥1 row to ingredients table
 #
 # All test rows are deleted by the script's teardown step.
 # Results are written to the job summary and saved as a downloadable artifact.
@@ -38,6 +42,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SKIP_YOUTUBE: ${{ inputs.skip_youtube }}
 
     steps:

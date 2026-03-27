@@ -1,0 +1,99 @@
+name: Extract Ingredients
+
+# Triggered automatically after the Weekly Pipeline succeeds.
+# Can also be run manually from the Actions tab.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL        — PostgreSQL connection string
+#   ANTHROPIC_API_KEY   — Anthropic API key for Claude (claude-opus-4-6)
+#
+# What this does:
+#   Calls extract_all_unprocessed() to find every raw_recipe row that does
+#   not yet have a corresponding row in the ingredients table, sends each
+#   recipe's raw_content to Claude (claude-opus-4-6, adaptive thinking, tool-use
+#   structured output), and persists the extracted ingredients to the DB.
+#
+#   Recipes already processed (ingredients rows exist) are skipped automatically.
+
+on:
+  workflow_run:
+    workflows: ["Weekly Pipeline"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max recipes to process (leave blank for all unprocessed)"
+        required: false
+        default: ""
+
+jobs:
+  extract:
+    name: Extract ingredients from unprocessed recipes
+    runs-on: ubuntu-latest
+    # For workflow_run: only run when the upstream pipeline succeeded.
+    # For workflow_dispatch: always run.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check database connectivity
+        run: |
+          python - <<'EOF'
+          import sys
+          from sqlalchemy import create_engine, text
+          from app.config import settings
+
+          if not settings.database_url or settings.database_url.startswith("postgresql://user:password"):
+              print("ERROR: DATABASE_URL secret is not configured.")
+              sys.exit(1)
+
+          try:
+              engine = create_engine(settings.database_url)
+              with engine.connect() as conn:
+                  conn.execute(text("SELECT 1"))
+              print("Database connection OK.")
+          except Exception as e:
+              print(f"ERROR: Could not connect to database: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Check Anthropic API key
+        run: |
+          python - <<'EOF'
+          import sys, os
+          key = os.environ.get("ANTHROPIC_API_KEY", "")
+          if not key:
+              print("ERROR: ANTHROPIC_API_KEY secret is not configured.")
+              sys.exit(1)
+          print(f"ANTHROPIC_API_KEY present ({len(key)} chars).")
+          EOF
+
+      - name: Run database migrations
+        run: alembic upgrade head
+
+      - name: Extract ingredients
+        run: |
+          LIMIT="${{ inputs.limit }}"
+          if [ -n "$LIMIT" ]; then
+            python scripts/run_extraction.py --limit "$LIMIT"
+          else
+            python scripts/run_extraction.py
+          fi
