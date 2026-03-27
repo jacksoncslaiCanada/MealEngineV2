@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-Production smoke test for Phase 1.
+Production smoke test for Phase 1 + Phase 2 extraction.
 
 Checks:
-  1. Schema integrity  — all expected columns are present on `sources` and
-                         `raw_recipes` in the live database.
+  1. Schema integrity  — all expected columns are present on `sources`,
+                         `raw_recipes`, and `ingredients` in the live database.
   2. Reddit ingest     — connector writes ≥1 real row (r/recipes, limit=5).
                          A 403 from Reddit (known GitHub runner IP block) is
                          recorded as a warning, not a failure.
@@ -16,14 +16,17 @@ Checks:
   6. Quality scoring   — recompute_source_scores() updates quality_score for
                          at least one source (YouTube and TheMealDB sources
                          are scored when engagement_score is available).
+  7. Ingredient extraction — extract_ingredients() writes ≥1 ingredient row
+                         for a TheMealDB recipe (skipped when
+                         ANTHROPIC_API_KEY is absent).
 
-All rows written by this test are deleted in the finally block.
-A Markdown report is written to smoke_test_report.md; the workflow uploads
-it as an artifact and pipes it into the GitHub step summary.
+All rows written by this test (recipes AND ingredients) are deleted in the
+finally block.  A Markdown report is written to smoke_test_report.md; the
+workflow uploads it as an artifact and pipes it into the GitHub step summary.
 
 Usage
 -----
-    python scripts/smoke_test.py            # auto-skips YouTube if no key
+    python scripts/smoke_test.py            # auto-skips YouTube/extraction if no keys
     SKIP_YOUTUBE=true python scripts/smoke_test.py
 """
 
@@ -35,15 +38,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import anthropic
 import httpx
 from sqlalchemy import inspect as sa_inspect
 
 from app.config import settings
-from app.db.models import RawRecipe, Source
+from app.db.models import Ingredient, RawRecipe, Source
 from app.db.session import SessionLocal, engine
 from app.connectors.reddit import save_reddit_recipes
 from app.connectors.themealdb import save_themealdb_recipes
 from app.connectors.youtube import save_youtube_recipes
+from app.extractor import extract_ingredients
 from app.scoring import recompute_source_scores
 
 logging.basicConfig(
@@ -81,12 +86,15 @@ _ICONS = {PASS: "✅", FAIL: "❌", WARN: "⚠️"}
 # ── Smoke test runner ──────────────────────────────────────────────────────────
 
 class SmokeTestRunner:
-    def __init__(self, db, skip_youtube: bool = False):
+    def __init__(self, db, skip_youtube: bool = False, skip_extraction: bool = False):
         self.db = db
         self.skip_youtube = skip_youtube
+        self.skip_extraction = skip_extraction
         self.checks: list[dict] = []
         # platform source_ids (not DB PKs) of every recipe we insert
         self.inserted_platform_ids: list[str] = []
+        # DB PKs of ingredient rows we insert (for teardown)
+        self.inserted_ingredient_ids: list[int] = []
         # source PKs that existed before this test started
         self.pre_existing_source_pks: set[int] = set()
         # set to True when Reddit returns 403 so scoring can be downgraded to WARN
@@ -362,6 +370,62 @@ class SmokeTestRunner:
             self._rollback()
             log.exception("Scoring check raised an exception")
 
+    # ── Step 7: Ingredient extraction ─────────────────────────────────────────
+
+    def check_extraction(self) -> None:
+        log.info("── Step 7: Ingredient extraction ─────────────────────────────────")
+
+        if self.skip_extraction:
+            self.record_warn(
+                "Extraction · ingredients written",
+                "Skipped — ANTHROPIC_API_KEY not set",
+            )
+            return
+
+        # Pick any TheMealDB recipe inserted in this run to extract from
+        target_recipe = (
+            self.db.query(RawRecipe)
+            .filter(
+                RawRecipe.source_id.in_(self.inserted_platform_ids),
+                RawRecipe.source == "themealdb",
+            )
+            .first()
+        )
+
+        if target_recipe is None:
+            self.record_warn(
+                "Extraction · ingredients written",
+                "Skipped — no TheMealDB recipe was inserted in this run "
+                "(TheMealDB ingest may have been blocked or returned 0 rows)",
+            )
+            return
+
+        try:
+            client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            rows = extract_ingredients(self.db, target_recipe, client=client)
+            self.inserted_ingredient_ids.extend(r.id for r in rows)
+
+            self.record(
+                "Extraction · ingredients written",
+                len(rows) >= 1,
+                f"{len(rows)} ingredient row(s) extracted from recipe "
+                f"'{target_recipe.source_id}' ({target_recipe.source})",
+            )
+
+            if rows:
+                sample = rows[0]
+                self.record(
+                    "Extraction · ingredient_name non-empty",
+                    bool(sample.ingredient_name),
+                    f"First ingredient: {sample.ingredient_name!r} "
+                    f"qty={sample.quantity!r} unit={sample.unit!r}",
+                )
+
+        except Exception as exc:
+            self.record("Extraction · ingredients written", False, f"Exception: {exc}")
+            self._rollback()
+            log.exception("Extraction check raised an exception")
+
     # ── Teardown ───────────────────────────────────────────────────────────────
 
     def teardown(self) -> None:
@@ -401,7 +465,16 @@ class SmokeTestRunner:
             # Sources safe to delete: only those this test created, not pre-existing ones
             new_source_pks = referenced_source_pks - self.pre_existing_source_pks
 
-            # Delete recipes first (FK constraint)
+            # Delete ingredient rows first (FK → raw_recipes)
+            deleted_ingredients = 0
+            if self.inserted_ingredient_ids:
+                deleted_ingredients = (
+                    self.db.query(Ingredient)
+                    .filter(Ingredient.id.in_(self.inserted_ingredient_ids))
+                    .delete(synchronize_session=False)
+                )
+
+            # Delete recipes (FK → sources)
             deleted_recipes = (
                 self.db.query(RawRecipe)
                 .filter(RawRecipe.id.in_(recipe_db_ids))
@@ -419,7 +492,8 @@ class SmokeTestRunner:
 
             self.db.commit()
             log.info(
-                "Cleanup complete: %d recipe(s) deleted, %d source(s) deleted.",
+                "Cleanup complete: %d ingredient(s) deleted, %d recipe(s) deleted, %d source(s) deleted.",
+                deleted_ingredients,
                 deleted_recipes,
                 deleted_sources,
             )
@@ -492,7 +566,7 @@ class SmokeTestRunner:
 
     def run(self) -> bool:
         log.info("=" * 66)
-        log.info("Phase 1  Production Smoke Test")
+        log.info("Phase 1+2  Production Smoke Test")
         log.info("=" * 66)
         try:
             self.check_schema()
@@ -501,6 +575,7 @@ class SmokeTestRunner:
             self.run_youtube_ingest()
             self.check_fk_integrity()
             self.check_scoring()
+            self.check_extraction()
         finally:
             self.teardown()
 
@@ -511,14 +586,17 @@ class SmokeTestRunner:
 
 def main() -> int:
     skip_youtube = os.getenv("SKIP_YOUTUBE", "false").lower() == "true"
-
     if not settings.youtube_api_key:
         log.info("YOUTUBE_API_KEY not set — YouTube ingest check will be skipped.")
         skip_youtube = True
 
+    skip_extraction = not bool(settings.anthropic_api_key)
+    if skip_extraction:
+        log.info("ANTHROPIC_API_KEY not set — ingredient extraction check will be skipped.")
+
     db = SessionLocal()
     try:
-        runner = SmokeTestRunner(db, skip_youtube=skip_youtube)
+        runner = SmokeTestRunner(db, skip_youtube=skip_youtube, skip_extraction=skip_extraction)
         passed = runner.run()
         return 0 if passed else 1
     except Exception:
