@@ -57,3 +57,31 @@ class RawRecipe(Base):
     engagement_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     content_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
     has_transcript: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+    ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
+
+
+class Ingredient(Base):
+    """A single structured ingredient extracted from a raw recipe by Claude."""
+
+    __tablename__ = "ingredients"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    ingredient_name: Mapped[str] = mapped_column(String(256))
+    quantity: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # FK back to the raw recipe this ingredient was extracted from
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("raw_recipes.id"), nullable=False)
+    recipe: Mapped["RawRecipe"] = relationship("RawRecipe", back_populates="ingredients")
+
+    # Denormalized source FK — useful for querying all ingredients by platform
+    # without joining through raw_recipes
+    source_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("sources.id"), nullable=True
+    )
+
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
