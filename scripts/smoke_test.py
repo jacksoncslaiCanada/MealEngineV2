@@ -64,6 +64,10 @@ EXPECTED_COLUMNS = {
         "id", "source", "source_id", "raw_content", "url", "fetched_at",
         "source_fk", "engagement_score", "content_length", "has_transcript",
     },
+    "ingredients": {
+        "id", "ingredient_name", "quantity", "unit",
+        "recipe_id", "source_id", "extracted_at",
+    },
 }
 
 # Check result states
