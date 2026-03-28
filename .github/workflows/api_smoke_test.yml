@@ -1,0 +1,181 @@
+name: "[One-time] API live smoke test"
+
+# REMOVE THIS WORKFLOW once you confirm the API endpoints work against the live DB.
+#
+# Purpose: Start the FastAPI server against the real database and verify each
+#          endpoint returns expected data with correct HTTP status codes.
+#
+# Usage:
+#   1. Go to Actions → "[One-time] API live smoke test"
+#   2. Click "Run workflow"
+#   3. Select branch: claude/review-readme-XIbsr
+#   4. Click "Run workflow"
+#   5. Check the job log — each endpoint check prints the response.
+#
+# Required secrets:
+#   DATABASE_URL      — PostgreSQL connection string
+#   ANTHROPIC_API_KEY — only needed to satisfy config import (not called)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  api-smoke-test:
+    name: Live API smoke test
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run database migrations
+        run: alembic upgrade head
+
+      - name: Start API server in background
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          # Wait for server to be ready
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Server is up."
+              break
+            fi
+            echo "Waiting for server... ($i)"
+            sleep 1
+          done
+
+      - name: Check /health
+        run: |
+          echo "── GET /health ──────────────────────────────────────────────"
+          RESP=$(curl -sf http://localhost:8000/health)
+          echo "$RESP" | python -m json.tool
+          echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok', f'Expected ok, got {d}'"
+          echo "✅ /health OK"
+
+      - name: Check GET /recipes
+        run: |
+          echo "── GET /recipes ─────────────────────────────────────────────"
+          RESP=$(curl -sf "http://localhost:8000/recipes?limit=5")
+          COUNT=$(echo "$RESP" | python -c "import sys,json; print(len(json.load(sys.stdin)))")
+          echo "Returned $COUNT recipe(s)"
+          echo "$RESP" | python -m json.tool | head -40
+          python - <<EOF
+          import json
+          data = json.loads("""$RESP""")
+          assert isinstance(data, list), "Expected a list"
+          if data:
+              r = data[0]
+              for field in ("id","source","source_id","url","fetched_at","engagement_score"):
+                  assert field in r, f"Missing field: {field}"
+          print(f"✅ /recipes OK — {len(data)} recipe(s) returned")
+          EOF
+
+      - name: Check GET /recipes?source=themealdb
+        run: |
+          echo "── GET /recipes?source=themealdb ────────────────────────────"
+          RESP=$(curl -sf "http://localhost:8000/recipes?source=themealdb&limit=5")
+          python - <<EOF
+          import json
+          data = json.loads("""$RESP""")
+          assert isinstance(data, list), "Expected a list"
+          for r in data:
+              assert r["source"] == "themealdb", f"Expected themealdb, got {r['source']}"
+          print(f"✅ source filter OK — {len(data)} themealdb recipe(s)")
+          EOF
+
+      - name: Check GET /recipes/{id} with ingredients
+        run: |
+          echo "── GET /recipes/{id} ────────────────────────────────────────"
+          # Get the first recipe id
+          FIRST_ID=$(curl -sf "http://localhost:8000/recipes?source=themealdb&limit=1" \
+            | python -c "import sys,json; d=json.load(sys.stdin); print(d[0]['id']) if d else print('')")
+
+          if [ -z "$FIRST_ID" ]; then
+            echo "⚠️  No themealdb recipes in DB — skipping detail check"
+            exit 0
+          fi
+
+          echo "Fetching recipe id=$FIRST_ID"
+          RESP=$(curl -sf "http://localhost:8000/recipes/$FIRST_ID")
+          echo "$RESP" | python -m json.tool | head -60
+          python - <<EOF
+          import json
+          data = json.loads("""$RESP""")
+          assert "ingredients" in data, "Missing ingredients key"
+          print(f"✅ /recipes/{id} OK — {len(data['ingredients'])} ingredient(s) embedded")
+          EOF
+
+      - name: Check GET /recipes/{id}/ingredients
+        run: |
+          echo "── GET /recipes/{id}/ingredients ────────────────────────────"
+          FIRST_ID=$(curl -sf "http://localhost:8000/recipes?source=themealdb&limit=1" \
+            | python -c "import sys,json; d=json.load(sys.stdin); print(d[0]['id']) if d else print('')")
+
+          if [ -z "$FIRST_ID" ]; then
+            echo "⚠️  No themealdb recipes in DB — skipping"
+            exit 0
+          fi
+
+          RESP=$(curl -sf "http://localhost:8000/recipes/$FIRST_ID/ingredients")
+          python - <<EOF
+          import json
+          data = json.loads("""$RESP""")
+          assert isinstance(data, list), "Expected a list"
+          if data:
+              item = data[0]
+              for field in ("id","ingredient_name","quantity","unit","extracted_at"):
+                  assert field in item, f"Missing field: {field}"
+          print(f"✅ /recipes/{id}/ingredients OK — {len(data)} ingredient(s)")
+          EOF
+
+      - name: Check GET /ingredients/search
+        run: |
+          echo "── GET /ingredients/search?name=chicken ─────────────────────"
+          RESP=$(curl -sf "http://localhost:8000/ingredients/search?name=chicken&limit=5")
+          echo "$RESP" | python -m json.tool | head -40
+          python - <<EOF
+          import json
+          data = json.loads("""$RESP""")
+          assert isinstance(data, list), "Expected a list"
+          if data:
+              item = data[0]
+              for field in ("ingredient_name","recipe_id","recipe_source","recipe_url","quantity","unit"):
+                  assert field in item, f"Missing field: {field}"
+              assert "chicken" in item["ingredient_name"].lower(), \
+                  f"Expected 'chicken' in name, got {item['ingredient_name']}"
+          print(f"✅ /ingredients/search OK — {len(data)} result(s) for 'chicken'")
+          EOF
+
+      - name: Check 404 on unknown recipe
+        run: |
+          echo "── GET /recipes/999999 (expect 404) ─────────────────────────"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/recipes/999999)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "404" ] && echo "✅ 404 returned correctly" || (echo "❌ Expected 404, got $STATUS" && exit 1)
+
+      - name: Check 422 on missing search param
+        run: |
+          echo "── GET /ingredients/search (no name, expect 422) ────────────"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ingredients/search)
+          echo "HTTP status: $STATUS"
+          [ "$STATUS" = "422" ] && echo "✅ 422 returned correctly" || (echo "❌ Expected 422, got $STATUS" && exit 1)
+
+      - name: Print API docs URL reminder
+        run: |
+          echo ""
+          echo "All checks passed. When running locally you can explore the API at:"
+          echo "  http://localhost:8000/docs   ← interactive Swagger UI"
+          echo "  http://localhost:8000/redoc  ← ReDoc UI"
