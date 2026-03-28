@@ -1,0 +1,85 @@
+name: "[One-time] Stamp and migrate DB"
+
+# REMOVE THIS WORKFLOW once you confirm the smoke test passes cleanly.
+#
+# Purpose: The live DB's alembic_version is set to a revision that exists only
+# on the claude/review-readme-XIbsr branch. If the smoke test is run from the
+# wrong branch, Alembic errors with "Can't locate revision". This workflow
+# stamps the DB to the last known-good revision, then upgrades to head — all
+# from whichever branch you select.
+#
+# Usage:
+#   1. Go to Actions → "[One-time] Stamp and migrate DB"
+#   2. Click "Run workflow"
+#   3. Select branch: claude/review-readme-XIbsr
+#   4. Set "Target revision to stamp to" to: f5a6b7c8d9e0  (the pre-existing
+#      head before the relax-not-null migration was added)
+#   5. Click "Run workflow"
+#   6. Confirm the job passes, then re-run the smoke test from the same branch.
+#
+# Required secrets:
+#   DATABASE_URL — PostgreSQL connection string
+
+on:
+  workflow_dispatch:
+    inputs:
+      stamp_revision:
+        description: "Revision to stamp the DB to before upgrading (e.g. f5a6b7c8d9e0)"
+        required: true
+        default: "f5a6b7c8d9e0"
+
+jobs:
+  stamp-and-migrate:
+    name: Stamp DB and run migrations
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check database connectivity
+        run: |
+          python - <<'EOF'
+          import sys
+          from sqlalchemy import create_engine, text
+          from app.config import settings
+
+          if not settings.database_url or settings.database_url.startswith("postgresql://user:password"):
+              print("ERROR: DATABASE_URL secret is not configured.")
+              sys.exit(1)
+
+          try:
+              engine = create_engine(settings.database_url)
+              with engine.connect() as conn:
+                  conn.execute(text("SELECT 1"))
+              print("Database connection OK.")
+          except Exception as e:
+              print(f"ERROR: Could not connect to database: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Show current DB revision
+        run: alembic current
+
+      - name: Stamp DB to target revision
+        run: |
+          echo "Stamping DB to revision: ${{ inputs.stamp_revision }}"
+          alembic stamp ${{ inputs.stamp_revision }}
+
+      - name: Upgrade to head
+        run: alembic upgrade head
+
+      - name: Show final DB revision
+        run: alembic current
