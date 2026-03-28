@@ -223,15 +223,6 @@ def test_extract_calls_correct_model(db):
     assert call_kwargs["model"] == "claude-opus-4-6"
 
 
-def test_extract_uses_adaptive_thinking(db):
-    recipe = _make_recipe(db)
-    client = _make_client([{"ingredient_name": "sugar", "quantity": "2", "unit": "tbsp"}])
-
-    extract_ingredients(db, recipe, client=client)
-
-    call_kwargs = client.messages.create.call_args[1]
-    assert call_kwargs["thinking"] == {"type": "adaptive"}
-
 
 def test_extract_forces_tool_choice(db):
     recipe = _make_recipe(db)

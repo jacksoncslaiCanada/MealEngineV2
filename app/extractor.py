@@ -110,7 +110,6 @@ def extract_ingredients(
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=4096,
-        thinking={"type": "adaptive"},
         system=_SYSTEM_PROMPT,
         tools=[_EXTRACT_TOOL],
         tool_choice={"type": "tool", "name": "record_ingredients"},
