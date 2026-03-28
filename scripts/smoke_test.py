@@ -421,6 +421,19 @@ class SmokeTestRunner:
                     f"qty={sample.quantity!r} unit={sample.unit!r}",
                 )
 
+        except anthropic.BadRequestError as exc:
+            msg = str(exc)
+            if "credit balance" in msg or "too low" in msg:
+                self.record_warn(
+                    "Extraction · ingredients written",
+                    "Skipped — Anthropic account has insufficient credits. "
+                    "Add credits at console.anthropic.com to enable this check.",
+                )
+            else:
+                self.record("Extraction · ingredients written", False, f"BadRequestError: {exc}")
+                log.exception("Extraction check raised a BadRequestError")
+            self._rollback()
+
         except Exception as exc:
             self.record("Extraction · ingredients written", False, f"Exception: {exc}")
             self._rollback()
