@@ -68,6 +68,7 @@ class Ingredient(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     ingredient_name: Mapped[str] = mapped_column(String(256))
+    canonical_name: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     quantity: Mapped[str | None] = mapped_column(String(64), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(64), nullable=True)
 

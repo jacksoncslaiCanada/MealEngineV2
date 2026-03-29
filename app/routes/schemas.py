@@ -16,6 +16,7 @@ class IngredientOut(BaseModel):
 
     id: int
     ingredient_name: str
+    canonical_name: Optional[str]
     quantity: Optional[str]
     unit: Optional[str]
     extracted_at: datetime
@@ -43,6 +44,7 @@ class IngredientSearchResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     ingredient_name: str
+    canonical_name: Optional[str]
     recipe_id: int
     recipe_source: str
     recipe_url: str
