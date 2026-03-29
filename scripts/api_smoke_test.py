@@ -324,6 +324,75 @@ class ApiSmokeTestRunner:
         except Exception as exc:
             self.record("Recipe search · unknown ingredient returns []", False, f"Exception: {exc}")
 
+    def check_meal_plan(self) -> None:
+        log.info("── Check 11: Meal plan (pantry match) ────────────────────────────")
+        try:
+            resp = httpx.get(
+                f"{BASE_URL}/recipes/meal-plan",
+                params={"ingredient": SEARCH_TERM, "min_coverage": "0.0"},
+                timeout=10,
+            )
+            data = resp.json()
+            ok = resp.status_code == 200 and isinstance(data, list) and len(data) >= 1
+            self.record(
+                f"Meal plan · pantry='{SEARCH_TERM}' min_coverage=0.0",
+                ok,
+                f"status={resp.status_code}, {len(data)} recipe(s) returned",
+            )
+            if not ok:
+                return
+
+            item = data[0]
+            has_fields = all(f in item for f in ("coverage", "matched_count", "total_count"))
+            self.record(
+                "Meal plan · response shape",
+                has_fields,
+                f"coverage={item.get('coverage')}, "
+                f"matched={item.get('matched_count')}, "
+                f"total={item.get('total_count')}",
+            )
+        except Exception as exc:
+            self.record(f"Meal plan · pantry='{SEARCH_TERM}'", False, f"Exception: {exc}")
+
+    def check_meal_plan_full_coverage(self) -> None:
+        log.info("── Check 12: Meal plan (min_coverage=1.0) ────────────────────────")
+        try:
+            resp = httpx.get(
+                f"{BASE_URL}/recipes/meal-plan",
+                params={"ingredient": SEARCH_TERM, "min_coverage": "1.0"},
+                timeout=10,
+            )
+            data = resp.json()
+            ok = resp.status_code == 200 and isinstance(data, list)
+            # All returned recipes must have coverage == 1.0
+            all_full = all(r.get("coverage") == 1.0 for r in data)
+            self.record(
+                "Meal plan · min_coverage=1.0 only returns full matches",
+                ok and all_full,
+                f"status={resp.status_code}, {len(data)} recipe(s), "
+                f"all coverage=1.0: {all_full}",
+            )
+        except Exception as exc:
+            self.record("Meal plan · min_coverage=1.0", False, f"Exception: {exc}")
+
+    def check_meal_plan_no_match(self) -> None:
+        log.info("── Check 13: Meal plan (no pantry match) ─────────────────────────")
+        try:
+            resp = httpx.get(
+                f"{BASE_URL}/recipes/meal-plan",
+                params={"ingredient": "xyzzy_no_such_ingredient_12345", "min_coverage": "0.0"},
+                timeout=10,
+            )
+            data = resp.json()
+            ok = resp.status_code == 200 and data == []
+            self.record(
+                "Meal plan · unknown ingredient returns []",
+                ok,
+                f"status={resp.status_code}, body={data!r}",
+            )
+        except Exception as exc:
+            self.record("Meal plan · unknown ingredient returns []", False, f"Exception: {exc}")
+
     # ── Report ─────────────────────────────────────────────────────────────────
 
     def write_report(self) -> bool:
@@ -392,6 +461,9 @@ class ApiSmokeTestRunner:
             self.check_recipe_search_and()
             self.check_recipe_search_or()
             self.check_recipe_search_no_match()
+            self.check_meal_plan()
+            self.check_meal_plan_full_coverage()
+            self.check_meal_plan_no_match()
         finally:
             self._stop_server()
 
