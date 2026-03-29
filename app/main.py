@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.ingredients import router as ingredients_router
@@ -21,6 +22,11 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 app.include_router(recipes_router)
 app.include_router(ingredients_router)
 app.include_router(ui_router)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/ui/meal-plan")
 
 
 @app.get("/health", tags=["meta"])
