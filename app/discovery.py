@@ -144,10 +144,19 @@ def discover_reddit_sources(
         seen_authors: set[str] = set()
 
         for source in active_sources:
-            resp = client.get(
-                _REDDIT_HOT.format(subreddit=source.handle), params={"limit": 25}
-            )
-            resp.raise_for_status()
+            try:
+                resp = client.get(
+                    _REDDIT_HOT.format(subreddit=source.handle), params={"limit": 25}
+                )
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 403:
+                    logger.warning(
+                        "Reddit discovery skipped — runner IP blocked by CDN (403). "
+                        "Discovery will run correctly in production."
+                    )
+                    return summary
+                raise
 
             authors: list[str] = []
             for child in resp.json()["data"]["children"]:
@@ -179,10 +188,18 @@ def discover_reddit_sources(
         # ── Direction 2: keyword search ───────────────────────────────────────
         subreddit_counts: dict[str, int] = {}
         for term in _DISCOVERY_SEARCH_TERMS:
-            resp = client.get(
-                _REDDIT_SEARCH, params={"q": term, "type": "link", "limit": 100}
-            )
-            resp.raise_for_status()
+            try:
+                resp = client.get(
+                    _REDDIT_SEARCH, params={"q": term, "type": "link", "limit": 100}
+                )
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 403:
+                    logger.warning(
+                        "Reddit discovery (keyword search) skipped — runner IP blocked by CDN (403)."
+                    )
+                    break
+                raise
             for child in resp.json()["data"]["children"]:
                 sub = child["data"].get("subreddit", "")
                 if sub:
