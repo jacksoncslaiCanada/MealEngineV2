@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Meal Planner — MealEngine{% endblock %}
+{% block nav_meal_plan %}active{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <div class="mb-4">
+      <h1 class="h3 fw-bold mb-1"><i class="bi bi-basket2-fill me-2 text-primary"></i>Meal Planner</h1>
+      <p class="text-muted mb-0">Enter the ingredients you have on hand and find recipes you can make.</p>
+    </div>
+
+    <!-- Input card -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body p-4">
+
+        <label class="form-label fw-semibold">Your ingredients</label>
+        <div class="tag-input-wrapper mb-1" id="tagWrapper">
+          <input type="text" id="tagInput" placeholder="Type an ingredient and press Enter…"
+                 autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="form-text mb-3">Press <kbd>Enter</kbd> or <kbd>,</kbd> to add · click a tag to remove</div>
+
+        <label class="form-label fw-semibold d-flex justify-content-between">
+          <span>Minimum coverage</span>
+          <span class="text-primary fw-bold" id="coverageLabel">50%</span>
+        </label>
+        <input type="range" class="form-range mb-1" id="coverageSlider"
+               min="0" max="100" step="5" value="50">
+        <div class="form-text mb-4">
+          Only show recipes where at least this fraction of ingredients are in your pantry.
+        </div>
+
+        <button class="btn btn-primary btn-lg w-100" id="findBtn" disabled>
+          <i class="bi bi-search me-2"></i>Find Recipes
+        </button>
+      </div>
+    </div>
+
+    <!-- Results area -->
+    <div id="resultsArea"></div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/meal_plan.js"></script>
+{% endblock %}
