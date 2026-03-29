@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
+
 import anthropic
 
 from app.config import settings
@@ -130,6 +131,17 @@ def run_weekly_pipeline(
             db, subreddits=reddit_handles, client=reddit_client
         )
         print(f"  Reddit: {len(reddit_saved)} new recipes")
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 403:
+            logger.warning(
+                "Reddit ingest skipped — runner IP blocked by Reddit CDN (403). "
+                "Pipeline continues. Re-run from a non-Actions environment to ingest Reddit."
+            )
+            print("  Reddit: skipped (403 CDN block)")
+        else:
+            msg = f"Reddit ingest failed: {exc}"
+            logger.exception(msg)
+            errors.append(msg)
     except Exception as exc:  # noqa: BLE001
         msg = f"Reddit ingest failed: {exc}"
         logger.exception(msg)
