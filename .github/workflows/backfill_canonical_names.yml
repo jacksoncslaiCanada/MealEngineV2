@@ -1,0 +1,73 @@
+name: "[One-time] Backfill canonical_name"
+
+# REMINDER: Delete this workflow after it has run successfully.
+#
+# Populates canonical_name for ingredient rows that pre-date the Phase 3
+# normalisation feature (migration b7c8d9e0f1a2 added the column but left
+# existing rows as NULL).
+#
+# Steps:
+#   1. Optional dry-run to preview changes
+#   2. Live backfill
+#
+# Required secrets:
+#   DATABASE_URL — PostgreSQL connection string
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run only (preview changes, no writes)"
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    name: Backfill canonical_name
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check database connectivity
+        run: |
+          python - <<'EOF'
+          import sys
+          from sqlalchemy import create_engine, text
+          from app.config import settings
+
+          if not settings.database_url or settings.database_url.startswith("postgresql://user:password"):
+              print("ERROR: DATABASE_URL secret is not configured.")
+              sys.exit(1)
+
+          try:
+              engine = create_engine(settings.database_url)
+              with engine.connect() as conn:
+                  conn.execute(text("SELECT 1"))
+              print("Database connection OK.")
+          except Exception as e:
+              print(f"ERROR: Could not connect to the database: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Run backfill
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== DRY RUN MODE ==="
+            python scripts/backfill_canonical_names.py --dry-run
+          else
+            python scripts/backfill_canonical_names.py
+          fi
