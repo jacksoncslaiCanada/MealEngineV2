@@ -50,3 +50,10 @@ class IngredientSearchResult(BaseModel):
     recipe_url: str
     quantity: Optional[str]
     unit: Optional[str]
+
+
+class MealPlanResult(RecipeDetailOut):
+    """Recipe with pantry coverage metrics."""
+    coverage: float       # 0.0–1.0 — fraction of recipe ingredients covered by the pantry
+    matched_count: int    # number of recipe ingredients matched
+    total_count: int      # total extracted ingredients in the recipe

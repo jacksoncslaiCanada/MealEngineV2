@@ -412,3 +412,108 @@ def test_recipe_search_empty_ingredient_ignored(seeded_client):
     # A blank term should not crash — treated as no filter
     resp = seeded_client.get("/recipes/search?ingredient=soy&ingredient=")
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# GET /recipes/meal-plan
+# ---------------------------------------------------------------------------
+# Seeded data recap:
+#   r1 (themealdb/52772): soy sauce (canonical=soy sauce),
+#                         chicken thighs (canonical=chicken),
+#                         broccoli (canonical=broccoli)
+#   r2 (youtube/abc123):  no ingredients
+
+
+def test_meal_plan_missing_ingredient_param(client):
+    resp = client.get("/recipes/meal-plan")
+    assert resp.status_code == 422
+
+
+def test_meal_plan_full_pantry_returns_recipe(seeded_client):
+    # Pantry covers all 3 ingredients of r1 → coverage=1.0
+    resp = seeded_client.get(
+        "/recipes/meal-plan?ingredient=soy+sauce&ingredient=chicken&ingredient=broccoli"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["coverage"] == 1.0
+    assert data[0]["matched_count"] == 3
+    assert data[0]["total_count"] == 3
+
+
+def test_meal_plan_partial_pantry_above_threshold(seeded_client):
+    # Pantry covers 2/3 ingredients (coverage=0.67) — above default threshold 0.5
+    resp = seeded_client.get("/recipes/meal-plan?ingredient=soy+sauce&ingredient=chicken")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["matched_count"] == 2
+    assert data[0]["total_count"] == 3
+
+
+def test_meal_plan_partial_pantry_below_threshold(seeded_client):
+    # Pantry covers 1/3 (0.33) — below default threshold 0.5 → excluded
+    resp = seeded_client.get("/recipes/meal-plan?ingredient=soy+sauce&min_coverage=0.5")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_meal_plan_min_coverage_zero_includes_partial(seeded_client):
+    # min_coverage=0.0 includes any recipe with at least one match
+    resp = seeded_client.get("/recipes/meal-plan?ingredient=soy+sauce&min_coverage=0.0")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_meal_plan_min_coverage_one_requires_full(seeded_client):
+    # min_coverage=1.0: only full matches
+    resp = seeded_client.get(
+        "/recipes/meal-plan"
+        "?ingredient=soy+sauce&ingredient=chicken&ingredient=broccoli&min_coverage=1.0"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+    assert resp.json()[0]["coverage"] == 1.0
+
+
+def test_meal_plan_no_pantry_match(seeded_client):
+    resp = seeded_client.get("/recipes/meal-plan?ingredient=truffle&min_coverage=0.0")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_meal_plan_response_shape(seeded_client):
+    resp = seeded_client.get(
+        "/recipes/meal-plan?ingredient=soy+sauce&ingredient=chicken&ingredient=broccoli"
+    )
+    item = resp.json()[0]
+    for field in ("id", "source", "url", "ingredients",
+                  "coverage", "matched_count", "total_count"):
+        assert field in item, f"Missing field: {field}"
+
+
+def test_meal_plan_response_includes_ingredients(seeded_client):
+    resp = seeded_client.get(
+        "/recipes/meal-plan?ingredient=soy+sauce&ingredient=chicken&ingredient=broccoli"
+    )
+    assert len(resp.json()[0]["ingredients"]) == 3
+
+
+def test_meal_plan_canonical_name_matching(seeded_client):
+    # "chicken thighs" has canonical_name="chicken"; pantry term "chicken" should match it
+    resp = seeded_client.get(
+        "/recipes/meal-plan?ingredient=chicken&ingredient=soy+sauce&ingredient=broccoli"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+    assert resp.json()[0]["coverage"] == 1.0
+
+
+def test_meal_plan_pagination(seeded_client):
+    resp = seeded_client.get(
+        "/recipes/meal-plan?ingredient=soy+sauce&ingredient=chicken"
+        "&ingredient=broccoli&min_coverage=0.0&limit=1&offset=0"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) <= 1
