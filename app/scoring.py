@@ -3,10 +3,32 @@
 import math
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.models import RawRecipe, Source
+from app.db.models import Ingredient, RawRecipe, Source
+
+# ── Completeness bonus ────────────────────────────────────────────────────────
+
+_COMPLETENESS_THRESHOLD = 5    # structured ingredient rows needed for full bonus
+_COMPLETENESS_MAX_BONUS = 20.0  # points added on top of engagement_score (cap: 100)
+
+
+def compute_completeness_bonus(ingredient_count: int) -> float:
+    """Return a 0–20 point bonus based on extracted ingredient count.
+
+    Recipes with ≥5 structured ingredients earn the full bonus; fewer gives
+    partial credit proportional to progress toward the threshold.
+
+    >>> compute_completeness_bonus(0)
+    0.0
+    >>> compute_completeness_bonus(5)
+    20.0
+    >>> compute_completeness_bonus(10)
+    20.0
+    """
+    return min(ingredient_count / _COMPLETENESS_THRESHOLD, 1.0) * _COMPLETENESS_MAX_BONUS
 
 
 # ── Engagement score formulas ─────────────────────────────────────────────────
@@ -109,10 +131,23 @@ def recompute_source_scores(
         if not recent:
             continue
 
+        # Batch-fetch ingredient counts for all recipes in the window
+        recipe_ids = [r.id for r in recent]
+        counts_raw = (
+            db.query(Ingredient.recipe_id, func.count(Ingredient.id))
+            .filter(Ingredient.recipe_id.in_(recipe_ids))
+            .group_by(Ingredient.recipe_id)
+            .all()
+        )
+        ingredient_counts: dict[int, int] = {rid: cnt for rid, cnt in counts_raw}
+
         weights = [decay ** i for i in range(len(recent))]
         total_weight = sum(weights)
         weighted_sum = sum(
-            r.engagement_score * w
+            min(
+                r.engagement_score + compute_completeness_bonus(ingredient_counts.get(r.id, 0)),
+                100.0,
+            ) * w
             for r, w in zip(recent, weights)
         )
         source.quality_score = round((weighted_sum / total_weight) / 100.0, 4)

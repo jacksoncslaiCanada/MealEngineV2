@@ -91,13 +91,16 @@ def seeded_client():
     db.add_all([r1, r2])
     db.flush()
 
-    ing1 = Ingredient(ingredient_name="soy sauce", quantity="3/4", unit="cup",
+    ing1 = Ingredient(ingredient_name="soy sauce", canonical_name="soy sauce",
+                      quantity="3/4", unit="cup",
                       recipe_id=r1.id, source_id=source.id,
                       extracted_at=datetime.now(timezone.utc))
-    ing2 = Ingredient(ingredient_name="chicken thighs", quantity="2", unit="lbs",
+    ing2 = Ingredient(ingredient_name="chicken thighs", canonical_name="chicken",
+                      quantity="2", unit="lbs",
                       recipe_id=r1.id, source_id=source.id,
                       extracted_at=datetime.now(timezone.utc))
-    ing3 = Ingredient(ingredient_name="broccoli", quantity=None, unit=None,
+    ing3 = Ingredient(ingredient_name="broccoli", canonical_name="broccoli",
+                      quantity=None, unit=None,
                       recipe_id=r1.id, source_id=source.id,
                       extracted_at=datetime.now(timezone.utc))
     db.add_all([ing1, ing2, ing3])
@@ -239,7 +242,7 @@ def test_get_recipe_ingredients_shape(seeded_client):
 
     resp = seeded_client.get(f"/recipes/{recipe_id}/ingredients")
     item = resp.json()[0]
-    for field in ("id", "ingredient_name", "quantity", "unit", "extracted_at"):
+    for field in ("id", "ingredient_name", "canonical_name", "quantity", "unit", "extracted_at"):
         assert field in item, f"Missing field: {field}"
 
 
@@ -307,3 +310,18 @@ def test_search_ingredients_pagination(seeded_client):
     resp = seeded_client.get("/ingredients/search?name=&limit=1&offset=0", params={"name": "o"})
     assert resp.status_code == 200
     assert len(resp.json()) <= 1
+
+
+def test_search_ingredients_canonical_name_match(seeded_client):
+    # "chicken thighs" has canonical_name="chicken"; searching "chicken" matches it
+    resp = seeded_client.get("/ingredients/search?name=chicken")
+    assert resp.status_code == 200
+    results = resp.json()
+    assert any(r["ingredient_name"] == "chicken thighs" for r in results)
+
+
+def test_search_ingredients_response_has_canonical_name(seeded_client):
+    resp = seeded_client.get("/ingredients/search?name=soy")
+    item = resp.json()[0]
+    assert "canonical_name" in item
+    assert item["canonical_name"] == "soy sauce"

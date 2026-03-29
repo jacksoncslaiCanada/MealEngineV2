@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.models import Ingredient, RawRecipe
+from app.normaliser import normalise_ingredient
 
 logger = logging.getLogger(__name__)
 
@@ -133,8 +134,10 @@ def extract_ingredients(
     rows: list[Ingredient] = []
 
     for item in items:
+        raw_name = item["ingredient_name"]
         row = Ingredient(
-            ingredient_name=item["ingredient_name"],
+            ingredient_name=raw_name,
+            canonical_name=normalise_ingredient(raw_name),
             quantity=item.get("quantity"),
             unit=item.get("unit"),
             recipe_id=recipe.id,

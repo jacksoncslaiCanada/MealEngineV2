@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db.models import Ingredient, RawRecipe
 from app.db.session import get_db
+from app.normaliser import normalise_ingredient
 from app.routes.schemas import IngredientSearchResult
 
 router = APIRouter(prefix="/ingredients", tags=["ingredients"])
@@ -20,15 +22,21 @@ def search_ingredients(
 ) -> list[IngredientSearchResult]:
     """Find recipes that contain an ingredient matching the search term.
 
-    Uses a case-insensitive substring match on ingredient_name.
-    Returns one row per ingredient match (a recipe with multiple matching
-    ingredients will appear multiple times).
+    Matches against both the raw ingredient_name and the canonical_name,
+    so searching "chicken" also returns rows where canonical_name="chicken"
+    even if ingredient_name is "chicken thighs" or "chicken breast".
     """
+    canonical = normalise_ingredient(name)
     rows = (
         db.query(Ingredient, RawRecipe)
         .join(RawRecipe, Ingredient.recipe_id == RawRecipe.id)
-        .filter(Ingredient.ingredient_name.ilike(f"%{name}%"))
-        .order_by(Ingredient.ingredient_name, RawRecipe.id)
+        .filter(
+            or_(
+                Ingredient.ingredient_name.ilike(f"%{name}%"),
+                Ingredient.canonical_name.ilike(f"%{canonical}%"),
+            )
+        )
+        .order_by(Ingredient.canonical_name, Ingredient.ingredient_name, RawRecipe.id)
         .offset(offset)
         .limit(limit)
         .all()
@@ -37,6 +45,7 @@ def search_ingredients(
     return [
         IngredientSearchResult(
             ingredient_name=ing.ingredient_name,
+            canonical_name=ing.canonical_name,
             recipe_id=recipe.id,
             recipe_source=recipe.source,
             recipe_url=recipe.url,
