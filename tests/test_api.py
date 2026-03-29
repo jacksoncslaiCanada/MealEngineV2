@@ -325,3 +325,90 @@ def test_search_ingredients_response_has_canonical_name(seeded_client):
     item = resp.json()[0]
     assert "canonical_name" in item
     assert item["canonical_name"] == "soy sauce"
+
+
+# ---------------------------------------------------------------------------
+# GET /recipes/search  (multi-ingredient)
+# ---------------------------------------------------------------------------
+
+def test_recipe_search_missing_ingredient_param(client):
+    resp = client.get("/recipes/search")
+    assert resp.status_code == 422  # ingredient is required
+
+
+def test_recipe_search_single_ingredient(seeded_client):
+    resp = seeded_client.get("/recipes/search?ingredient=soy")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["source_id"] == "52772"
+
+
+def test_recipe_search_and_both_match(seeded_client):
+    # r1 has soy sauce + broccoli → should be returned
+    resp = seeded_client.get("/recipes/search?ingredient=soy&ingredient=broccoli&match=all")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_recipe_search_and_one_missing(seeded_client):
+    # r1 has soy sauce but not truffle → no results
+    resp = seeded_client.get("/recipes/search?ingredient=soy&ingredient=truffle&match=all")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_recipe_search_or_one_matches(seeded_client):
+    # "soy" matches r1; "truffle" matches nothing → r1 still returned with match=any
+    resp = seeded_client.get("/recipes/search?ingredient=soy&ingredient=truffle&match=any")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_recipe_search_no_match(seeded_client):
+    resp = seeded_client.get("/recipes/search?ingredient=truffle")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_recipe_search_case_insensitive(seeded_client):
+    resp = seeded_client.get("/recipes/search?ingredient=SOY+SAUCE")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_recipe_search_canonical_name_match(seeded_client):
+    # canonical_name="chicken" for "chicken thighs"; searching "chicken" should match
+    resp = seeded_client.get("/recipes/search?ingredient=chicken")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_recipe_search_response_includes_ingredients(seeded_client):
+    resp = seeded_client.get("/recipes/search?ingredient=soy")
+    data = resp.json()
+    assert "ingredients" in data[0]
+    assert len(data[0]["ingredients"]) == 3
+
+
+def test_recipe_search_response_shape(seeded_client):
+    resp = seeded_client.get("/recipes/search?ingredient=soy")
+    item = resp.json()[0]
+    for field in ("id", "source", "source_id", "url", "fetched_at",
+                  "engagement_score", "ingredients"):
+        assert field in item, f"Missing field: {field}"
+
+
+def test_recipe_search_pagination(seeded_client):
+    # match=any on a broad term to get multiple results, then limit to 1
+    resp = seeded_client.get(
+        "/recipes/search?ingredient=soy&ingredient=broccoli&match=any&limit=1&offset=0"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) <= 1
+
+
+def test_recipe_search_empty_ingredient_ignored(seeded_client):
+    # A blank term should not crash — treated as no filter
+    resp = seeded_client.get("/recipes/search?ingredient=soy&ingredient=")
+    assert resp.status_code == 200
