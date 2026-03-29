@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db.models import Ingredient, RawRecipe
 from app.db.session import get_db
 from app.normaliser import normalise_ingredient
-from app.routes.schemas import IngredientOut, IngredientSearchResult, RecipeDetailOut, RecipeOut
+from app.routes.schemas import IngredientOut, IngredientSearchResult, MealPlanResult, RecipeDetailOut, RecipeOut
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -30,6 +30,104 @@ def _recipe_ids_for_term(db: Session, term: str) -> set[int]:
         .all()
     )
     return {r[0] for r in rows}
+
+
+@router.get("/meal-plan", response_model=list[MealPlanResult])
+def meal_plan(
+    ingredient: list[str] = Query(
+        ...,
+        min_length=1,
+        description="Ingredients you have on hand. Repeat for each item (e.g. ?ingredient=chicken&ingredient=garlic).",
+    ),
+    min_coverage: float = Query(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum fraction of recipe ingredients that must be covered (0.0–1.0). Default 0.5.",
+    ),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[MealPlanResult]:
+    """Find recipes you can make from your pantry.
+
+    Pass each ingredient you have as a separate `ingredient` parameter.
+    Returns recipes sorted by coverage (highest first) — the fraction of
+    the recipe's ingredients that are covered by your pantry.
+
+    Use `min_coverage=1.0` to see only recipes where you have every ingredient.
+    Use `min_coverage=0.0` to include all recipes that use at least one pantry item.
+    """
+    pantry_raw = [t.strip().lower() for t in ingredient if t.strip()]
+    if not pantry_raw:
+        return []
+
+    # Build normalised pantry set for matching against canonical_name
+    pantry_canonical = {normalise_ingredient(t) for t in pantry_raw}
+
+    # Pre-filter: candidate recipes must share at least one ingredient with pantry
+    candidate_ids: set[int] = set()
+    for term in pantry_raw:
+        candidate_ids |= _recipe_ids_for_term(db, term)
+
+    if not candidate_ids:
+        return []
+
+    # Load candidate recipes with all their ingredients
+    recipes = (
+        db.query(RawRecipe)
+        .options(joinedload(RawRecipe.ingredients))
+        .filter(RawRecipe.id.in_(candidate_ids))
+        .all()
+    )
+
+    # Score each recipe by coverage
+    scored: list[tuple[float, int, int, RawRecipe]] = []
+    for recipe in recipes:
+        if not recipe.ingredients:
+            continue
+        matched = sum(
+            1 for ing in recipe.ingredients
+            if _ingredient_in_pantry(ing, pantry_raw, pantry_canonical)
+        )
+        total = len(recipe.ingredients)
+        coverage = matched / total
+        if coverage >= min_coverage:
+            scored.append((coverage, matched, total, recipe))
+
+    # Sort by coverage desc, then engagement_score desc as tiebreaker
+    scored.sort(key=lambda x: (x[0], x[3].engagement_score or 0.0), reverse=True)
+
+    # Apply offset + limit
+    page = scored[offset: offset + limit]
+
+    return [
+        MealPlanResult(
+            **RecipeDetailOut.model_validate(recipe).model_dump(),
+            coverage=round(coverage, 4),
+            matched_count=matched,
+            total_count=total,
+        )
+        for coverage, matched, total, recipe in page
+    ]
+
+
+def _ingredient_in_pantry(
+    ing: Ingredient,
+    pantry_raw: list[str],
+    pantry_canonical: set[str],
+) -> bool:
+    """Return True if this ingredient is covered by any pantry item."""
+    ing_name = ing.ingredient_name.lower()
+    ing_canonical = ing.canonical_name.lower() if ing.canonical_name else None
+    for term in pantry_raw:
+        if term in ing_name or ing_name in term:
+            return True
+    if ing_canonical:
+        for canon in pantry_canonical:
+            if canon in ing_canonical or ing_canonical in canon:
+                return True
+    return False
 
 
 @router.get("/search", response_model=list[RecipeDetailOut])

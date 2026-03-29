@@ -1,9 +1,7 @@
-name: "[One-time] Phase 3 API Live Smoke Test"
+name: API Live Smoke Test
 
-# REMINDER: Delete this workflow once it passes cleanly.
-#
-# Starts the FastAPI app against the real database and runs live HTTP checks
-# against all Phase 3 endpoints, including multi-ingredient recipe search.
+# Manual trigger — run after any API change or migration to verify all
+# Phase 3+ endpoints behave correctly against the live database.
 #
 # Read-only — no data is written or deleted.
 #
@@ -15,7 +13,7 @@ on:
 
 jobs:
   api-smoke-test:
-    name: Run Phase 3 API smoke test
+    name: Run API smoke test
     runs-on: ubuntu-latest
 
     env:
