@@ -8,8 +8,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.models import RawRecipe, Source
+from app.db.models import Ingredient, RawRecipe, Source
 from app.scoring import (
+    compute_completeness_bonus,
     compute_reddit_engagement,
     compute_themealdb_completeness,
     compute_youtube_engagement,
@@ -288,3 +289,86 @@ def test_mark_source_ingested_increments_count(in_memory_db):
     mark_source_ingested(in_memory_db, source, new_content_count=3)
 
     assert source.content_count == 13
+
+
+# ── compute_completeness_bonus ────────────────────────────────────────────────
+
+def test_completeness_bonus_zero_ingredients():
+    assert compute_completeness_bonus(0) == 0.0
+
+
+def test_completeness_bonus_partial():
+    # 2 out of 5 → 40% of 20 = 8.0
+    assert compute_completeness_bonus(2) == pytest.approx(8.0)
+
+
+def test_completeness_bonus_at_threshold():
+    assert compute_completeness_bonus(5) == 20.0
+
+
+def test_completeness_bonus_above_threshold_capped():
+    assert compute_completeness_bonus(10) == 20.0
+    assert compute_completeness_bonus(100) == 20.0
+
+
+def test_completeness_bonus_increases_up_to_threshold():
+    assert compute_completeness_bonus(1) < compute_completeness_bonus(3)
+    assert compute_completeness_bonus(3) < compute_completeness_bonus(5)
+
+
+# ── recompute_source_scores with completeness bonus ───────────────────────────
+
+def _make_ingredients(db, recipe: RawRecipe, source: Source, count: int) -> None:
+    for i in range(count):
+        db.add(Ingredient(
+            ingredient_name=f"ingredient_{i}",
+            recipe_id=recipe.id,
+            source_id=source.id,
+            extracted_at=datetime.now(timezone.utc),
+        ))
+    db.commit()
+
+
+def test_completeness_bonus_raises_source_score(in_memory_db):
+    """A recipe with ≥5 ingredients should yield a higher source quality score."""
+    source_with = _make_source(in_memory_db, handle="rich")
+    source_without = _make_source(in_memory_db, handle="sparse", platform="youtube")
+
+    recipe_with = _make_recipe(in_memory_db, source_with, engagement_score=60.0)
+    recipe_without = _make_recipe(in_memory_db, source_without, engagement_score=60.0)
+
+    # Only source_with gets ingredients
+    _make_ingredients(in_memory_db, recipe_with, source_with, count=5)
+
+    recompute_source_scores(in_memory_db, window=10, decay=0.9)
+    in_memory_db.refresh(source_with)
+    in_memory_db.refresh(source_without)
+
+    # source_with: effective_score = min(60 + 20, 100) = 80 → quality = 0.80
+    # source_without: effective_score = 60 → quality = 0.60
+    assert source_with.quality_score > source_without.quality_score
+
+
+def test_completeness_bonus_capped_at_100(in_memory_db):
+    """A high engagement recipe with full bonus should not exceed quality_score of 1.0."""
+    source = _make_source(in_memory_db, handle="viral")
+    recipe = _make_recipe(in_memory_db, source, engagement_score=95.0)
+    _make_ingredients(in_memory_db, recipe, source, count=10)
+
+    recompute_source_scores(in_memory_db, window=10, decay=0.9)
+    in_memory_db.refresh(source)
+
+    assert source.quality_score <= 1.0
+
+
+def test_completeness_bonus_zero_ingredients_no_change(in_memory_db):
+    """Recipe with no ingredients applies zero bonus — score matches raw engagement."""
+    source = _make_source(in_memory_db, handle="noingredients")
+    _make_recipe(in_memory_db, source, engagement_score=50.0)
+    # No ingredients added
+
+    recompute_source_scores(in_memory_db, window=10, decay=0.9)
+    in_memory_db.refresh(source)
+
+    # effective_score = 50 + 0 = 50 → quality = 0.50
+    assert source.quality_score == pytest.approx(0.50, abs=0.001)
