@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MealEngine{% endblock %}</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background-color: #f8f9fa; }
+
+    /* Tag input */
+    .tag-input-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .375rem;
+      padding: .5rem .75rem;
+      border: 1px solid #dee2e6;
+      border-radius: .375rem;
+      background: #fff;
+      cursor: text;
+      min-height: 2.75rem;
+      align-items: center;
+    }
+    .tag-input-wrapper:focus-within { border-color: #86b7fe; box-shadow: 0 0 0 .25rem rgba(13,110,253,.25); }
+    .tag-input-wrapper .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .15rem .55rem;
+      background: #0d6efd;
+      color: #fff;
+      border-radius: 1rem;
+      font-size: .875rem;
+      font-weight: 500;
+    }
+    .tag-input-wrapper .tag .remove {
+      cursor: pointer;
+      opacity: .75;
+      font-size: .8rem;
+      line-height: 1;
+      padding: 0 .1rem;
+    }
+    .tag-input-wrapper .tag .remove:hover { opacity: 1; }
+    .tag-input-wrapper input {
+      border: none;
+      outline: none;
+      flex: 1;
+      min-width: 8rem;
+      font-size: .95rem;
+      background: transparent;
+    }
+
+    /* Recipe cards */
+    .recipe-card { transition: box-shadow .15s; }
+    .recipe-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.1); }
+    .ingredient-pill {
+      font-size: .8rem;
+      padding: .2rem .55rem;
+      border-radius: 1rem;
+    }
+    .coverage-bar .progress { height: .6rem; border-radius: .3rem; }
+
+    /* Source badges */
+    .badge-youtube  { background-color: #ff0000; }
+    .badge-themealdb { background-color: #e8a020; }
+    .badge-reddit   { background-color: #ff4500; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4 shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="/ui">
+      <i class="bi bi-egg-fried me-1"></i> MealEngine
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link {% block nav_meal_plan %}{% endblock %}" href="/ui/meal-plan">
+            <i class="bi bi-basket me-1"></i>Meal Planner
+          </a>
+        </li>
+        {# Future nav items slot — add Recipe Browser and Ingredient Search here #}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="container pb-5">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmXKF1NuQ5kFaD2+lMkfV+kr7dX"
+        crossorigin="anonymous"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
