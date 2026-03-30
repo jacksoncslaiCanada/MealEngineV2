@@ -37,24 +37,30 @@ def _build_raw_content(title: str, description: str, transcript: str) -> str:
     return "\n\n".join(parts)
 
 
+_YT_STATS_BATCH_SIZE = 50
+
+
 def _fetch_statistics(youtube_client, video_ids: list[str]) -> dict[str, tuple[int, int]]:
     """Batch-fetch view and like counts for a list of video IDs.
 
+    Chunks requests to stay within the YouTube API limit of 50 IDs per call.
     Returns a dict mapping video_id -> (views, likes).
     """
     if not video_ids:
         return {}
-    response = youtube_client.videos().list(
-        part="statistics",
-        id=",".join(video_ids),
-    ).execute()
     result: dict[str, tuple[int, int]] = {}
-    for item in response.get("items", []):
-        vid = item["id"]
-        stats = item.get("statistics", {})
-        views = int(stats.get("viewCount", 0))
-        likes = int(stats.get("likeCount", 0))
-        result[vid] = (views, likes)
+    for i in range(0, len(video_ids), _YT_STATS_BATCH_SIZE):
+        batch = video_ids[i : i + _YT_STATS_BATCH_SIZE]
+        response = youtube_client.videos().list(
+            part="statistics",
+            id=",".join(batch),
+        ).execute()
+        for item in response.get("items", []):
+            vid = item["id"]
+            stats = item.get("statistics", {})
+            views = int(stats.get("viewCount", 0))
+            likes = int(stats.get("likeCount", 0))
+            result[vid] = (views, likes)
     return result
 
 
