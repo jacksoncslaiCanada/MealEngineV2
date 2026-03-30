@@ -129,10 +129,13 @@ function renderResults(recipes) {
   const cards = recipes.map(r => recipeCard(r)).join('');
   resultsArea.innerHTML = header + cards;
 
-  // Bootstrap doesn't auto-initialise collapse on dynamically inserted HTML.
-  // Manually initialise each collapse element so the toggle buttons work.
-  resultsArea.querySelectorAll('.collapse').forEach(el => {
-    new bootstrap.Collapse(el, { toggle: false });
+  // Toggle ingredient panels without depending on Bootstrap's JS global.
+  // Bootstrap CSS handles visibility: .collapse = hidden, .collapse.show = visible.
+  resultsArea.addEventListener('click', e => {
+    const btn = e.target.closest('[data-bs-toggle="collapse"]');
+    if (!btn) return;
+    const target = document.querySelector(btn.dataset.bsTarget);
+    if (target) target.classList.toggle('show');
   });
 }
 
