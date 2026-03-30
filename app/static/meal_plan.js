@@ -128,6 +128,12 @@ function renderResults(recipes) {
 
   const cards = recipes.map(r => recipeCard(r)).join('');
   resultsArea.innerHTML = header + cards;
+
+  // Bootstrap doesn't auto-initialise collapse on dynamically inserted HTML.
+  // Manually initialise each collapse element so the toggle buttons work.
+  resultsArea.querySelectorAll('.collapse').forEach(el => {
+    new bootstrap.Collapse(el, { toggle: false });
+  });
 }
 
 function recipeCard(recipe) {
