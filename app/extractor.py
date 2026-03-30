@@ -147,9 +147,13 @@ def extract_ingredients(
         db.add(row)
         rows.append(row)
 
-    db.commit()
-    for row in rows:
-        db.refresh(row)
+    try:
+        db.commit()
+        for row in rows:
+            db.refresh(row)
+    except Exception:
+        db.rollback()
+        raise
 
     logger.info("recipe %d: extracted %d ingredient(s)", recipe.id, len(rows))
     return rows
@@ -188,7 +192,12 @@ def extract_all_unprocessed(
 
     all_rows: list[Ingredient] = []
     for recipe in recipes:
-        rows = extract_ingredients(db, recipe, client=client)
-        all_rows.extend(rows)
+        try:
+            rows = extract_ingredients(db, recipe, client=client)
+            all_rows.extend(rows)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "recipe %d: extraction failed, skipping — %s", recipe.id, exc
+            )
 
     return all_rows

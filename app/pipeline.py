@@ -202,6 +202,11 @@ def run_weekly_pipeline(
             msg = f"Ingredient extraction failed: {exc}"
             logger.exception(msg)
             errors.append(msg)
+            # Recover the session so subsequent steps can still run
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
 
     # ── Step 3: Score ─────────────────────────────────────────────────────────
     print("Step 3/5 — Recomputing source quality scores...")
