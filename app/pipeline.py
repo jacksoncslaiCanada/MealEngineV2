@@ -23,6 +23,8 @@ import anthropic
 
 from app.config import settings
 from app.connectors.reddit import save_reddit_recipes
+from app.connectors.rss import save_rss_recipes
+from app.connectors.themealdb import save_themealdb_recipes
 from app.connectors.youtube import save_youtube_recipes
 from app.db.models import Source
 from app.discovery import DiscoverySummary, run_discovery_sweep
@@ -44,21 +46,24 @@ class PipelineReport:
     promoted: list[Source]
     elapsed_seconds: float
     ingredients_extracted: int = 0
+    themealdb_new: int = 0
+    rss_new: int = 0
     errors: list[str] = field(default_factory=list)
 
     @property
     def total_new(self) -> int:
-        return self.reddit_new + self.youtube_new
+        return self.reddit_new + self.youtube_new + self.themealdb_new + self.rss_new
 
     def log(self) -> None:
         logger.info(
             "Pipeline complete in %.1fs — "
-            "ingested %d new recipes (%d Reddit, %d YouTube), "
+            "ingested %d new recipes (%d Reddit, %d YouTube, %d TheMealDB, %d RSS), "
             "extracted %d ingredients, "
             "rescored %d sources, "
             "%d new candidates, %d auto-promoted",
             self.elapsed_seconds,
             self.total_new, self.reddit_new, self.youtube_new,
+            self.themealdb_new, self.rss_new,
             self.ingredients_extracted,
             self.sources_rescored,
             self.discovery.new_candidates, self.discovery.auto_promoted,
@@ -66,7 +71,8 @@ class PipelineReport:
         print(
             f"\n=== Weekly Pipeline Complete ({self.elapsed_seconds:.1f}s) ===\n"
             f"  Ingested   : {self.total_new} new recipes "
-            f"({self.reddit_new} Reddit, {self.youtube_new} YouTube)\n"
+            f"({self.reddit_new} Reddit, {self.youtube_new} YouTube, "
+            f"{self.themealdb_new} TheMealDB, {self.rss_new} RSS)\n"
             f"  Extracted  : {self.ingredients_extracted} ingredient(s)\n"
             f"  Rescored   : {self.sources_rescored} sources\n"
             f"  Discovered : {self.discovery.new_candidates} new candidates, "
@@ -159,6 +165,26 @@ def run_weekly_pipeline(
         logger.exception(msg)
         errors.append(msg)
 
+    # TheMealDB: free public API — no credentials required.
+    themealdb_saved: list[RawRecipeSchema] = []
+    try:
+        themealdb_saved = save_themealdb_recipes(db)
+        print(f"  TheMealDB: {len(themealdb_saved)} new recipes")
+    except Exception as exc:  # noqa: BLE001
+        msg = f"TheMealDB ingest failed: {exc}"
+        logger.exception(msg)
+        errors.append(msg)
+
+    # RSS feeds: food blogs (Woks of Life, etc.)
+    rss_saved: list[RawRecipeSchema] = []
+    try:
+        rss_saved = save_rss_recipes(db)
+        print(f"  RSS: {len(rss_saved)} new recipes")
+    except Exception as exc:  # noqa: BLE001
+        msg = f"RSS ingest failed: {exc}"
+        logger.exception(msg)
+        errors.append(msg)
+
     # ── Step 2: Extract ingredients ───────────────────────────────────────────
     print("Step 2/5 — Extracting ingredients from new recipes...")
     ingredients_extracted = 0
@@ -201,6 +227,8 @@ def run_weekly_pipeline(
     report = PipelineReport(
         reddit_new=len(reddit_saved),
         youtube_new=len(youtube_saved),
+        themealdb_new=len(themealdb_saved),
+        rss_new=len(rss_saved),
         ingredients_extracted=ingredients_extracted,
         sources_rescored=len(rescored),
         discovery=discovery,
