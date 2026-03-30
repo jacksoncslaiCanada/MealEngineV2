@@ -132,7 +132,33 @@ Returns recipes scored by coverage (matched ingredients / total ingredients), so
 - Navbar has commented slot ready for Recipe Browser and Ingredient Search views
 - Deployed at Railway; `railway.toml` + `.python-version` (3.11) in repo
 
-### Item 5 — More sources ⬜ Pending
+### Item 5 — More sources ✅ Done
+
+**Goal:** Add more recipe variety without breaking existing pipeline.
+
+#### What was built
+- **Maangchi (YouTube)** — added `"maangchi korean recipe"` to `RECIPE_SEARCH_QUERIES` in `app/connectors/youtube.py`; captured by the existing query-based YouTube ingest.
+- **TheMealDB (pipeline)** — `save_themealdb_recipes` wired into Step 1 of the weekly pipeline; already had good queries (`chicken`, `pasta`, `beef`, `salmon`); free API, no credentials.
+- **Woks of Life (RSS)** — `app/connectors/rss.py`:
+  - Uses `feedparser` to pull the `https://thewoksoflife.com/feed/` Atom/RSS feed
+  - `platform="rss"`, `handle` derived from feed domain (e.g. `thewoksoflife.com`)
+  - Engagement score: content length / 100, capped at 80
+  - `has_transcript=False`; deduplication by entry `id` (or SHA-256 of link)
+  - `save_rss_recipes()` follows the same get-or-create-source / mark-ingested pattern as other connectors
+- **`PipelineReport`** — added `themealdb_new: int = 0` and `rss_new: int = 0`; `total_new` sums all four sources; log output updated.
+- **`app/schemas.py`** — `RawRecipeSchema.source` literal extended with `"rss"`.
+- **`requirements.txt`** — added `feedparser==6.0.11`.
+
+#### Tests
+- `tests/test_rss.py` — 24 unit tests (entry ID, content extraction, handle derivation, fetch, save, dedup, engagement cap)
+- `tests/test_pipeline.py` — `autouse` fixture patches TheMealDB + RSS; new `test_pipeline_report_themealdb_and_rss_counts` test; renamed `test_pipeline_calls_all_steps`
+
+**Total tests: 256 passed.**
+
+#### Backlog (from this item)
+| Item | Notes |
+|------|-------|
+| Serious Eats / BBC Good Food RSS | Option A: full article fetch; Option B: summary only |
 
 ---
 
@@ -143,7 +169,7 @@ Returns recipes scored by coverage (matched ingredients / total ingredients), so
 | ⚠️ **Add API key auth before going public** | API is fully open. Add `X-API-Key` header check in FastAPI middleware before sharing the Railway URL widely. |
 | Recipe Browser view (`/ui/recipes`) | List/filter all recipes; nav slot already present in `base.html` |
 | Ingredient Search view (`/ui/search`) | Single search box → matching recipes; nav slot already present |
-| More sources (item 5) | Additional YouTube channels or subreddits to track |
+| Serious Eats / BBC Good Food RSS | Option A: full article page fetch; Option B: summary-only from RSS |
 
 ---
 
@@ -151,7 +177,7 @@ Returns recipes scored by coverage (matched ingredients / total ingredients), so
 
 ```
 app/
-  connectors/        reddit.py · youtube.py · themealdb.py
+  connectors/        reddit.py · youtube.py · themealdb.py · rss.py
   db/                base.py · session.py · models.py
   routes/            recipes.py · ingredients.py · ui.py · schemas.py
   static/            meal_plan.js
@@ -168,7 +194,7 @@ scripts/
   api_smoke_test.py        Phase 3+ API live smoke test (15 checks)
   backfill_canonical_names.py  One-time utility (completed)
 
-tests/               11 test modules · 141 tests total
+tests/               12 test modules · 256 tests total
 
 .github/workflows/
   test.yml              Unit tests on push/PR

@@ -4,7 +4,7 @@ from pydantic import BaseModel, field_validator
 
 
 class RawRecipeSchema(BaseModel):
-    source: Literal["reddit", "youtube", "themealdb"]
+    source: Literal["reddit", "youtube", "themealdb", "rss"]
     source_id: str
     raw_content: str
     url: str

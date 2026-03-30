@@ -54,6 +54,16 @@ def db():
     Base.metadata.drop_all(engine)
 
 
+@pytest.fixture(autouse=True)
+def patch_new_connectors():
+    """Patch TheMealDB and RSS connectors for all pipeline tests."""
+    with (
+        patch("app.pipeline.save_themealdb_recipes", return_value=[]) as mock_mdb,
+        patch("app.pipeline.save_rss_recipes", return_value=[]) as mock_rss,
+    ):
+        yield mock_mdb, mock_rss
+
+
 # ── orchestration ─────────────────────────────────────────────────────────────
 
 @patch("app.pipeline.auto_promote_candidates", return_value=[])
@@ -61,13 +71,17 @@ def db():
 @patch("app.pipeline.recompute_source_scores", return_value=[])
 @patch("app.pipeline.save_youtube_recipes", return_value=[])
 @patch("app.pipeline.save_reddit_recipes", return_value=[])
-def test_pipeline_calls_all_four_steps(
-    mock_reddit, mock_youtube, mock_rescore, mock_discover, mock_promote, db
+def test_pipeline_calls_all_steps(
+    mock_reddit, mock_youtube, mock_rescore, mock_discover, mock_promote,
+    db, patch_new_connectors,
 ):
+    mock_mdb, mock_rss = patch_new_connectors
     run_weekly_pipeline(db)
 
     mock_reddit.assert_called_once()
     mock_youtube.assert_called_once()
+    mock_mdb.assert_called_once()
+    mock_rss.assert_called_once()
     mock_rescore.assert_called_once_with(db)
     mock_discover.assert_called_once()
     mock_promote.assert_called_once_with(db)
@@ -85,6 +99,25 @@ def test_pipeline_report_counts(
 
     assert report.reddit_new == 2
     assert report.youtube_new == 1
+    assert report.themealdb_new == 0
+    assert report.rss_new == 0
+    assert report.total_new == 3
+
+
+@patch("app.pipeline.auto_promote_candidates", return_value=[])
+@patch("app.pipeline.run_discovery_sweep", return_value=_empty_discovery())
+@patch("app.pipeline.recompute_source_scores", return_value=[])
+@patch("app.pipeline.save_rss_recipes", return_value=[_make_schema("rss1", "rss")])
+@patch("app.pipeline.save_themealdb_recipes", return_value=[_make_schema("mdb1", "themealdb"), _make_schema("mdb2", "themealdb")])
+@patch("app.pipeline.save_youtube_recipes", return_value=[])
+@patch("app.pipeline.save_reddit_recipes", return_value=[])
+def test_pipeline_report_themealdb_and_rss_counts(
+    mock_reddit, mock_youtube, mock_mdb, mock_rss, mock_rescore, mock_discover, mock_promote, db
+):
+    report = run_weekly_pipeline(db)
+
+    assert report.themealdb_new == 2
+    assert report.rss_new == 1
     assert report.total_new == 3
 
 
