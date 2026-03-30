@@ -1,104 +1,197 @@
-# MealEngineV2 — Implementation & Testing Plan
+# MealEngineV2 — Implementation Plan & Current State
 
 ## Stack
-- **Backend:** Python + FastAPI
-- **Database:** PostgreSQL
-- **Ingredient Extraction:** Claude API
+- **Backend:** Python 3.11 + FastAPI
+- **Database:** PostgreSQL (hosted externally; `DATABASE_URL` secret)
+- **Ingredient Extraction:** Anthropic Claude API
+- **Frontend:** Bootstrap 5.3 + Vanilla JS, served by FastAPI (Jinja2 templates)
+- **Hosting:** Railway.app (auto-deploys from `main` branch)
+- **CI/CD:** GitHub Actions
 
 ---
 
-## Phase 1 — Recipe Source Connectors
+## Phase 1 — Recipe Source Connectors ✅ Done
 
-**Goal:** Reliably pull raw recipe data from Reddit and YouTube.
+**Goal:** Reliably pull raw recipe data from Reddit, YouTube, and TheMealDB.
 
-### Implementation
-- Reddit connector via Reddit API — fetch posts/comments containing recipes
-- YouTube connector via YouTube Data API — fetch video title, description, transcript
-- Normalize raw data into a common schema:
-  ```
-  { source, source_id, raw_content, url, fetched_at }
-  ```
-- Persist raw records to PostgreSQL
+### What was built
+- `app/connectors/reddit.py` — Reddit public JSON API; fetches hot posts from tracked subreddits; computes engagement score from upvotes + ratio
+- `app/connectors/youtube.py` — YouTube Data API v3; fetches video metadata + transcripts via `youtube-transcript-api`; computes engagement score from views + likes
+- `app/connectors/themealdb.py` — TheMealDB REST API; no credentials required; uses ingredient count + instruction length for engagement score
+- `app/db/models.py` — `Source`, `RawRecipe`, `Ingredient` ORM models
+- `app/schemas.py` — Pydantic schemas for ingest-layer data shapes
+- 9 Alembic migrations covering full schema history
 
 ### Tests
-- Unit tests: mock API responses, verify normalization schema
-- Integration tests: live fetch of 1 known recipe from each source
-- DB test: raw record written and retrievable
+- `tests/test_reddit.py`, `tests/test_youtube.py`, `tests/test_themealdb.py` — connector unit tests with mocked responses
+- `tests/test_integration.py` — live fetch integration tests using fixtures
 
-**Gate:** Raw data from both sources lands in the DB reliably.
+**Gate:** ✅ Raw data from all three sources lands in the DB reliably.
 
 ---
 
-## Phase 1.5 — Source Registry & Scoring ✓ Done
+## Phase 1.5 — Source Registry & Scoring ✅ Done
 
-**Goal:** Make sources (channels, subreddits) managed entities with lifecycle tracking, quality scoring, and automatic discovery of new candidates.
+**Goal:** Make sources managed entities with lifecycle tracking, quality scoring, and automatic discovery of new candidates.
 
-See [`docs/source-registry-design.md`](docs/source-registry-design.md) for the full design.
-
-### Sub-phases
-- **1.5a ✓** — `sources` table + migration; engagement signal columns on `raw_recipes`; connectors updated to write source FK and engagement data; `app/scoring.py` with engagement formulas, quality score recomputation, `get_or_create_source`, `auto_promote_candidates`
-- **1.5b ✓** — Discovery sweep (`app/discovery.py`): Reddit author cross-posting sweep + keyword search; YouTube channel extraction with video count and engagement gating; `run_discovery_sweep()` orchestrator with `DiscoverySummary`
-- **1.5c ✓** — Weekly pipeline (`app/pipeline.py`): ingest → score → discover → promote; CLI entry point (`scripts/run_pipeline.py`); GitHub Actions scheduled workflow (`weekly_pipeline.yml`, Sunday 08:00 UTC)
+### What was built
+- **1.5a** — `sources` table + migrations; engagement signal columns on `raw_recipes`; `app/scoring.py` with:
+  - `compute_reddit_engagement()`, `compute_youtube_engagement()`, `compute_themealdb_completeness()`
+  - `compute_completeness_bonus()` — 0–20 pt bonus for recipes with ≥5 structured ingredients
+  - `recompute_source_scores()` — recency-weighted average with completeness bonus applied
+  - `auto_promote_candidates()`, `get_or_create_source()`, `mark_source_ingested()`
+- **1.5b** — `app/discovery.py`: Reddit author cross-posting sweep + keyword search; YouTube channel extraction with video count and engagement gating
+- **1.5c** — `app/pipeline.py`: 5-step weekly pipeline (ingest → extract → score → discover → promote); `scripts/run_pipeline.py`; `weekly_pipeline.yml` (Sunday 08:00 UTC, manual trigger)
 
 ### Tests
-- 47 new unit tests across `test_scoring.py`, `test_discovery.py`, `test_pipeline.py`
-- Coverage: engagement formulas, quality score weighting, auto-promotion, Reddit/YouTube discovery paths, pipeline orchestration and error handling
+- `tests/test_scoring.py` — 37 tests: engagement formulas, completeness bonus, source scoring, auto-promotion
+- `tests/test_discovery.py` — discovery sweep unit tests
+- `tests/test_pipeline.py` — pipeline orchestration and error handling
 
-**Gate:** ✓ Weekly run ingests from all active sources, scores them, discovers candidates, and produces a summary — without manual intervention.
+**Gate:** ✅ Weekly run ingests from all active sources, scores them, discovers candidates, and produces a summary without manual intervention.
 
 ---
 
-## Phase 2 — Ingredient Extraction
+## Phase 2 — Ingredient Extraction ✅ Done
 
-**Goal:** Parse raw recipe content into structured ingredients, maintaining source linkage.
+**Goal:** Parse raw recipe content into structured ingredients using Claude.
 
-### Implementation
-- Feed raw recipe text to Claude API with a structured extraction prompt
-- Output schema:
-  ```
-  { ingredient_name, quantity, unit, recipe_id, source_id }
-  ```
-- Store extracted ingredients in PostgreSQL with FK back to the raw recipe record
+### What was built
+- `app/extractor.py` — calls Claude API with forced tool use; deduplicates by `source_id`; skips recipes without transcripts; sets `canonical_name` at extraction time
+- `app/normaliser.py` — `normalise_ingredient()`: strips prep prefixes (`diced`, `chopped`, `fresh`…), trailing cut/form words (`thighs`, `cloves`, `fillets`…), synonym map (cilantro→coriander, bell pepper→pepper, plain flour→flour…), simple pluralisation
+- `alembic/versions/b7c8d9e0f1a2` — adds `canonical_name` column + index to `ingredients`
+- `scripts/run_extraction.py` — standalone extraction runner
+- `scripts/backfill_canonical_names.py` — one-time backfill (ran 2026-03-29; 94 rows updated)
 
 ### Tests
-- Unit tests: mock Claude API response, verify parsed output
-- Accuracy test: compare extracted ingredients vs. manually labelled ground truth (target ≥ 90% accuracy)
-- DB test: ingredients stored and queryable by recipe
+- `tests/test_extractor.py` — unit tests with mocked Anthropic API
+- `tests/test_extractor_accuracy.py` — accuracy test vs. ground truth fixtures (155/155 recall, 100%)
+- `tests/test_normaliser.py` — 50 parametrised unit tests
 
-**Gate:** Ingredient extraction hits accuracy threshold on a sample dataset.
+**Production results:** 26 unprocessed recipes → 45 ingredients extracted in a single pipeline run; 94 existing rows backfilled with `canonical_name`.
+
+**Gate:** ✅ Extraction hits accuracy threshold; `canonical_name` populated on all ingredient rows.
 
 ---
 
-## Phase 3 — Tier 1 Recipe Generation (Pre-set)
+## Phase 3 — API Layer + Normalisation + Quality Signal ✅ Done
 
-**Goal:** Generate usable pre-set recipes and grocery lists from stored ingredients.
+**Goal:** Expose recipe and ingredient data via a clean REST API; normalise ingredient names; feed extraction quality back into source scoring.
 
-### Implementation
-- Recipe assembly engine: select ingredients from DB, build structured recipe object
-- Grocery list generator: aggregate ingredients across selected recipes
-- Output: structured recipe card + grocery list
+### What was built
+
+**Step 1 — FastAPI routes**
+- `app/main.py` — FastAPI app; mounts `/static`; includes all routers; `/` redirects to `/ui/meal-plan`
+- `app/routes/recipes.py`:
+  - `GET /recipes` — list with optional `?source=` filter, pagination
+  - `GET /recipes/{id}` — detail with ingredients embedded
+  - `GET /recipes/{id}/ingredients` — ingredient list
+  - `GET /recipes/search?ingredient=X&ingredient=Y&match=all|any` — multi-ingredient AND/OR search
+  - `GET /recipes/meal-plan?ingredient=X&min_coverage=0.5` — pantry-based recipe finder
+- `app/routes/ingredients.py`:
+  - `GET /ingredients/search?name=X` — searches `ingredient_name` and `canonical_name`
+- `app/routes/schemas.py` — `IngredientOut`, `RecipeOut`, `RecipeDetailOut`, `IngredientSearchResult`, `MealPlanResult`
+- `GET /health` → `{"status": "ok"}`
+
+**Step 2 — Normalisation**
+(See Phase 2 — `app/normaliser.py` built and wired here)
+
+**Step 3 — Quality signal**
+`compute_completeness_bonus()` in `app/scoring.py` adds up to 20 pts to a recipe's effective engagement score when ≥5 structured ingredients are present. Applied inside `recompute_source_scores()`.
 
 ### Tests
-- Unit tests: recipe builder with mock ingredient data
-- Output validation: generated recipe contains all required fields
-- End-to-end test: source → extract → generate a complete recipe + grocery list
+- `tests/test_api.py` — 48 tests covering all endpoints (TestClient + SQLite StaticPool)
+- `tests/test_normaliser.py` — 50 normaliser unit tests
+- `tests/test_scoring.py` — 37 scoring tests including completeness bonus
 
-**Gate:** A user can get a valid recipe and grocery list from ingested data.
+### Live smoke test
+- `scripts/api_smoke_test.py` — 15 live checks against running API (health, recipes, ingredients, recipe search AND/OR, meal plan coverage)
+- `.github/workflows/api_smoke_test.yml` — permanent manual workflow; run after any API change
+
+**Gate:** ✅ All 141 unit tests pass; 15/15 live API smoke test checks pass.
 
 ---
 
-## Phase 4 — Tier 2/3 Customization & Subscription
+## Phase 4 — Frontend & More Sources (In Progress)
 
-**Goal:** Allow cookbook adjustments (Tier 2) and full mix-and-match customization (Tier 3), gated by subscription.
+### Item 1 — Backfill `canonical_name` ✅ Done
+One-time script + workflow ran 2026-03-29; 94 rows updated; workflow deleted.
 
-### Implementation
-- **Tier 2:** User can swap ingredients, adjust servings, save cookbook
-- **Tier 3:** Fully customizable meal plans (subscription-gated)
-- Auth system + subscription enforcement layer
+### Item 2 — Multi-ingredient recipe search ✅ Done
+`GET /recipes/search?ingredient=chicken&ingredient=garlic&match=all`
 
-### Tests
-- Unit tests per customization feature
-- Subscription gate tests: verify Tier 3 features are inaccessible without subscription
-- User flow integration tests: complete Tier 2 and Tier 3 workflows
+### Item 3 — Meal planning endpoint ✅ Done
+`GET /recipes/meal-plan?ingredient=chicken&ingredient=garlic&min_coverage=0.5`
+Returns recipes scored by coverage (matched ingredients / total ingredients), sorted descending.
 
-**Gate:** Tiers are cleanly separated and subscription enforcement works end-to-end.
+### Item 4 — Frontend (Meal Planner) ✅ Done
+- `app/templates/base.html` — Bootstrap 5.3 shell; dark navbar; tag-input CSS; source badge styles
+- `app/templates/meal_plan.html` — Meal Planner page; tag-style ingredient input; coverage slider
+- `app/static/meal_plan.js` — tag input (Enter/comma/backspace); fetch `/recipes/meal-plan`; recipe cards with Bootstrap progress bar and collapsible ingredient pills (✅ matched / ➖ missing)
+- `app/routes/ui.py` — `/ui` redirect + `/ui/meal-plan` Jinja2 template route
+- Navbar has commented slot ready for Recipe Browser and Ingredient Search views
+- Deployed at Railway; `railway.toml` + `.python-version` (3.11) in repo
+
+### Item 5 — More sources ⬜ Pending
+
+---
+
+## Backlog
+
+| Item | Notes |
+|------|-------|
+| ⚠️ **Add API key auth before going public** | API is fully open. Add `X-API-Key` header check in FastAPI middleware before sharing the Railway URL widely. |
+| Recipe Browser view (`/ui/recipes`) | List/filter all recipes; nav slot already present in `base.html` |
+| Ingredient Search view (`/ui/search`) | Single search box → matching recipes; nav slot already present |
+| More sources (item 5) | Additional YouTube channels or subreddits to track |
+
+---
+
+## Repository Layout
+
+```
+app/
+  connectors/        reddit.py · youtube.py · themealdb.py
+  db/                base.py · session.py · models.py
+  routes/            recipes.py · ingredients.py · ui.py · schemas.py
+  static/            meal_plan.js
+  templates/         base.html · meal_plan.html
+  config.py · main.py · pipeline.py · discovery.py
+  extractor.py · normaliser.py · scoring.py · schemas.py
+
+alembic/versions/    9 migrations (full schema history)
+
+scripts/
+  run_pipeline.py          CLI entry point for weekly pipeline
+  run_extraction.py        Standalone extraction runner
+  smoke_test.py            Phase 1+2 production smoke test (7 checks)
+  api_smoke_test.py        Phase 3+ API live smoke test (15 checks)
+  backfill_canonical_names.py  One-time utility (completed)
+
+tests/               11 test modules · 141 tests total
+
+.github/workflows/
+  test.yml              Unit tests on push/PR
+  integration.yml       Integration tests
+  smoke_test.yml        Phase 1+2 smoke test (manual)
+  api_smoke_test.yml    Phase 3+ API smoke test (manual)
+  extract_ingredients.yml  Standalone extraction run
+  weekly_pipeline.yml   Full pipeline (Sunday 08:00 UTC + manual)
+
+railway.toml          Railway deployment config
+.python-version       Pins Python 3.11
+requirements.txt      All dependencies
+```
+
+---
+
+## Key Design Decisions
+
+| Decision | Choice | Reason |
+|----------|--------|--------|
+| Ingredient matching | `ingredient_name` + `canonical_name` ilike OR | Handles spelling variants and prep-word noise |
+| Source scoring | Recency-weighted avg + completeness bonus | Rewards sources with well-structured recipes |
+| Extraction dedup | Skip if `Ingredient` rows already exist for `recipe_id` | Idempotent pipeline runs |
+| API tests | SQLite StaticPool in-memory | No Postgres needed in CI; all connections share one DB |
+| Frontend serving | FastAPI StaticFiles + Jinja2 | No separate server; same repo and deployment |
+| Collapse toggle | Vanilla JS `.classList.toggle('show')` | Bootstrap JS global unreliable on Railway CDN |
