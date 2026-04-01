@@ -162,20 +162,27 @@ def recompute_source_scores(
 def auto_promote_candidates(
     db: Session,
     threshold: float | None = None,
+    min_content: int | None = None,
 ) -> list[Source]:
     """
     Promote candidate sources whose quality_score exceeds the threshold to active.
+
+    Also requires min_content recipes seen, so a channel with one viral video
+    cannot promote on a single pipeline run.
 
     Returns the list of newly promoted sources.
     """
     if threshold is None:
         threshold = settings.source_quality_threshold
+    if min_content is None:
+        min_content = settings.source_promotion_min_content
 
     candidates = (
         db.query(Source)
         .filter(
             Source.status == "candidate",
             Source.quality_score >= threshold,
+            Source.content_count >= min_content,
         )
         .all()
     )

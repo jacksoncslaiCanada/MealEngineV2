@@ -12,7 +12,7 @@ from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
 from app.scoring import compute_youtube_engagement, get_or_create_source, mark_source_ingested
 
-RECIPE_SEARCH_QUERIES = ["recipe", "how to cook", "easy dinner recipe", "maangchi korean recipe"]
+RECIPE_SEARCH_QUERIES = ["homemade recipe", "how to cook", "easy dinner recipe", "maangchi korean recipe"]
 
 
 def _build_youtube_client(api_key: str | None = None):

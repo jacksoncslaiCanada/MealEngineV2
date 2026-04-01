@@ -211,10 +211,11 @@ def test_recompute_scores_uses_recency_weighting(in_memory_db):
 
 def test_auto_promote_above_threshold(in_memory_db):
     candidate = _make_source(in_memory_db, handle="good_sub", status="candidate")
-    candidate.quality_score = 0.75
+    candidate.quality_score = 0.80
+    candidate.content_count = 3
     in_memory_db.commit()
 
-    promoted = auto_promote_candidates(in_memory_db, threshold=0.6)
+    promoted = auto_promote_candidates(in_memory_db, threshold=0.75, min_content=2)
 
     assert len(promoted) == 1
     assert promoted[0].handle == "good_sub"
@@ -224,9 +225,10 @@ def test_auto_promote_above_threshold(in_memory_db):
 def test_auto_promote_below_threshold_stays_candidate(in_memory_db):
     candidate = _make_source(in_memory_db, handle="weak_sub", status="candidate")
     candidate.quality_score = 0.4
+    candidate.content_count = 5
     in_memory_db.commit()
 
-    promoted = auto_promote_candidates(in_memory_db, threshold=0.6)
+    promoted = auto_promote_candidates(in_memory_db, threshold=0.75, min_content=2)
 
     assert promoted == []
     assert candidate.status == "candidate"
@@ -235,11 +237,37 @@ def test_auto_promote_below_threshold_stays_candidate(in_memory_db):
 def test_auto_promote_does_not_touch_active_sources(in_memory_db):
     active = _make_source(in_memory_db, handle="already_active", status="active")
     active.quality_score = 0.9
+    active.content_count = 5
     in_memory_db.commit()
 
-    promoted = auto_promote_candidates(in_memory_db, threshold=0.6)
+    promoted = auto_promote_candidates(in_memory_db, threshold=0.75, min_content=2)
 
     assert promoted == []
+
+
+def test_auto_promote_requires_min_content(in_memory_db):
+    # High quality score but only 1 piece of content — should not promote
+    candidate = _make_source(in_memory_db, handle="one_hit", status="candidate")
+    candidate.quality_score = 0.95
+    candidate.content_count = 1
+    in_memory_db.commit()
+
+    promoted = auto_promote_candidates(in_memory_db, threshold=0.75, min_content=2)
+
+    assert promoted == []
+    assert candidate.status == "candidate"
+
+
+def test_auto_promote_promotes_when_both_gates_pass(in_memory_db):
+    candidate = _make_source(in_memory_db, handle="solid_channel", status="candidate")
+    candidate.quality_score = 0.80
+    candidate.content_count = 2
+    in_memory_db.commit()
+
+    promoted = auto_promote_candidates(in_memory_db, threshold=0.75, min_content=2)
+
+    assert len(promoted) == 1
+    assert promoted[0].status == "active"
 
 
 # ── get_or_create_source ──────────────────────────────────────────────────────
