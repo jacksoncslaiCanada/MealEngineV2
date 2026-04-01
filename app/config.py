@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
 
     # Source scoring configuration
-    source_quality_threshold: float = 0.6   # auto-promote candidates above this score
+    source_quality_threshold: float = 0.75  # auto-promote candidates above this score
+    source_promotion_min_content: int = 2   # min recipes seen before a candidate can be promoted
     source_score_window: int = 20            # number of recent recipes used to compute score
     source_score_decay: float = 0.9         # exponential decay weight per step back in time
 

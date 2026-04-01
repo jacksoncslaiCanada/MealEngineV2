@@ -323,14 +323,15 @@ def test_youtube_discovers_candidate_channel(db):
 
 
 def test_youtube_auto_promotes_high_engagement_channel(db):
-    # Very high view + like counts → engagement_score near 100 → quality > 0.6 → active
+    # Extremely high view + like counts → engagement_score > 75 → quality > 0.75 → active
+    # Need ~100M views to push log10-based score above 75
     search_items = [
         {"id": {"videoId": "v1"}, "snippet": {"channelId": "UCHot", "channelTitle": "Hot Chef"}}
     ]
     video_stats = [
-        {"statistics": {"viewCount": "5000000", "likeCount": "400000"}},
-        {"statistics": {"viewCount": "4000000", "likeCount": "300000"}},
-        {"statistics": {"viewCount": "3000000", "likeCount": "250000"}},
+        {"statistics": {"viewCount": "100000000", "likeCount": "10000000"}},
+        {"statistics": {"viewCount": "80000000", "likeCount": "8000000"}},
+        {"statistics": {"viewCount": "70000000", "likeCount": "7000000"}},
     ]
     client = _make_yt_mock(
         search_items=search_items,
