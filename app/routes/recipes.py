@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session, joinedload
 from app.db.models import Ingredient, RawRecipe
 from app.db.session import get_db
 from app.normaliser import normalise_ingredient
-from app.routes.schemas import IngredientOut, IngredientSearchResult, MealPlanResult, RecipeDetailOut, RecipeOut
+from sqlalchemy import func
+
+from app.routes.schemas import IngredientOut, IngredientSearchResult, MealPlanResult, RecipeBrowseItem, RecipeDetailOut, RecipeOut
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -180,6 +182,68 @@ def search_recipes(
         .all()
     )
     return [RecipeDetailOut.model_validate(r) for r in recipes]
+
+
+def _extract_title(raw_content: str) -> str:
+    """Pull a human-readable title from the first line of raw_content."""
+    first = (raw_content or "").split("\n")[0]
+    for prefix in ("Title: ", "Meal: "):
+        if first.startswith(prefix):
+            return first[len(prefix):].strip()
+    return first.strip()[:120]
+
+
+@router.get("/browse", response_model=list[RecipeBrowseItem])
+def browse_recipes(
+    q: str | None = Query(None, description="Keyword search in recipe title / content"),
+    source: str | None = Query(None, description="Filter by source platform (youtube, themealdb, rss, reddit)"),
+    min_ingredients: int = Query(0, ge=0, description="Minimum extracted ingredient count"),
+    sort: Literal["newest", "engagement"] = Query("newest", description="Sort order"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[RecipeBrowseItem]:
+    """Browse all recipes with lightweight metadata, filtering and sorting.
+
+    Designed for the Recipe Browser UI — returns title, source, ingredient count,
+    and engagement score without loading full raw content or ingredient lists.
+    """
+    # Correlated subquery: count of extracted ingredients per recipe
+    ing_count_sq = (
+        db.query(func.count(Ingredient.id))
+        .filter(Ingredient.recipe_id == RawRecipe.id)
+        .correlate(RawRecipe)
+        .scalar_subquery()
+    )
+
+    query = db.query(RawRecipe, ing_count_sq.label("ing_count"))
+
+    if source:
+        query = query.filter(RawRecipe.source == source)
+    if q:
+        query = query.filter(RawRecipe.raw_content.ilike(f"%{q}%"))
+    if min_ingredients > 0:
+        query = query.having(ing_count_sq >= min_ingredients)
+
+    if sort == "engagement":
+        query = query.order_by(RawRecipe.engagement_score.desc().nullslast())
+    else:
+        query = query.order_by(RawRecipe.fetched_at.desc())
+
+    rows = query.offset(offset).limit(limit).all()
+
+    return [
+        RecipeBrowseItem(
+            id=recipe.id,
+            source=recipe.source,
+            url=recipe.url,
+            title=_extract_title(recipe.raw_content),
+            ingredient_count=ing_count,
+            engagement_score=recipe.engagement_score,
+            fetched_at=recipe.fetched_at,
+        )
+        for recipe, ing_count in rows
+    ]
 
 
 @router.get("", response_model=list[RecipeOut])

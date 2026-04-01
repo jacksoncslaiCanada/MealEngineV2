@@ -57,3 +57,16 @@ class MealPlanResult(RecipeDetailOut):
     coverage: float       # 0.0–1.0 — fraction of recipe ingredients covered by the pantry
     matched_count: int    # number of recipe ingredients matched
     total_count: int      # total extracted ingredients in the recipe
+
+
+class RecipeBrowseItem(BaseModel):
+    """Lightweight recipe row for the Recipe Browser UI."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    source: str
+    url: str
+    title: str
+    ingredient_count: int
+    engagement_score: Optional[float]
+    fetched_at: datetime

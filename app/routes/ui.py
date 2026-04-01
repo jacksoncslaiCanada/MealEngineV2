@@ -22,3 +22,8 @@ def ui_root():
 @router.get("/meal-plan", response_class=HTMLResponse, include_in_schema=False)
 def meal_plan_page(request: Request):
     return templates.TemplateResponse("meal_plan.html", {"request": request})
+
+
+@router.get("/recipes", response_class=HTMLResponse, include_in_schema=False)
+def recipes_page(request: Request):
+    return templates.TemplateResponse("recipes.html", {"request": request})
