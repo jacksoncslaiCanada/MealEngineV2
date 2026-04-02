@@ -66,7 +66,7 @@ def _fetch_statistics(youtube_client, video_ids: list[str]) -> dict[str, tuple[i
 
 def fetch_youtube_recipes(
     queries: list[str] | None = None,
-    max_results: int = 10,
+    max_results: int = 50,
     youtube_client: Any = None,
     transcript_fetcher=None,
     stats_fetcher=None,
@@ -76,7 +76,7 @@ def fetch_youtube_recipes(
 
     Args:
         queries: Search queries to run.
-        max_results: Max results per query.
+        max_results: Max results per query (YouTube API max is 50). 4 queries × 50 = 200 unique videos.
         youtube_client: Optional pre-built client (used in tests).
         transcript_fetcher: Optional callable(video_id) -> str (used in tests).
         stats_fetcher: Optional callable(video_ids) -> dict[str, tuple[int, int]] (used in tests).
@@ -151,7 +151,7 @@ def fetch_youtube_recipes(
 def save_youtube_recipes(
     db: Session,
     queries: list[str] | None = None,
-    max_results: int = 10,
+    max_results: int = 50,
     youtube_client: Any = None,
     transcript_fetcher=None,
     stats_fetcher=None,
