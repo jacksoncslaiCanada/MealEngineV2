@@ -15,6 +15,7 @@ const resetBtn      = document.getElementById('resetBtn');
 const sortNewest    = document.getElementById('sortNewest');
 const sortEngagement = document.getElementById('sortEngagement');
 
+const statsBar      = document.getElementById('statsBar');
 const spinner       = document.getElementById('loadingSpinner');
 const emptyState    = document.getElementById('emptyState');
 const tableCard     = document.getElementById('tableCard');
@@ -178,5 +179,37 @@ filterQ.addEventListener('keydown', e => { if (e.key === 'Enter') load(0); });
 prevBtn.addEventListener('click', () => load(Math.max(0, currentOffset - PAGE_SIZE)));
 nextBtn.addEventListener('click', () => load(currentOffset + PAGE_SIZE));
 
+// ── Stats bar ─────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await fetch('/recipes/stats');
+    if (!res.ok) return;
+    const stats = await res.json();
+
+    const order = ['youtube', 'themealdb', 'rss', 'reddit'];
+    const allSources = [...new Set([...order, ...Object.keys(stats)])];
+    const total = Object.values(stats).reduce((a, b) => a + b, 0);
+
+    statsBar.innerHTML = allSources
+      .filter(s => stats[s])
+      .map(s => `
+        <span class="source-badge source-${s}" style="cursor:pointer" data-source="${s}"
+              title="Filter by ${s}">
+          ${sourceBadge(s).replace(/<[^>]+>/g, '')} &nbsp;${stats[s]}
+        </span>`)
+      .join('') +
+      `<span class="badge bg-secondary ms-1">Total&nbsp;${total}</span>`;
+
+    // Clicking a badge sets the source filter and reloads
+    statsBar.querySelectorAll('[data-source]').forEach(el => {
+      el.addEventListener('click', () => {
+        filterSource.value = el.dataset.source;
+        load(0);
+      });
+    });
+  } catch (_) { /* stats are non-critical */ }
+}
+
 // ── Initial load ──────────────────────────────────────────────────────────────
+loadStats();
 load(0);

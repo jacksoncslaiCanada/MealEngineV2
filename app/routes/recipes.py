@@ -17,6 +17,17 @@ from app.routes.schemas import IngredientOut, IngredientSearchResult, MealPlanRe
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 
+@router.get("/stats", response_model=dict[str, int])
+def recipe_stats(db: Session = Depends(get_db)) -> dict[str, int]:
+    """Return total recipe count per source platform."""
+    rows = (
+        db.query(RawRecipe.source, func.count(RawRecipe.id))
+        .group_by(RawRecipe.source)
+        .all()
+    )
+    return {source: count for source, count in rows}
+
+
 def _recipe_ids_for_term(db: Session, term: str) -> set[int]:
     """Return the set of recipe IDs that have at least one ingredient matching term."""
     canonical = normalise_ingredient(term)
