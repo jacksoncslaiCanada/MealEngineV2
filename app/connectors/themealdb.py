@@ -1,5 +1,6 @@
 """TheMealDB connector — fetches recipe data via the free public API (no credentials required)."""
 
+import string
 from datetime import datetime, timezone
 
 import httpx
@@ -9,7 +10,9 @@ from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
 from app.scoring import compute_themealdb_completeness, get_or_create_source, mark_source_ingested
 
-RECIPE_SEARCH_QUERIES = ["chicken", "pasta", "beef", "salmon"]
+# Sweep every first letter a–z via the ?f= endpoint to cover all ~320 meals.
+# Falls back to ?s= (keyword search) for any multi-character query string.
+_LETTER_QUERIES: list[str] = list(string.ascii_lowercase)
 _THEMEALDB_BASE = "https://www.themealdb.com/api/json/v1/1/search.php"
 
 
@@ -48,21 +51,26 @@ def _build_raw_content(meal: dict) -> str:
 
 def fetch_themealdb_recipes(
     queries: list[str] | None = None,
-    max_results: int = 10,
+    max_results: int = 500,
     client: httpx.Client | None = None,
 ) -> list[RawRecipeSchema]:
     """
-    Search TheMealDB for recipe meals and return normalized RawRecipeSchema objects.
+    Fetch TheMealDB recipes and return normalized RawRecipeSchema objects.
 
     Uses the free public API — no credentials needed.
 
+    By default sweeps the full catalogue via the first-letter endpoint (?f=a … ?f=z),
+    which covers all ~320 meals. Pass explicit multi-word queries to use keyword
+    search (?s=chicken) instead.
+
     Args:
-        queries: Search terms to run against the meal name endpoint.
-        max_results: Max total results to return across all queries.
+        queries: Query strings. Single letters use ?f= (first-letter); longer
+                 strings use ?s= (keyword search). Defaults to a–z sweep.
+        max_results: Hard cap on total results across all queries.
         client: Optional pre-built httpx.Client (used in tests).
     """
     if queries is None:
-        queries = RECIPE_SEARCH_QUERIES
+        queries = _LETTER_QUERIES
 
     _owns_client = client is None
     if _owns_client:
@@ -76,7 +84,9 @@ def fetch_themealdb_recipes(
             if len(records) >= max_results:
                 break
 
-            response = client.get(_THEMEALDB_BASE, params={"s": query})
+            # Single letter → first-letter endpoint; multi-char → keyword search
+            param_key = "f" if len(query) == 1 and query.isalpha() else "s"
+            response = client.get(_THEMEALDB_BASE, params={param_key: query})
             response.raise_for_status()
 
             meals = response.json().get("meals") or []
@@ -117,7 +127,7 @@ def fetch_themealdb_recipes(
 def save_themealdb_recipes(
     db: Session,
     queries: list[str] | None = None,
-    max_results: int = 10,
+    max_results: int = 500,
     client: httpx.Client | None = None,
 ) -> list[RawRecipeSchema]:
     """

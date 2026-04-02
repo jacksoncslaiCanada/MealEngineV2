@@ -65,6 +65,19 @@ def _make_client(responses: list[httpx.Response]) -> httpx.Client:
     return httpx.Client(transport=_Transport())
 
 
+def _make_recording_client(responses: list[httpx.Response]) -> tuple[httpx.Client, list[httpx.Request]]:
+    """Return a client that replays responses and records every request made."""
+    responses_iter = iter(responses)
+    recorded: list[httpx.Request] = []
+
+    class _Transport(httpx.BaseTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            recorded.append(request)
+            return next(responses_iter)
+
+    return httpx.Client(transport=_Transport()), recorded
+
+
 @pytest.fixture()
 def in_memory_db():
     engine = create_engine("sqlite:///:memory:")
@@ -246,3 +259,36 @@ def test_save_links_recipe_to_source_fk(in_memory_db):
     source = in_memory_db.query(Source).filter_by(platform="themealdb", handle="chicken").first()
     row = in_memory_db.query(RawRecipe).filter_by(source_id="52772").first()
     assert row.source_fk == source.id
+
+
+# ── letter sweep ──────────────────────────────────────────────────────────────
+
+def test_single_letter_query_uses_f_param():
+    """Single-letter queries must use ?f= (first-letter endpoint)."""
+    meal = _make_meal("1", "Adobo")
+    client, requests = _make_recording_client([_make_response([meal])])
+
+    fetch_themealdb_recipes(queries=["a"], max_results=5, client=client)
+
+    assert len(requests) == 1
+    assert requests[0].url.params.get("f") == "a"
+    assert "s" not in requests[0].url.params
+
+
+def test_multi_char_query_uses_s_param():
+    """Multi-character queries must use ?s= (keyword search endpoint)."""
+    meal = _make_meal("1", "Chicken Tikka")
+    client, requests = _make_recording_client([_make_response([meal])])
+
+    fetch_themealdb_recipes(queries=["chicken"], max_results=5, client=client)
+
+    assert len(requests) == 1
+    assert requests[0].url.params.get("s") == "chicken"
+    assert "f" not in requests[0].url.params
+
+
+def test_default_queries_cover_full_alphabet():
+    """Default sweep must include all 26 letters (full catalogue coverage)."""
+    from app.connectors.themealdb import _LETTER_QUERIES
+    assert len(_LETTER_QUERIES) == 26
+    assert set(_LETTER_QUERIES) == set("abcdefghijklmnopqrstuvwxyz")
