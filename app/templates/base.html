@@ -69,6 +69,7 @@
     .badge-youtube  { background-color: #ff0000; }
     .badge-themealdb { background-color: #e8a020; }
     .badge-reddit   { background-color: #ff4500; }
+    .badge-rss      { background-color: #28a745; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -90,7 +91,11 @@
             <i class="bi bi-basket me-1"></i>Meal Planner
           </a>
         </li>
-        {# Future nav items slot — add Recipe Browser and Ingredient Search here #}
+        <li class="nav-item">
+          <a class="nav-link {% block nav_recipes %}{% endblock %}" href="/ui/recipes">
+            <i class="bi bi-journal-richtext me-1"></i>Recipes
+          </a>
+        </li>
       </ul>
     </div>
   </div>

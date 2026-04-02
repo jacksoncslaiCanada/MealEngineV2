@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Recipe Browser — MealEngine{% endblock %}
+{% block nav_recipes %}active{% endblock %}
+
+{% block extra_head %}
+<style>
+  .filter-card { position: sticky; top: 1rem; }
+  .recipe-row td { vertical-align: middle; }
+  .recipe-row:hover { background-color: #f8f9fa; cursor: pointer; }
+  .source-badge { font-size: .75rem; padding: .25em .55em; border-radius: .375rem; font-weight: 600; }
+  .source-youtube  { background: #ff0000; color: #fff; }
+  .source-themealdb { background: #e8a020; color: #fff; }
+  .source-reddit   { background: #ff4500; color: #fff; }
+  .source-rss      { background: #28a745; color: #fff; }
+  .ing-pill { font-size: .78rem; padding: .2em .5em; background: #e9ecef; border-radius: 1rem; color: #495057; }
+  #resultsTable tbody tr td a { color: inherit; }
+  .sort-btn.active { font-weight: 700; text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- ── Filters sidebar ─────────────────────────────────────────── -->
+  <div class="col-lg-3">
+    <div class="card shadow-sm filter-card">
+      <div class="card-body p-3">
+        <h6 class="fw-bold mb-3"><i class="bi bi-funnel me-1"></i>Filters</h6>
+
+        <label class="form-label small fw-semibold">Keyword</label>
+        <input type="text" class="form-control form-control-sm mb-3" id="filterQ"
+               placeholder="chicken, pasta…" autocomplete="off">
+
+        <label class="form-label small fw-semibold">Source</label>
+        <select class="form-select form-select-sm mb-3" id="filterSource">
+          <option value="">All sources</option>
+          <option value="youtube">YouTube</option>
+          <option value="themealdb">TheMealDB</option>
+          <option value="rss">RSS</option>
+          <option value="reddit">Reddit</option>
+        </select>
+
+        <label class="form-label small fw-semibold d-flex justify-content-between">
+          <span>Min ingredients</span>
+          <span class="text-primary fw-bold" id="minIngLabel">0</span>
+        </label>
+        <input type="range" class="form-range mb-3" id="filterMinIng"
+               min="0" max="20" step="1" value="0">
+
+        <label class="form-label small fw-semibold">Sort by</label>
+        <div class="btn-group w-100 mb-3" role="group">
+          <button type="button" class="btn btn-sm btn-outline-secondary active" id="sortNewest" data-sort="newest">Newest</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="sortEngagement" data-sort="engagement">Engagement</button>
+        </div>
+
+        <button class="btn btn-primary btn-sm w-100" id="applyBtn">
+          <i class="bi bi-search me-1"></i>Search
+        </button>
+        <button class="btn btn-outline-secondary btn-sm w-100 mt-2" id="resetBtn">
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Results ─────────────────────────────────────────────────── -->
+  <div class="col-lg-9">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h1 class="h4 fw-bold mb-0"><i class="bi bi-journal-richtext me-2 text-primary"></i>Recipe Browser</h1>
+      <span class="text-muted small" id="resultsMeta"></span>
+    </div>
+
+    <div id="loadingSpinner" class="text-center py-5 d-none">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Loading…</p>
+    </div>
+
+    <div id="emptyState" class="text-center py-5 d-none">
+      <i class="bi bi-search display-6 text-muted"></i>
+      <p class="mt-2 text-muted">No recipes match your filters.</p>
+    </div>
+
+    <div class="card shadow-sm d-none" id="tableCard">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="resultsTable">
+          <thead class="table-light">
+            <tr>
+              <th style="width:45%">Title</th>
+              <th style="width:12%">Source</th>
+              <th style="width:10%" class="text-center">Ingredients</th>
+              <th style="width:13%" class="text-center">Score</th>
+              <th style="width:10%">Fetched</th>
+              <th style="width:10%"></th>
+            </tr>
+          </thead>
+          <tbody id="recipesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center mt-3" id="pagination">
+      <button class="btn btn-outline-secondary btn-sm" id="prevBtn" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span class="text-muted small" id="pageLabel"></span>
+      <button class="btn btn-outline-secondary btn-sm" id="nextBtn" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/recipes.js"></script>
+{% endblock %}
