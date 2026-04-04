@@ -32,3 +32,14 @@ def root():
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/health/pdf", tags=["meta"])
+def health_pdf() -> dict:
+    """Minimal WeasyPrint smoke test — confirms system libraries are present."""
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string="<h1>MealEngine PDF test</h1>").write_pdf()
+        return {"status": "ok", "pdf_bytes": len(pdf_bytes)}
+    except Exception as exc:
+        return {"status": "error", "detail": str(exc)}
