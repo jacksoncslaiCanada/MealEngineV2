@@ -1,11 +1,14 @@
 [phases.setup]
-nixPkgs = [
-  "python311",
-  "pango",
-  "cairo",
-  "gdk-pixbuf",
-  "gobject-introspection",
-  "fontconfig",
-  "freetype",
-  "harfbuzz",
+nixPkgs = ["python311"]
+aptPkgs = [
+  "libpango-1.0-0",
+  "libpangocairo-1.0-0",
+  "libcairo2",
+  "libgdk-pixbuf2.0-0",
+  "libglib2.0-0",
+  "libfontconfig1",
+  "libfreetype6",
+  "libharfbuzz0b",
+  "libffi-dev",
+  "shared-mime-info",
 ]
