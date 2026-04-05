@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  /* ── Reset / base ─────────────────────────────────────────── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page {
+    size: A4 portrait;
+    margin: 14mm 14mm 12mm 14mm;
+    @bottom-center {
+      content: "MealEngine  ·  " string(week) "  ·  " counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #9ca3af;
+    }
+  }
+
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9.5pt;
+    color: #1f2937;
+    line-height: 1.4;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+  .header {
+    background: #1f2937;
+    color: #fff;
+    padding: 10mm 12mm;
+    border-radius: 4px;
+    margin-bottom: 7mm;
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .brand {
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #f9fafb;
+    opacity: 0.7;
+    text-transform: uppercase;
+  }
+  .header h1 {
+    font-size: 22pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-top: 2mm;
+    color: #f9fafb;
+  }
+  .header .meta {
+    text-align: right;
+  }
+  .header .week {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #f9fafb;
+    string-set: week content();
+  }
+  .header .variant-badge {
+    margin-top: 1.5mm;
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    color: #f9fafb;
+    font-size: 8pt;
+    font-weight: 600;
+    padding: 1.5mm 3mm;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── Day grid ─────────────────────────────────────────────── */
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3mm;
+    margin-bottom: 8mm;
+  }
+
+  .day-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .day-header {
+    background: #374151;
+    color: #f9fafb;
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-align: center;
+    padding: 2mm 1mm;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .meal-slot {
+    padding: 2mm 2.5mm;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .meal-slot:last-child { border-bottom: none; }
+
+  .slot-label {
+    font-size: 6.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin-bottom: 0.8mm;
+  }
+  .meal-title {
+    font-size: 7.5pt;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+  .meal-note {
+    font-size: 6.5pt;
+    color: #6b7280;
+    margin-top: 0.5mm;
+    font-style: italic;
+  }
+  .difficulty-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 2px;
+    vertical-align: middle;
+    position: relative;
+    top: -0.5px;
+  }
+  .cuisine-tag {
+    font-size: 6pt;
+    color: #6b7280;
+    margin-top: 0.5mm;
+  }
+
+  /* breakfast slot */
+  .slot-breakfast { background: #fffbeb; }
+  /* lunch slot */
+  .slot-lunch     { background: #f0fdf4; }
+  /* dinner slot */
+  .slot-dinner    { background: #eff6ff; }
+
+  /* ── Legend ───────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 5mm;
+    align-items: center;
+    margin-bottom: 8mm;
+    font-size: 7.5pt;
+    color: #6b7280;
+  }
+  .legend-item { display: flex; align-items: center; gap: 1.5mm; }
+  .legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ── Page break ───────────────────────────────────────────── */
+  .page-break { page-break-before: always; }
+
+  /* ── Shopping list ────────────────────────────────────────── */
+  .shopping-header {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 5mm 8mm;
+    border-radius: 4px;
+    margin-bottom: 6mm;
+  }
+  .shopping-header h2 {
+    font-size: 16pt;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .shopping-header .sub {
+    font-size: 8.5pt;
+    opacity: 0.65;
+    margin-top: 1mm;
+  }
+
+  .shopping-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8mm;
+  }
+
+  .shopping-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 2mm 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .shopping-item:last-child { border-bottom: none; }
+
+  .ing-name {
+    font-size: 8.5pt;
+    font-weight: 600;
+    color: #111827;
+  }
+  .ing-amount {
+    font-size: 8pt;
+    color: #6b7280;
+    text-align: right;
+    margin-left: 3mm;
+    flex-shrink: 0;
+  }
+
+  /* ── Footer note ──────────────────────────────────────────── */
+  .footer-note {
+    margin-top: 8mm;
+    padding: 3mm 5mm;
+    background: #f9fafb;
+    border-left: 3px solid #1f2937;
+    font-size: 7.5pt;
+    color: #6b7280;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ PAGE 1: MEAL PLAN ═══════════════════════ -->
+
+<div class="header">
+  <div class="header-row">
+    <div>
+      <div class="brand">MealEngine</div>
+      <h1>Weekly Meal Plan</h1>
+    </div>
+    <div class="meta">
+      <div class="week">{{ week_label }}</div>
+      <div class="variant-badge">{{ variant_label }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Day grid -->
+<div class="day-grid">
+  {% for day in days %}
+  <div class="day-card">
+    <div class="day-header">{{ day.day[:3] }}</div>
+
+    <!-- Breakfast -->
+    <div class="meal-slot slot-breakfast">
+      <div class="slot-label">Breakfast</div>
+      <div class="meal-title">
+        {% if day.breakfast.get('difficulty') %}
+        <span class="difficulty-dot"
+              style="background:{{ difficulty_colors.get(day.breakfast.difficulty, '#9ca3af') }}"></span>
+        {% endif %}
+        {{ day.breakfast.title }}
+      </div>
+    </div>
+
+    <!-- Lunch -->
+    <div class="meal-slot slot-lunch">
+      <div class="slot-label">Lunch</div>
+      <div class="meal-title">{{ day.lunch.title }}</div>
+      {% if day.lunch.get('note') %}
+      <div class="meal-note">{{ day.lunch.note }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Dinner -->
+    <div class="meal-slot slot-dinner">
+      <div class="slot-label">Dinner</div>
+      <div class="meal-title">
+        {% if day.dinner.get('difficulty') %}
+        <span class="difficulty-dot"
+              style="background:{{ difficulty_colors.get(day.dinner.difficulty, '#9ca3af') }}"></span>
+        {% endif %}
+        {{ day.dinner.title }}
+      </div>
+      {% if day.dinner.get('cuisine') %}
+      <div class="cuisine-tag">{{ day.dinner.cuisine }}</div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <span>Difficulty:</span>
+  {% for diff, color in difficulty_colors.items() %}
+  <span class="legend-item">
+    <span class="legend-dot" style="background:{{ color }}"></span>
+    {{ diff|capitalize }}
+  </span>
+  {% endfor %}
+  <span style="margin-left:auto; font-size:7pt;">
+    Lunch = previous night's leftovers (pack the night before)
+  </span>
+</div>
+
+
+<!-- ═══════════════════════ PAGE 2: SHOPPING LIST ═══════════════════ -->
+
+<div class="page-break"></div>
+
+<div class="shopping-header">
+  <h2>Shopping List</h2>
+  <div class="sub">{{ week_label }} · {{ variant_label }} · {{ (shopping_col1|length + shopping_col2|length) }} items</div>
+</div>
+
+<div class="shopping-columns">
+
+  <div>
+    {% for item in shopping_col1 %}
+    <div class="shopping-item">
+      <span class="ing-name">{{ item.ingredient }}</span>
+      <span class="ing-amount">{{ item.amounts }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div>
+    {% for item in shopping_col2 %}
+    <div class="shopping-item">
+      <span class="ing-name">{{ item.ingredient }}</span>
+      <span class="ing-amount">{{ item.amounts }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<div class="footer-note">
+  Quantities are per recipe. Combine amounts for items appearing in multiple meals.
+  Always check your pantry before shopping.
+</div>
+
+</body>
+</html>

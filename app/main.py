@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.ingredients import router as ingredients_router
+from app.routes.plans import router as plans_router
 from app.routes.recipes import router as recipes_router
 from app.routes.ui import router as ui_router
 
@@ -21,6 +22,7 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 
 app.include_router(recipes_router)
 app.include_router(ingredients_router)
+app.include_router(plans_router)
 app.include_router(ui_router)
 
 
