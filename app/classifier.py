@@ -1,15 +1,16 @@
 """Recipe classifier.
 
 Uses Claude tool-use to label each RawRecipe with:
-  - difficulty : "easy" | "medium" | "complex"
-  - cuisine    : e.g. "Asian", "Italian", "American", "Mexican",
-                      "Mediterranean", "Indian", "Other"
-  - meal_type  : "breakfast" | "lunch" | "dinner" | "any"
+  - difficulty  : "easy" | "medium" | "complex"
+  - cuisine     : e.g. "Asian", "Italian", "American", "Mexican", ...
+  - meal_type   : "breakfast" | "lunch" | "dinner" | "any"
+  - quick_steps : JSON list of 3 short cooking-method bullet strings
 
-Classification is skipped for recipes that already have all three fields set.
+Classification is skipped for recipes that already have all four fields set.
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Optional
 
@@ -27,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 _CLASSIFY_TOOL: anthropic.types.ToolParam = {
     "name": "classify_recipe",
-    "description": "Classify a recipe by difficulty, cuisine, and meal type.",
+    "description": (
+        "Classify a recipe by difficulty, cuisine, meal type, "
+        "and summarise the cooking method in 3 short steps."
+    ),
     "input_schema": {
         "type": "object",
         "properties": {
@@ -56,14 +60,27 @@ _CLASSIFY_TOOL: anthropic.types.ToolParam = {
                     "fits multiple slots equally (e.g. a salad)."
                 ),
             },
+            "quick_steps": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 3,
+                "maxItems": 3,
+                "description": (
+                    "Exactly 3 short bullet strings summarising the cooking method. "
+                    "Each under 12 words. Example: "
+                    '["Marinate chicken 30 min.", '
+                    '"Stir-fry on high heat 8 min.", '
+                    '"Add sauce, reduce 2 min."]'
+                ),
+            },
         },
-        "required": ["difficulty", "cuisine", "meal_type"],
+        "required": ["difficulty", "cuisine", "meal_type", "quick_steps"],
     },
 }
 
 _SYSTEM = (
     "You are a culinary classification assistant. "
-    "Given a recipe, call classify_recipe with the correct labels."
+    "Given a recipe, call classify_recipe with the correct labels and a 3-step method summary."
 )
 
 
@@ -78,18 +95,18 @@ def classify_recipe(
     client: Optional[anthropic.Anthropic] = None,
 ) -> RawRecipe:
     """Classify a single recipe and persist the labels. Returns the recipe."""
-    if recipe.difficulty and recipe.cuisine and recipe.meal_type:
+    if recipe.difficulty and recipe.cuisine and recipe.meal_type and recipe.quick_steps:
         return recipe  # already done
 
     if client is None:
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-    # Use first 800 chars — enough context, saves tokens
-    snippet = recipe.raw_content[:800]
+    # Use first 1000 chars — enough for steps, saves tokens
+    snippet = recipe.raw_content[:1000]
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # fast + cheap for classification
-        max_tokens=256,
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
         system=_SYSTEM,
         tools=[_CLASSIFY_TOOL],
         tool_choice={"type": "tool", "name": "classify_recipe"},
@@ -109,6 +126,9 @@ def classify_recipe(
     recipe.difficulty = result.get("difficulty")
     recipe.cuisine = result.get("cuisine")
     recipe.meal_type = result.get("meal_type")
+
+    steps = result.get("quick_steps") or []
+    recipe.quick_steps = json.dumps(steps[:3]) if steps else None
 
     try:
         db.commit()
@@ -144,6 +164,7 @@ def classify_unclassified(
                 RawRecipe.difficulty.is_(None),
                 RawRecipe.cuisine.is_(None),
                 RawRecipe.meal_type.is_(None),
+                RawRecipe.quick_steps.is_(None),
             )
         )
         .limit(limit)

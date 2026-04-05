@@ -15,12 +15,40 @@ from __future__ import annotations
 
 import json
 import random
-from datetime import date, timedelta
+from collections import Counter
+from datetime import date
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.db.models import Ingredient, MealPlan, RawRecipe
+
+# Ingredients everyone keeps in their pantry — excluded from shopping lists.
+_PANTRY_STAPLES: frozenset[str] = frozenset({
+    # Salt & pepper
+    "salt", "sea salt", "kosher salt", "table salt",
+    "pepper", "black pepper", "white pepper", "ground pepper", "ground black pepper",
+    # Oils
+    "oil", "olive oil", "extra virgin olive oil", "vegetable oil", "canola oil",
+    "cooking oil", "neutral oil", "sesame oil",
+    # Water & basic liquids
+    "water", "ice", "ice water",
+    # Sugars
+    "sugar", "white sugar", "granulated sugar", "caster sugar",
+    # Flour & leavening
+    "flour", "all-purpose flour", "plain flour",
+    "baking powder", "baking soda", "bicarbonate of soda",
+    # Basic aromatics (nearly universal pantry items)
+    "garlic", "garlic clove", "garlic powder", "garlic salt",
+    "onion powder",
+    # Vinegars & condiments
+    "vinegar", "white vinegar",
+    # Spice pantry basics
+    "paprika", "cumin", "dried oregano", "bay leaf", "bay leaves",
+    "dried thyme", "chili flakes", "red pepper flakes",
+    # Vanilla
+    "vanilla", "vanilla extract",
+})
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -90,8 +118,11 @@ def _pool_for_variant(
 # Shopping list aggregation
 # ---------------------------------------------------------------------------
 
+_SHOPPING_CAP = 25   # maximum items on the final shopping list
+
+
 def _aggregate_shopping(db: Session, recipe_ids: list[int]) -> list[dict]:
-    """Group ingredients by canonical_name across all recipes."""
+    """Group ingredients by canonical_name, strip pantry staples, cap at 25."""
     if not recipe_ids:
         return []
 
@@ -101,9 +132,19 @@ def _aggregate_shopping(db: Session, recipe_ids: list[int]) -> list[dict]:
         .all()
     )
 
+    # Group by canonical name, track how many recipes need each ingredient
     grouped: dict[str, dict] = {}
+    recipe_count: Counter = Counter()
+
     for ing in rows:
-        key = ing.canonical_name or ing.ingredient_name
+        key = (ing.canonical_name or ing.ingredient_name or "").strip().lower()
+        if not key:
+            continue
+        # Skip pantry staples
+        if key in _PANTRY_STAPLES:
+            continue
+
+        recipe_count[key] += 1
         if key not in grouped:
             grouped[key] = {"ingredient": key, "entries": []}
         entry: dict = {}
@@ -113,11 +154,18 @@ def _aggregate_shopping(db: Session, recipe_ids: list[int]) -> list[dict]:
             entry["unit"] = ing.unit
         grouped[key]["entries"].append(entry)
 
-    # Build display list sorted alphabetically
+    # Sort by frequency (most-needed ingredients first), then alphabetically
+    sorted_keys = sorted(grouped.keys(), key=lambda k: (-recipe_count[k], k))
+
+    # Cap at shopping limit
+    sorted_keys = sorted_keys[:_SHOPPING_CAP]
+
+    # Re-sort final list alphabetically for easy reading in-store
+    sorted_keys.sort()
+
     shopping: list[dict] = []
-    for key in sorted(grouped.keys()):
+    for key in sorted_keys:
         item = grouped[key]
-        # Summarise quantities as a simple string list
         parts = []
         for e in item["entries"]:
             if e.get("qty") and e.get("unit"):
@@ -234,6 +282,7 @@ def generate_plan(
                 "difficulty": dn.difficulty or "easy",
                 "cuisine": dn.cuisine or "",
                 "url": dn.url,
+                "quick_steps": json.loads(dn.quick_steps) if dn.quick_steps else [],
             }
             all_recipe_ids.append(dn.id)
         else:

@@ -62,6 +62,7 @@ class RawRecipe(Base):
     difficulty: Mapped[str | None] = mapped_column(String(16), nullable=True)   # easy|medium|complex
     cuisine: Mapped[str | None] = mapped_column(String(64), nullable=True)      # e.g. Asian, Italian
     meal_type: Mapped[str | None] = mapped_column(String(16), nullable=True)    # breakfast|lunch|dinner|any
+    quick_steps: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON: 3-step method
 
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
