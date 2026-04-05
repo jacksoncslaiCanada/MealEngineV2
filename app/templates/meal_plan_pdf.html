@@ -166,6 +166,87 @@
   /* ── Page break ───────────────────────────────────────────── */
   .page-break { page-break-before: always; }
 
+  /* ── Quick methods ────────────────────────────────────────── */
+  .methods-header {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 5mm 8mm;
+    border-radius: 4px;
+    margin-bottom: 6mm;
+  }
+  .methods-header h2 { font-size: 16pt; font-weight: 800; letter-spacing: -0.01em; }
+  .methods-header .sub { font-size: 8.5pt; opacity: 0.65; margin-top: 1mm; }
+
+  .methods-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm;
+    margin-bottom: 0;
+  }
+  .method-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 3.5mm 4mm;
+  }
+  .method-day {
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #9ca3af;
+    margin-bottom: 1mm;
+  }
+  .method-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 2mm;
+    line-height: 1.3;
+  }
+  .method-meta {
+    display: flex;
+    gap: 3mm;
+    align-items: center;
+    margin-bottom: 2.5mm;
+  }
+  .method-badge {
+    font-size: 6.5pt;
+    font-weight: 700;
+    padding: 0.8mm 2mm;
+    border-radius: 2px;
+    color: #fff;
+  }
+  .method-cuisine {
+    font-size: 7pt;
+    color: #6b7280;
+  }
+  .method-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .method-steps li {
+    font-size: 7.5pt;
+    color: #374151;
+    padding: 1mm 0 1mm 9px;
+    border-bottom: 1px solid #f9fafb;
+    line-height: 1.3;
+    position: relative;
+  }
+  .method-steps li:last-child { border-bottom: none; }
+  .method-steps li::before {
+    content: counter(step);
+    counter-increment: step;
+    position: absolute;
+    left: 0;
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #9ca3af;
+    top: 1.5mm;
+  }
+  .method-steps { counter-reset: step; }
+  .no-steps { font-size: 7.5pt; color: #9ca3af; font-style: italic; }
+
   /* ── Shopping list ────────────────────────────────────────── */
   .shopping-header {
     background: #1f2937;
@@ -302,8 +383,48 @@
 </div>
 
 
-<!-- ═══════════════════════ PAGE 2: SHOPPING LIST ═══════════════════ -->
+<!-- ═══════════════════════ PAGE 2: QUICK METHODS ══════════════════ -->
 
+<div class="page-break"></div>
+
+<div class="methods-header">
+  <h2>Dinner Quick Methods</h2>
+  <div class="sub">3-step cooking guide for each dinner this week</div>
+</div>
+
+<div class="methods-grid">
+  {% for day in days %}
+  {% if day.dinner.get('recipe_id') %}
+  <div class="method-card">
+    <div class="method-day">{{ day.day }}</div>
+    <div class="method-title">{{ day.dinner.title }}</div>
+    <div class="method-meta">
+      {% if day.dinner.get('difficulty') %}
+      <span class="method-badge"
+            style="background:{{ difficulty_colors.get(day.dinner.difficulty, '#9ca3af') }}">
+        {{ day.dinner.difficulty }}
+      </span>
+      {% endif %}
+      {% if day.dinner.get('cuisine') %}
+      <span class="method-cuisine">{{ day.dinner.cuisine }}</span>
+      {% endif %}
+    </div>
+    {% if day.dinner.get('quick_steps') and day.dinner.quick_steps|length > 0 %}
+    <ul class="method-steps">
+      {% for step in day.dinner.quick_steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="no-steps">See source recipe for full instructions</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+
+<!-- ═══════════════════════ PAGE 3: SHOPPING LIST ═══════════════════ -->
 <div class="page-break"></div>
 
 <div class="shopping-header">
