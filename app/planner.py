@@ -161,7 +161,7 @@ def generate_plan(
     breakfast_pool = _pool_for_variant(db, variant, "breakfast")
     dinner_pool = _pool_for_variant(db, variant, "dinner")
 
-    # Fallback: if pools are too small, relax to "any" difficulty / cuisine
+    # Fallback 1: relax variant constraints, keep meal_type filter
     if len(breakfast_pool) < 7:
         from sqlalchemy import or_
         breakfast_pool = db.query(RawRecipe).filter(
@@ -175,6 +175,15 @@ def generate_plan(
             RawRecipe.difficulty.isnot(None),
             or_(RawRecipe.meal_type == "dinner", RawRecipe.meal_type == "any"),
         ).all()
+
+    # Fallback 2: no classification required — use all available recipes
+    all_recipes = None
+    if len(breakfast_pool) < 7 or len(dinner_pool) < 7:
+        all_recipes = db.query(RawRecipe).all()
+    if len(breakfast_pool) < 7:
+        breakfast_pool = all_recipes or db.query(RawRecipe).all()
+    if len(dinner_pool) < 7:
+        dinner_pool = all_recipes or db.query(RawRecipe).all()
 
     breakfasts = _pick_recipes(breakfast_pool, 7, seed=seed)
     dinners = _pick_recipes(dinner_pool, 7, seed=seed + 1)
