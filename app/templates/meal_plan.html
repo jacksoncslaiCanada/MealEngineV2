@@ -23,6 +23,18 @@
                   letter-spacing: .05em; color: #9ca3af; }
   .meal-title   { font-weight: 600; color: #111827; line-height: 1.25; }
   .meal-note    { font-size: .7rem; color: #6b7280; font-style: italic; }
+  .quick-steps  { list-style:none; padding:0; margin:.3rem 0 0; }
+  .quick-steps li {
+    font-size: .7rem; color: #374151; padding: .15rem 0 .15rem 1.1rem;
+    border-top: 1px solid #f3f4f6; position: relative;
+  }
+  .quick-steps li::before {
+    content: counter(qs);
+    counter-increment: qs;
+    position: absolute; left: 0;
+    font-size: .6rem; font-weight: 700; color: #9ca3af; top: .25rem;
+  }
+  .quick-steps { counter-reset: qs; }
 
   .diff-dot { display:inline-block; width:7px; height:7px; border-radius:50%;
               vertical-align:middle; margin-right:3px; }
@@ -268,9 +280,13 @@ function mealRow(cls, lbl, meal) {
     ? `<span class="diff-dot" style="background:${DIFF_COLORS[meal.difficulty]||"#9ca3af"}"></span>` : "";
   const note = meal.note ? `<div class="meal-note">${esc(meal.note)}</div>` : "";
   const cuisine = meal.cuisine ? `<div class="meal-note">${esc(meal.cuisine)}</div>` : "";
+  let steps = "";
+  if (cls === "dn" && meal.quick_steps && meal.quick_steps.length > 0) {
+    steps = `<ol class="quick-steps">${meal.quick_steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol>`;
+  }
   return `<div class="meal-row ${cls}">
     <div class="slot-label">${lbl}</div>
-    <div class="meal-title">${dot}${esc(meal.title||"")}</div>${note}${cuisine}
+    <div class="meal-title">${dot}${esc(meal.title||"")}</div>${note}${cuisine}${steps}
   </div>`;
 }
 

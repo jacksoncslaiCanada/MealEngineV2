@@ -21,6 +21,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.models import Ingredient, MealPlan, RawRecipe
 
 # Ingredients everyone keeps in their pantry — excluded from shopping lists.
@@ -243,6 +244,18 @@ def generate_plan(
         for slot, day_idx in enumerate(_WEEKEND_INDICES):
             if slot < len(complex_picks) and day_idx < len(dinners):
                 dinners[day_idx] = complex_picks[slot]
+
+    # Classify any selected dinner/breakfast recipes that are missing quick_steps.
+    # These are the exact recipes going into the plan, so we do it synchronously now.
+    from app.classifier import classify_recipe
+    import anthropic as _anthropic
+    _client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    for recipe in set(dinners + breakfasts):
+        if recipe and not recipe.quick_steps:
+            try:
+                classify_recipe(db, recipe, client=_client)
+            except Exception:
+                pass  # best-effort; PDF will show fallback text
 
     # Build day-by-day schedule
     days: list[dict] = []
