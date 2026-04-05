@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -51,24 +51,40 @@ def list_variants() -> dict[str, str]:
     return VARIANTS
 
 
+def _run_classify_background(db: Session) -> None:
+    """Classify a batch of recipes in the background (fire-and-forget)."""
+    try:
+        n = classify_unclassified(db, limit=30)
+        if n:
+            logger.info("Background classifier: classified %d recipe(s)", n)
+    except Exception as exc:
+        logger.warning("Background classification failed: %s", exc)
+    finally:
+        db.close()
+
+
 @router.post("/generate", response_model=PlanDetail)
 def generate(
+    background_tasks: BackgroundTasks,
     variant: str = Query(..., description="One of: " + ", ".join(VARIANTS)),
     week_label: Optional[str] = Query(None, description="e.g. 2024-W15 (defaults to current week)"),
-    classify_first: bool = Query(True, description="Run classifier on unclassified recipes before planning"),
     db: Session = Depends(get_db),
 ):
-    """Classify recipes (if needed), generate a 7-day meal plan, and return it."""
+    """Generate a 7-day meal plan. Queues classification of unclassified recipes in the background."""
     if variant not in VARIANTS:
         raise HTTPException(400, f"Unknown variant. Choose from: {list(VARIANTS)}")
 
-    if classify_first:
-        try:
-            n = classify_unclassified(db, limit=200)
-            if n:
-                logger.info("Classified %d recipe(s) before planning", n)
-        except Exception as exc:
-            logger.warning("Classification step failed (continuing): %s", exc)
+    # Classify a small synchronous batch (fast, ~5 recipes) to seed the pool,
+    # then queue the rest as a background task so the request doesn't timeout.
+    try:
+        classify_unclassified(db, limit=5)
+    except Exception as exc:
+        logger.warning("Sync classification failed (continuing): %s", exc)
+
+    # Queue remaining recipes for background classification
+    from app.db.session import SessionLocal
+    bg_db = SessionLocal()
+    background_tasks.add_task(_run_classify_background, bg_db)
 
     try:
         plan = generate_plan(db, variant=variant, week_label=week_label)
