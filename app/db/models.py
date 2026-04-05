@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import String, Text, DateTime, Float, Integer, Boolean, ForeignKey
+from sqlalchemy import String, Text, DateTime, Float, Integer, Boolean, ForeignKey, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -58,6 +58,11 @@ class RawRecipe(Base):
     content_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
     has_transcript: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
+    # Claude classification (set by classifier.py)
+    difficulty: Mapped[str | None] = mapped_column(String(16), nullable=True)   # easy|medium|complex
+    cuisine: Mapped[str | None] = mapped_column(String(64), nullable=True)      # e.g. Asian, Italian
+    meal_type: Mapped[str | None] = mapped_column(String(16), nullable=True)    # breakfast|lunch|dinner|any
+
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
 
@@ -83,6 +88,23 @@ class Ingredient(Base):
     )
 
     extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class MealPlan(Base):
+    """A generated 7-day meal plan with PDF."""
+
+    __tablename__ = "meal_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    variant: Mapped[str] = mapped_column(String(32))          # weeknight_easy|family_variety|asian_kitchen|weekend_cook
+    week_label: Mapped[str] = mapped_column(String(16))       # e.g. "2024-W15"
+    plan_json: Mapped[str] = mapped_column(Text)              # JSON: 7-day schedule
+    shopping_json: Mapped[str] = mapped_column(Text)          # JSON: aggregated shopping list
+    pdf_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )

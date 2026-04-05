@@ -1,50 +1,330 @@
 {% extends "base.html" %}
-{% block title %}Meal Planner — MealEngine{% endblock %}
+{% block title %}Meal Planner · MealEngine{% endblock %}
 {% block nav_meal_plan %}active{% endblock %}
 
+{% block extra_head %}
+<style>
+  .variant-card {
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+    border-radius: .5rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .variant-card:hover  { border-color: #86b7fe; box-shadow: 0 2px 8px rgba(13,110,253,.15); }
+  .variant-card.active { border-color: #0d6efd; box-shadow: 0 2px 8px rgba(13,110,253,.25); }
+  .variant-card.active .variant-check { opacity: 1; }
+  .variant-check { opacity: 0; transition: opacity .15s; }
+
+  .meal-row { font-size: .8rem; padding: .3rem .5rem; border-radius: .3rem; margin-bottom: .25rem; }
+  .meal-row.bf  { background: #fffbeb; }
+  .meal-row.ln  { background: #f0fdf4; }
+  .meal-row.dn  { background: #eff6ff; }
+  .slot-label   { font-size: .65rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .05em; color: #9ca3af; }
+  .meal-title   { font-weight: 600; color: #111827; line-height: 1.25; }
+  .meal-note    { font-size: .7rem; color: #6b7280; font-style: italic; }
+
+  .diff-dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+              vertical-align:middle; margin-right:3px; }
+
+  .shop-item { display:flex; justify-content:space-between; padding:.3rem 0;
+               border-bottom:1px solid #f3f4f6; font-size:.85rem; }
+  .shop-item:last-child { border-bottom:none; }
+  .shop-name   { font-weight:600; }
+  .shop-amount { color:#6b7280; font-size:.8rem; }
+
+  .spinner-overlay {
+    display:none; position:fixed; inset:0; background:rgba(255,255,255,.75);
+    z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:1rem;
+  }
+  .spinner-overlay.show { display:flex; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+  <div class="text-muted">Classifying recipes &amp; building your plan…</div>
+</div>
 
-    <div class="mb-4">
-      <h1 class="h3 fw-bold mb-1"><i class="bi bi-basket2-fill me-2 text-primary"></i>Meal Planner</h1>
-      <p class="text-muted mb-0">Enter the ingredients you have on hand and find recipes you can make.</p>
-    </div>
+<div class="row g-4">
 
-    <!-- Input card -->
+  <!-- ── Left: generator controls ── -->
+  <div class="col-lg-4">
+
     <div class="card shadow-sm mb-4">
-      <div class="card-body p-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">
+          <i class="bi bi-calendar3 me-2 text-primary"></i>Generate Plan
+        </h5>
 
-        <label class="form-label fw-semibold">Your ingredients</label>
-        <div class="tag-input-wrapper mb-1" id="tagWrapper">
-          <input type="text" id="tagInput" placeholder="Type an ingredient and press Enter…"
-                 autocomplete="off" autocorrect="off" spellcheck="false">
-        </div>
-        <div class="form-text mb-3">Press <kbd>Enter</kbd> or <kbd>,</kbd> to add · click a tag to remove</div>
-
-        <label class="form-label fw-semibold d-flex justify-content-between">
-          <span>Minimum coverage</span>
-          <span class="text-primary fw-bold" id="coverageLabel">50%</span>
-        </label>
-        <input type="range" class="form-range mb-1" id="coverageSlider"
-               min="0" max="100" step="5" value="50">
-        <div class="form-text mb-4">
-          Only show recipes where at least this fraction of ingredients are in your pantry.
+        <label class="form-label fw-semibold">Choose a variant</label>
+        <div class="row g-2 mb-3" id="variantPicker">
+          <!-- filled by JS -->
         </div>
 
-        <button class="btn btn-primary btn-lg w-100" id="findBtn" disabled>
-          <i class="bi bi-search me-2"></i>Find Recipes
+        <label class="form-label fw-semibold mt-2">Week</label>
+        <input type="week" class="form-control mb-3" id="weekInput">
+
+        <button class="btn btn-primary w-100" id="generateBtn" onclick="generate()">
+          <i class="bi bi-magic me-1"></i> Generate Plan
         </button>
       </div>
     </div>
 
-    <!-- Results area -->
-    <div id="resultsArea"></div>
+    <!-- Past plans -->
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold py-2">
+        <i class="bi bi-clock-history me-1"></i> Recent Plans
+      </div>
+      <div class="list-group list-group-flush" id="historyList">
+        <div class="list-group-item text-muted text-center py-3" style="font-size:.85rem;">
+          No plans yet
+        </div>
+      </div>
+    </div>
 
   </div>
-</div>
+
+  <!-- ── Right: plan view ── -->
+  <div class="col-lg-8" id="planPanel">
+
+    <!-- Empty state -->
+    <div class="text-center py-5 text-muted" id="emptyState">
+      <i class="bi bi-calendar-week display-4 d-block mb-3 opacity-25"></i>
+      <h5>No plan loaded</h5>
+      <p class="mb-0">Choose a variant and click Generate Plan.</p>
+    </div>
+
+    <!-- Plan content (hidden until loaded) -->
+    <div id="planContent" class="d-none">
+
+      <!-- Plan header -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="mb-0 fw-bold" id="planTitle"></h4>
+          <small class="text-muted" id="planMeta"></small>
+        </div>
+        <button class="btn btn-outline-dark btn-sm" id="downloadBtn" onclick="downloadPDF()">
+          <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+        </button>
+      </div>
+
+      <!-- Legend -->
+      <div class="d-flex gap-3 mb-3" style="font-size:.78rem; color:#6b7280;">
+        <span>Difficulty:</span>
+        <span><span class="diff-dot" style="background:#28a745"></span>Easy</span>
+        <span><span class="diff-dot" style="background:#fd7e14"></span>Medium</span>
+        <span><span class="diff-dot" style="background:#dc3545"></span>Complex</span>
+        <span class="ms-auto fst-italic">Lunch = previous night's leftovers</span>
+      </div>
+
+      <!-- Day grid -->
+      <div class="row g-2 flex-nowrap overflow-auto mb-4" id="dayGrid"></div>
+
+      <!-- Shopping list -->
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold py-2 d-flex justify-content-between">
+          <span><i class="bi bi-cart3 me-1"></i> Shopping List</span>
+          <small class="text-muted" id="shopCount"></small>
+        </div>
+        <div class="card-body">
+          <div class="row g-0" id="shopGrid"></div>
+        </div>
+      </div>
+
+    </div><!-- /planContent -->
+  </div>
+
+</div><!-- /row -->
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="/static/meal_plan.js"></script>
+<script>
+const DIFF_COLORS = { easy:"#28a745", medium:"#fd7e14", complex:"#dc3545" };
+let currentPlanId = null;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadVariants();
+  setDefaultWeek();
+  loadHistory();
+});
+
+async function loadVariants() {
+  const res = await fetch("/plans/variants");
+  const variants = await res.json();
+  const picker = document.getElementById("variantPicker");
+  picker.innerHTML = "";
+  const icons = {
+    weeknight_easy:"bi-lightning-charge", family_variety:"bi-people",
+    asian_kitchen:"bi-egg-fried", weekend_cook:"bi-fire",
+  };
+  const descs = {
+    weeknight_easy:"Quick &amp; easy dinners for busy nights",
+    family_variety:"Mixed cuisines, something for everyone",
+    asian_kitchen:"Asian-inspired recipes all week",
+    weekend_cook:"Simple weekdays, adventurous weekends",
+  };
+  let first = true;
+  for (const [key, label] of Object.entries(variants)) {
+    const col = document.createElement("div");
+    col.className = "col-6";
+    col.innerHTML = `
+      <div class="variant-card p-2 h-100 ${first?"active":""}" data-variant="${key}"
+           onclick="selectVariant(this)">
+        <div class="d-flex justify-content-between align-items-start">
+          <i class="bi ${icons[key]||"bi-calendar"} text-primary fs-5"></i>
+          <i class="bi bi-check-circle-fill text-primary variant-check"></i>
+        </div>
+        <div class="fw-bold mt-1" style="font-size:.85rem;">${label}</div>
+        <div style="font-size:.72rem;color:#6b7280;">${descs[key]||""}</div>
+      </div>`;
+    picker.appendChild(col);
+    first = false;
+  }
+}
+
+function selectVariant(el) {
+  document.querySelectorAll(".variant-card").forEach(c => c.classList.remove("active"));
+  el.classList.add("active");
+}
+
+function setDefaultWeek() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const dayOfYear = Math.floor((today - jan1) / 86400000) + 1;
+  const week = Math.ceil((dayOfYear + jan1.getDay()) / 7);
+  document.getElementById("weekInput").value =
+    `${year}-W${String(week).padStart(2,"0")}`;
+}
+
+async function generate() {
+  const variant = document.querySelector(".variant-card.active")?.dataset.variant;
+  if (!variant) return;
+  const weekVal = document.getElementById("weekInput").value;
+  showSpinner(true);
+  try {
+    const params = new URLSearchParams({ variant });
+    if (weekVal) params.append("week_label", weekVal);
+    const res = await fetch(`/plans/generate?${params}`, { method:"POST" });
+    if (!res.ok) throw new Error(await res.text());
+    const plan = await res.json();
+    renderPlan(plan);
+    loadHistory();
+  } catch(e) {
+    alert("Error: " + e.message);
+  } finally {
+    showSpinner(false);
+  }
+}
+
+function renderPlan(plan) {
+  currentPlanId = plan.id;
+  document.getElementById("emptyState").classList.add("d-none");
+  document.getElementById("planContent").classList.remove("d-none");
+  document.getElementById("planTitle").textContent = `${plan.variant_label} — ${plan.week_label}`;
+  document.getElementById("planMeta").textContent =
+    `${plan.days.length} days · ${plan.shopping.length} ingredients`;
+
+  const grid = document.getElementById("dayGrid");
+  grid.innerHTML = "";
+  for (const day of plan.days) {
+    const col = document.createElement("div");
+    col.style.cssText = "min-width:130px; max-width:160px;";
+    col.innerHTML = `
+      <div class="card h-100">
+        <div class="card-header text-center py-1 px-1 fw-bold"
+             style="font-size:.7rem;background:#374151;color:#f9fafb;letter-spacing:.06em;">
+          ${day.day.slice(0,3).toUpperCase()}
+        </div>
+        <div class="card-body p-1">
+          ${mealRow("bf","BF",day.breakfast)}
+          ${mealRow("ln","LU",day.lunch)}
+          ${mealRow("dn","DN",day.dinner)}
+        </div>
+      </div>`;
+    grid.appendChild(col);
+  }
+
+  const shopGrid = document.getElementById("shopGrid");
+  shopGrid.innerHTML = "";
+  const half = Math.ceil(plan.shopping.length / 2);
+  for (let c = 0; c < 2; c++) {
+    const div = document.createElement("div");
+    div.className = "col-6";
+    div.innerHTML = plan.shopping.slice(c*half, (c+1)*half).map(it =>
+      `<div class="shop-item">
+         <span class="shop-name">${esc(it.ingredient)}</span>
+         <span class="shop-amount">${esc(it.amounts)}</span>
+       </div>`).join("");
+    shopGrid.appendChild(div);
+  }
+  document.getElementById("shopCount").textContent = `${plan.shopping.length} items`;
+}
+
+function mealRow(cls, lbl, meal) {
+  const dot = meal.difficulty
+    ? `<span class="diff-dot" style="background:${DIFF_COLORS[meal.difficulty]||"#9ca3af"}"></span>` : "";
+  const note = meal.note ? `<div class="meal-note">${esc(meal.note)}</div>` : "";
+  const cuisine = meal.cuisine ? `<div class="meal-note">${esc(meal.cuisine)}</div>` : "";
+  return `<div class="meal-row ${cls}">
+    <div class="slot-label">${lbl}</div>
+    <div class="meal-title">${dot}${esc(meal.title||"")}</div>${note}${cuisine}
+  </div>`;
+}
+
+async function downloadPDF() {
+  if (!currentPlanId) return;
+  const btn = document.getElementById("downloadBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating…';
+  try {
+    const res = await fetch(`/plans/${currentPlanId}/pdf`);
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url;
+    a.download = `meal-plan-${currentPlanId}.pdf`; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert("PDF error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i> Download PDF';
+  }
+}
+
+async function loadHistory() {
+  const res = await fetch("/plans?limit=10");
+  const plans = await res.json();
+  const list = document.getElementById("historyList");
+  if (!plans.length) return;
+  list.innerHTML = plans.map(p => `
+    <a href="#" class="list-group-item list-group-item-action py-2 px-3"
+       onclick="loadPlan(${p.id}); return false;">
+      <div class="d-flex justify-content-between">
+        <span class="fw-semibold" style="font-size:.85rem;">${esc(p.variant_label)}</span>
+        ${p.has_pdf ? '<i class="bi bi-file-earmark-pdf text-danger"></i>' : ""}
+      </div>
+      <small class="text-muted">${esc(p.week_label)}</small>
+    </a>`).join("");
+}
+
+async function loadPlan(id) {
+  const res = await fetch(`/plans/${id}`);
+  if (!res.ok) return;
+  renderPlan(await res.json());
+}
+
+function showSpinner(on) {
+  document.getElementById("spinner").classList.toggle("show", on);
+  document.getElementById("generateBtn").disabled = on;
+}
+function esc(s) {
+  return String(s??"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+</script>
 {% endblock %}
