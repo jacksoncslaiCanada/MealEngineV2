@@ -26,7 +26,8 @@ def upgrade() -> None:
     inspector = sa_inspect(bind)
 
     if "meal_plans" in inspector.get_table_names():
-        op.drop_table("meal_plans")
+        # CASCADE drops the meal_plan_recipes FK constraint too
+        op.execute("DROP TABLE meal_plans CASCADE")
 
     op.create_table(
         "meal_plans",
