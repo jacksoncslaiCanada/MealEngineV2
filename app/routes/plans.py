@@ -153,6 +153,52 @@ def get_plan(plan_id: int, db: Session = Depends(get_db)):
     return _to_detail(plan, db)
 
 
+@router.post("/{plan_id}/classify")
+def classify_plan_recipes(plan_id: int, db: Session = Depends(get_db)):
+    """Force-classify every recipe in this plan and return results."""
+    plan = db.get(MealPlan, plan_id)
+    if not plan:
+        raise HTTPException(404, "Plan not found")
+
+    days = json.loads(plan.plan_json)
+    recipe_ids = []
+    for day in days:
+        for slot in ("breakfast", "dinner"):
+            rid = day.get(slot, {}).get("recipe_id")
+            if rid:
+                recipe_ids.append(rid)
+
+    if not recipe_ids:
+        return {"classified": 0, "errors": [], "detail": "No recipe_ids found in plan"}
+
+    recipes = db.query(RawRecipe).filter(RawRecipe.id.in_(set(recipe_ids))).all()
+
+    import anthropic as _anthropic
+    from app.classifier import classify_recipe
+    from app.config import settings
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    results = {"classified": 0, "skipped": 0, "errors": []}
+
+    for recipe in recipes:
+        try:
+            before = recipe.quick_steps
+            # Force re-classify if quick_steps missing
+            if not recipe.quick_steps:
+                recipe.difficulty = None  # reset so classifier doesn't short-circuit
+                db.commit()
+            classify_recipe(db, recipe, client=client)
+            if recipe.quick_steps:
+                results["classified"] += 1
+            else:
+                results["skipped"] += 1
+        except Exception as exc:
+            results["errors"].append({"recipe_id": recipe.id, "error": str(exc)})
+            logger.exception("classify_plan_recipes: recipe %d failed", recipe.id)
+
+    return results
+
+
 @router.get("/{plan_id}/pdf")
 def download_pdf(plan_id: int, db: Session = Depends(get_db)):
     """Return PDF, regenerating it so quick_steps are always current."""
