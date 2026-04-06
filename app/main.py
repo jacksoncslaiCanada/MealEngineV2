@@ -36,6 +36,17 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/health/env", tags=["meta"])
+def health_env() -> dict:
+    """Show which environment variables are set (values masked)."""
+    import os
+    keys = ["ANTHROPIC_API_KEY", "DATABASE_URL", "YOUTUBE_API_KEY"]
+    return {
+        k: ("set, length=" + str(len(os.environ[k]))) if k in os.environ else "NOT SET"
+        for k in keys
+    }
+
+
 @app.get("/health/pdf", tags=["meta"])
 def health_pdf() -> dict:
     """Minimal WeasyPrint smoke test — confirms system libraries are present."""
