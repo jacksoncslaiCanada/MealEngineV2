@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.classifier import classify_unclassified
-from app.db.models import MealPlan
+from app.db.models import MealPlan, RawRecipe
 from app.db.session import get_db
 from app.pdf_renderer import render_pdf
 from app.planner import VARIANTS, generate_plan
@@ -42,17 +42,60 @@ class PlanDetail(PlanSummary):
 
 
 # ---------------------------------------------------------------------------
+# Live quick_steps enrichment
+# ---------------------------------------------------------------------------
+
+def _enrich_days(days: list[dict], db: Session) -> list[dict]:
+    """Replace quick_steps in each day entry with live values from the DB.
+
+    This decouples quick_steps from the cached plan_json so that as the
+    background classifier populates recipes over time, any plan view
+    automatically shows the latest steps without regenerating the plan.
+    """
+    # Collect all recipe_ids referenced in the plan
+    recipe_ids = set()
+    for day in days:
+        for slot in ("breakfast", "dinner"):
+            rid = day.get(slot, {}).get("recipe_id")
+            if rid:
+                recipe_ids.add(rid)
+
+    if not recipe_ids:
+        return days
+
+    # Fetch quick_steps from DB for all referenced recipes in one query
+    rows = (
+        db.query(RawRecipe.id, RawRecipe.quick_steps)
+        .filter(RawRecipe.id.in_(recipe_ids))
+        .all()
+    )
+    steps_map: dict[int, list[str]] = {}
+    for rid, qs in rows:
+        steps_map[rid] = json.loads(qs) if qs else []
+
+    # Inject into day entries (non-destructive to other fields)
+    enriched = []
+    for day in days:
+        day = dict(day)
+        for slot in ("breakfast", "dinner"):
+            if slot in day and day[slot].get("recipe_id"):
+                day[slot] = dict(day[slot])
+                day[slot]["quick_steps"] = steps_map.get(day[slot]["recipe_id"], [])
+        enriched.append(day)
+
+    return enriched
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
 @router.get("/variants")
 def list_variants() -> dict[str, str]:
-    """Return all available plan variants."""
     return VARIANTS
 
 
 def _run_classify_background(db: Session) -> None:
-    """Classify a batch of recipes in the background (fire-and-forget)."""
     try:
         n = classify_unclassified(db, limit=30)
         if n:
@@ -67,21 +110,17 @@ def _run_classify_background(db: Session) -> None:
 def generate(
     background_tasks: BackgroundTasks,
     variant: str = Query(..., description="One of: " + ", ".join(VARIANTS)),
-    week_label: Optional[str] = Query(None, description="e.g. 2024-W15 (defaults to current week)"),
+    week_label: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Generate a 7-day meal plan. Queues classification of unclassified recipes in the background."""
     if variant not in VARIANTS:
         raise HTTPException(400, f"Unknown variant. Choose from: {list(VARIANTS)}")
 
-    # Classify a small synchronous batch (fast, ~5 recipes) to seed the pool,
-    # then queue the rest as a background task so the request doesn't timeout.
     try:
         classify_unclassified(db, limit=5)
     except Exception as exc:
         logger.warning("Sync classification failed (continuing): %s", exc)
 
-    # Queue remaining recipes for background classification
     from app.db.session import SessionLocal
     bg_db = SessionLocal()
     background_tasks.add_task(_run_classify_background, bg_db)
@@ -92,15 +131,11 @@ def generate(
         logger.exception("Plan generation failed")
         raise HTTPException(500, str(exc)) from exc
 
-    return _to_detail(plan)
+    return _to_detail(plan, db)
 
 
 @router.get("", response_model=list[PlanSummary])
-def list_plans(
-    limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
-):
-    """List recent meal plans, newest first."""
+def list_plans(limit: int = Query(20, ge=1, le=100), db: Session = Depends(get_db)):
     plans = (
         db.query(MealPlan)
         .order_by(MealPlan.created_at.desc())
@@ -115,24 +150,25 @@ def get_plan(plan_id: int, db: Session = Depends(get_db)):
     plan = db.get(MealPlan, plan_id)
     if not plan:
         raise HTTPException(404, "Plan not found")
-    return _to_detail(plan)
+    return _to_detail(plan, db)
 
 
 @router.get("/{plan_id}/pdf")
 def download_pdf(plan_id: int, db: Session = Depends(get_db)):
-    """Return the PDF for this plan, generating it on first request."""
+    """Return PDF, regenerating it so quick_steps are always current."""
     plan = db.get(MealPlan, plan_id)
     if not plan:
         raise HTTPException(404, "Plan not found")
 
-    if not plan.pdf_data:
-        try:
-            pdf_bytes = render_pdf(plan)
-            plan.pdf_data = pdf_bytes
-            db.commit()
-        except Exception as exc:
-            logger.exception("PDF render failed for plan %d", plan_id)
-            raise HTTPException(500, f"PDF generation failed: {exc}") from exc
+    # Always re-render so the PDF picks up the latest quick_steps from DB
+    try:
+        days = _enrich_days(json.loads(plan.plan_json), db)
+        pdf_bytes = render_pdf(plan, days=days)
+        plan.pdf_data = pdf_bytes
+        db.commit()
+    except Exception as exc:
+        logger.exception("PDF render failed for plan %d", plan_id)
+        raise HTTPException(500, f"PDF generation failed: {exc}") from exc
 
     filename = f"meal-plan-{plan.week_label}-{plan.variant}.pdf"
     return Response(
@@ -147,7 +183,6 @@ def download_pdf(plan_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 def _to_summary(plan: MealPlan) -> PlanSummary:
-    from app.planner import VARIANTS
     return PlanSummary(
         id=plan.id,
         variant=plan.variant,
@@ -158,10 +193,11 @@ def _to_summary(plan: MealPlan) -> PlanSummary:
     )
 
 
-def _to_detail(plan: MealPlan) -> PlanDetail:
+def _to_detail(plan: MealPlan, db: Session) -> PlanDetail:
     s = _to_summary(plan)
+    days = _enrich_days(json.loads(plan.plan_json), db)
     return PlanDetail(
         **s.model_dump(),
-        days=json.loads(plan.plan_json),
+        days=days,
         shopping=json.loads(plan.shopping_json),
     )
