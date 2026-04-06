@@ -19,11 +19,16 @@ DIFFICULTY_COLORS = {
 }
 
 
-def render_pdf(plan: MealPlan) -> bytes:
-    """Render a MealPlan to PDF bytes."""
+def render_pdf(plan: MealPlan, *, days: list[dict] | None = None) -> bytes:
+    """Render a MealPlan to PDF bytes.
+
+    Pass ``days`` to use pre-enriched day data (with live quick_steps);
+    otherwise falls back to what is stored in plan.plan_json.
+    """
     from app.planner import VARIANTS
 
-    days: list[dict] = json.loads(plan.plan_json)
+    if days is None:
+        days = json.loads(plan.plan_json)
     shopping: list[dict] = json.loads(plan.shopping_json)
     variant_label = VARIANTS.get(plan.variant, plan.variant)
 
