@@ -41,10 +41,15 @@ def health_env() -> dict:
     """Show which environment variables are set (values masked)."""
     import os
     keys = ["ANTHROPIC_API_KEY", "DATABASE_URL", "YOUTUBE_API_KEY"]
-    return {
+    result = {
         k: ("set, length=" + str(len(os.environ[k]))) if k in os.environ else "NOT SET"
         for k in keys
     }
+    # Also show any key whose name contains ANTHROPIC (catches typos/casing)
+    result["_anthropic_scan"] = [
+        k for k in os.environ if "anthropic" in k.lower()
+    ]
+    return result
 
 
 @app.get("/health/pdf", tags=["meta"])
