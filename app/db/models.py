@@ -63,6 +63,10 @@ class RawRecipe(Base):
     cuisine: Mapped[str | None] = mapped_column(String(64), nullable=True)      # e.g. Asian, Italian
     meal_type: Mapped[str | None] = mapped_column(String(16), nullable=True)    # breakfast|lunch|dinner|any
     quick_steps: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON: 3-step method
+    prep_time: Mapped[int | None] = mapped_column(Integer, nullable=True)       # total minutes
+    dietary_tags: Mapped[str | None] = mapped_column(Text, nullable=True)       # JSON: list of tags
+    spice_level: Mapped[str | None] = mapped_column(String(16), nullable=True)  # mild|medium|hot
+    servings: Mapped[int | None] = mapped_column(Integer, nullable=True)        # number of servings
 
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
