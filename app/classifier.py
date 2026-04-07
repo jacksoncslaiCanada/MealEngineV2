@@ -1,12 +1,16 @@
 """Recipe classifier.
 
 Uses Claude tool-use to label each RawRecipe with:
-  - difficulty  : "easy" | "medium" | "complex"
-  - cuisine     : e.g. "Asian", "Italian", "American", "Mexican", ...
-  - meal_type   : "breakfast" | "lunch" | "dinner" | "any"
-  - quick_steps : JSON list of 3 short cooking-method bullet strings
+  - difficulty   : "easy" | "medium" | "complex"
+  - cuisine      : e.g. "Asian", "Italian", "American", "Mexican", ...
+  - meal_type    : "breakfast" | "lunch" | "dinner" | "any"
+  - quick_steps  : JSON list of 3 short cooking-method bullet strings
+  - prep_time    : total minutes (int)
+  - dietary_tags : JSON list from fixed set (gluten-free, dairy-free, vegetarian, vegan, nut-free)
+  - spice_level  : "mild" | "medium" | "hot"
+  - servings     : number of servings (int)
 
-Classification is skipped for recipes that already have all four fields set.
+Classification is skipped for recipes that already have all eight fields set.
 """
 from __future__ import annotations
 
@@ -30,7 +34,8 @@ _CLASSIFY_TOOL: anthropic.types.ToolParam = {
     "name": "classify_recipe",
     "description": (
         "Classify a recipe by difficulty, cuisine, meal type, "
-        "and summarise the cooking method in 3 short steps."
+        "and summarise the cooking method in 3 short steps. "
+        "Also extract prep time, dietary tags, spice level, and servings."
     ),
     "input_schema": {
         "type": "object",
@@ -73,8 +78,44 @@ _CLASSIFY_TOOL: anthropic.types.ToolParam = {
                     '"Add sauce, reduce 2 min."]'
                 ),
             },
+            "prep_time": {
+                "type": "integer",
+                "description": (
+                    "Total time in minutes from start to serving, including "
+                    "any marinating or resting time. Estimate if not stated."
+                ),
+            },
+            "dietary_tags": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["gluten-free", "dairy-free", "vegetarian", "vegan", "nut-free"],
+                },
+                "description": (
+                    "Dietary labels that genuinely apply to this recipe. "
+                    "Only include tags you are confident about. May be empty."
+                ),
+            },
+            "spice_level": {
+                "type": "string",
+                "enum": ["mild", "medium", "hot"],
+                "description": (
+                    "mild = no heat; medium = some chilli/pepper warmth; "
+                    "hot = significant heat from chilli or spices."
+                ),
+            },
+            "servings": {
+                "type": "integer",
+                "description": (
+                    "Number of people this recipe serves as written. "
+                    "Estimate 2 if not specified."
+                ),
+            },
         },
-        "required": ["difficulty", "cuisine", "meal_type", "quick_steps"],
+        "required": [
+            "difficulty", "cuisine", "meal_type", "quick_steps",
+            "prep_time", "dietary_tags", "spice_level", "servings",
+        ],
     },
 }
 
@@ -95,7 +136,11 @@ def classify_recipe(
     client: Optional[anthropic.Anthropic] = None,
 ) -> RawRecipe:
     """Classify a single recipe and persist the labels. Returns the recipe."""
-    if recipe.difficulty and recipe.cuisine and recipe.meal_type and recipe.quick_steps:
+    if (
+        recipe.difficulty and recipe.cuisine and recipe.meal_type and recipe.quick_steps
+        and recipe.prep_time is not None and recipe.dietary_tags is not None
+        and recipe.spice_level and recipe.servings is not None
+    ):
         return recipe  # already done
 
     if client is None:
@@ -129,6 +174,11 @@ def classify_recipe(
 
     steps = result.get("quick_steps") or []
     recipe.quick_steps = json.dumps(steps[:3]) if steps else None
+
+    recipe.prep_time = result.get("prep_time")
+    recipe.dietary_tags = json.dumps(result.get("dietary_tags") or [])
+    recipe.spice_level = result.get("spice_level")
+    recipe.servings = result.get("servings")
 
     try:
         db.commit()
@@ -165,6 +215,10 @@ def classify_unclassified(
                 RawRecipe.cuisine.is_(None),
                 RawRecipe.meal_type.is_(None),
                 RawRecipe.quick_steps.is_(None),
+                RawRecipe.prep_time.is_(None),
+                RawRecipe.dietary_tags.is_(None),
+                RawRecipe.spice_level.is_(None),
+                RawRecipe.servings.is_(None),
             )
         )
         .limit(limit)
