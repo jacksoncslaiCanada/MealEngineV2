@@ -48,13 +48,12 @@ class PlanDetail(PlanSummary):
 # ---------------------------------------------------------------------------
 
 def _enrich_days(days: list[dict], db: Session) -> list[dict]:
-    """Replace quick_steps in each day entry with live values from the DB.
+    """Replace classifier fields in each day entry with live values from the DB.
 
-    This decouples quick_steps from the cached plan_json so that as the
-    background classifier populates recipes over time, any plan view
-    automatically shows the latest steps without regenerating the plan.
+    This decouples all Phase A metadata from the cached plan_json so that as
+    the background classifier populates recipes, any plan view picks up the
+    latest data without regenerating the plan.
     """
-    # Collect all recipe_ids referenced in the plan
     recipe_ids = set()
     for day in days:
         for slot in ("breakfast", "dinner"):
@@ -65,24 +64,38 @@ def _enrich_days(days: list[dict], db: Session) -> list[dict]:
     if not recipe_ids:
         return days
 
-    # Fetch quick_steps from DB for all referenced recipes in one query
     rows = (
-        db.query(RawRecipe.id, RawRecipe.quick_steps)
+        db.query(
+            RawRecipe.id,
+            RawRecipe.quick_steps,
+            RawRecipe.prep_time,
+            RawRecipe.dietary_tags,
+            RawRecipe.spice_level,
+            RawRecipe.servings,
+            RawRecipe.url,
+        )
         .filter(RawRecipe.id.in_(recipe_ids))
         .all()
     )
-    steps_map: dict[int, list[str]] = {}
-    for rid, qs in rows:
-        steps_map[rid] = json.loads(qs) if qs else []
+    recipe_map: dict[int, dict] = {}
+    for rid, qs, prep_time, dietary_tags, spice_level, servings, url in rows:
+        recipe_map[rid] = {
+            "quick_steps": json.loads(qs) if qs else [],
+            "prep_time": prep_time,
+            "dietary_tags": json.loads(dietary_tags) if dietary_tags else [],
+            "spice_level": spice_level or "mild",
+            "servings": servings,
+            "url": url,
+        }
 
-    # Inject into day entries (non-destructive to other fields)
     enriched = []
     for day in days:
         day = dict(day)
         for slot in ("breakfast", "dinner"):
             if slot in day and day[slot].get("recipe_id"):
                 day[slot] = dict(day[slot])
-                day[slot]["quick_steps"] = steps_map.get(day[slot]["recipe_id"], [])
+                data = recipe_map.get(day[slot]["recipe_id"], {})
+                day[slot].update(data)
         enriched.append(day)
 
     return enriched

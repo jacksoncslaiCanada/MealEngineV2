@@ -51,9 +51,7 @@
     margin-top: 2mm;
     color: #f9fafb;
   }
-  .header .meta {
-    text-align: right;
-  }
+  .header .meta { text-align: right; }
   .header .week {
     font-size: 13pt;
     font-weight: 700;
@@ -78,7 +76,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 3mm;
-    margin-bottom: 8mm;
+    margin-bottom: 6mm;
   }
 
   .day-card {
@@ -139,6 +137,31 @@
     margin-top: 0.5mm;
   }
 
+  /* Prep time + dietary tags row */
+  .meal-sub {
+    display: flex;
+    align-items: center;
+    gap: 1.5mm;
+    flex-wrap: wrap;
+    margin-top: 0.8mm;
+  }
+  .prep-badge {
+    font-size: 6pt;
+    color: #4b5563;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .dtag {
+    font-size: 5.5pt;
+    font-weight: 700;
+    color: #065f46;
+    background: #d1fae5;
+    padding: 0.3mm 1.2mm;
+    border-radius: 2px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
   /* breakfast slot */
   .slot-breakfast { background: #fffbeb; }
   /* lunch slot */
@@ -166,7 +189,7 @@
   /* ── Page break ───────────────────────────────────────────── */
   .page-break { page-break-before: always; }
 
-  /* ── Quick methods ────────────────────────────────────────── */
+  /* ── Cooking methods ──────────────────────────────────────── */
   .methods-header {
     background: #1f2937;
     color: #f9fafb;
@@ -181,19 +204,28 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 4mm;
-    margin-bottom: 0;
   }
   .method-card {
     border: 1px solid #e5e7eb;
     border-radius: 4px;
     padding: 3.5mm 4mm;
+    display: flex;
+    flex-direction: column;
+  }
+  .method-slot-label {
+    font-size: 6pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    margin-bottom: 0.5mm;
   }
   .method-day {
     font-size: 7pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #9ca3af;
+    color: #6b7280;
     margin-bottom: 1mm;
   }
   .method-title {
@@ -205,9 +237,10 @@
   }
   .method-meta {
     display: flex;
-    gap: 3mm;
+    gap: 2.5mm;
     align-items: center;
-    margin-bottom: 2.5mm;
+    flex-wrap: wrap;
+    margin-bottom: 2mm;
   }
   .method-badge {
     font-size: 6.5pt;
@@ -215,15 +248,37 @@
     padding: 0.8mm 2mm;
     border-radius: 2px;
     color: #fff;
+    white-space: nowrap;
   }
   .method-cuisine {
     font-size: 7pt;
     color: #6b7280;
   }
+  .method-prep {
+    font-size: 7pt;
+    color: #4b5563;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .method-dietary {
+    display: flex;
+    gap: 1.5mm;
+    flex-wrap: wrap;
+    margin-bottom: 2mm;
+  }
+  .method-dtag {
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #065f46;
+    background: #d1fae5;
+    padding: 0.5mm 1.5mm;
+    border-radius: 2px;
+  }
   .method-steps {
     list-style: none;
     padding: 0;
     margin: 0;
+    flex: 1;
   }
   .method-steps li {
     font-size: 7.5pt;
@@ -246,6 +301,13 @@
   }
   .method-steps { counter-reset: step; }
   .no-steps { font-size: 7.5pt; color: #9ca3af; font-style: italic; }
+  .method-source {
+    margin-top: 2mm;
+    font-size: 6pt;
+    color: #9ca3af;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 1.5mm;
+  }
 
   /* ── Shopping list ────────────────────────────────────────── */
   .shopping-header {
@@ -266,17 +328,34 @@
     margin-top: 1mm;
   }
 
-  .shopping-columns {
+  /* Two-column layout for categories */
+  .shopping-body {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8mm;
+    gap: 0 10mm;
+    align-items: start;
+  }
+
+  .cat-section {
+    margin-bottom: 5mm;
+    break-inside: avoid;
+  }
+  .cat-header {
+    font-size: 7pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #1f2937;
+    border-bottom: 1.5px solid #1f2937;
+    padding-bottom: 1mm;
+    margin-bottom: 2mm;
   }
 
   .shopping-item {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 2mm 0;
+    padding: 1.5mm 0;
     border-bottom: 1px solid #f3f4f6;
   }
   .shopping-item:last-child { border-bottom: none; }
@@ -338,6 +417,16 @@
         {% endif %}
         {{ day.breakfast.title }}
       </div>
+      {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
+      {% set bf_prep = day.breakfast.get('prep_time') %}
+      {% if bf_prep or bf_tags %}
+      <div class="meal-sub">
+        {% if bf_prep %}<span class="prep-badge">{{ bf_prep }}m</span>{% endif %}
+        {% for tag in bf_tags[:2] %}
+        <span class="dtag">{{ dietary_abbr.get(tag, tag[:2].upper()) }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
     <!-- Lunch -->
@@ -362,6 +451,16 @@
       {% if day.dinner.get('cuisine') %}
       <div class="cuisine-tag">{{ day.dinner.cuisine }}</div>
       {% endif %}
+      {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
+      {% set dn_prep = day.dinner.get('prep_time') %}
+      {% if dn_prep or dn_tags %}
+      <div class="meal-sub">
+        {% if dn_prep %}<span class="prep-badge">{{ dn_prep }}m</span>{% endif %}
+        {% for tag in dn_tags[:2] %}
+        <span class="dtag">{{ dietary_abbr.get(tag, tag[:2].upper()) }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
   </div>
@@ -377,25 +476,81 @@
     {{ diff|capitalize }}
   </span>
   {% endfor %}
+  <span style="margin-left:4mm;">
+    <span class="dtag" style="font-size:6pt;">GF</span> Gluten-free
+  </span>
+  <span>
+    <span class="dtag" style="font-size:6pt;">V</span> Vegetarian
+  </span>
+  <span>
+    <span class="dtag" style="font-size:6pt;">VG</span> Vegan
+  </span>
   <span style="margin-left:auto; font-size:7pt;">
-    Lunch = previous night's leftovers (pack the night before)
+    Lunch = previous night's leftovers · pack the night before
   </span>
 </div>
 
 
-<!-- ═══════════════════════ PAGE 2: QUICK METHODS ══════════════════ -->
+<!-- ═══════════════════════ PAGE 2: COOKING METHODS ══════════════════ -->
 
 <div class="page-break"></div>
 
 <div class="methods-header">
-  <h2>Dinner Quick Methods</h2>
-  <div class="sub">3-step cooking guide for each dinner this week</div>
+  <h2>Cooking Methods</h2>
+  <div class="sub">3-step guide for breakfast and dinner — every day this week</div>
 </div>
 
 <div class="methods-grid">
   {% for day in days %}
+
+  {# ── Breakfast card ── #}
+  {% if day.breakfast.get('recipe_id') %}
+  <div class="method-card">
+    <div class="method-slot-label">Breakfast</div>
+    <div class="method-day">{{ day.day }}</div>
+    <div class="method-title">{{ day.breakfast.title }}</div>
+    <div class="method-meta">
+      {% if day.breakfast.get('difficulty') %}
+      <span class="method-badge"
+            style="background:{{ difficulty_colors.get(day.breakfast.difficulty, '#9ca3af') }}">
+        {{ day.breakfast.difficulty }}
+      </span>
+      {% endif %}
+      {% if day.breakfast.get('prep_time') %}
+      <span class="method-prep">{{ day.breakfast.prep_time }} min</span>
+      {% endif %}
+      {% if day.breakfast.get('cuisine') %}
+      <span class="method-cuisine">{{ day.breakfast.cuisine }}</span>
+      {% endif %}
+    </div>
+    {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
+    {% if bf_tags %}
+    <div class="method-dietary">
+      {% for tag in bf_tags %}
+      <span class="method-dtag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if day.breakfast.get('quick_steps') and day.breakfast.quick_steps|length > 0 %}
+    <ul class="method-steps">
+      {% for step in day.breakfast.quick_steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="no-steps">See source recipe for full instructions</div>
+    {% endif %}
+    {% set bf_src = short_source(day.breakfast.get('url')) %}
+    {% if bf_src %}
+    <div class="method-source">Source: {{ bf_src }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Dinner card ── #}
   {% if day.dinner.get('recipe_id') %}
   <div class="method-card">
+    <div class="method-slot-label">Dinner</div>
     <div class="method-day">{{ day.day }}</div>
     <div class="method-title">{{ day.dinner.title }}</div>
     <div class="method-meta">
@@ -405,10 +560,21 @@
         {{ day.dinner.difficulty }}
       </span>
       {% endif %}
+      {% if day.dinner.get('prep_time') %}
+      <span class="method-prep">{{ day.dinner.prep_time }} min</span>
+      {% endif %}
       {% if day.dinner.get('cuisine') %}
       <span class="method-cuisine">{{ day.dinner.cuisine }}</span>
       {% endif %}
     </div>
+    {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
+    {% if dn_tags %}
+    <div class="method-dietary">
+      {% for tag in dn_tags %}
+      <span class="method-dtag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
     {% if day.dinner.get('quick_steps') and day.dinner.quick_steps|length > 0 %}
     <ul class="method-steps">
       {% for step in day.dinner.quick_steps %}
@@ -418,8 +584,13 @@
     {% else %}
     <div class="no-steps">See source recipe for full instructions</div>
     {% endif %}
+    {% set dn_src = short_source(day.dinner.get('url')) %}
+    {% if dn_src %}
+    <div class="method-source">Source: {{ dn_src }}</div>
+    {% endif %}
   </div>
   {% endif %}
+
   {% endfor %}
 </div>
 
@@ -429,34 +600,47 @@
 
 <div class="shopping-header">
   <h2>Shopping List</h2>
-  <div class="sub">{{ week_label }} · {{ variant_label }} · {{ (shopping_col1|length + shopping_col2|length) }} items</div>
+  <div class="sub">{{ week_label }} · {{ variant_label }} · {{ shopping_total }} items</div>
 </div>
 
-<div class="shopping-columns">
+<div class="shopping-body">
+  {% set cat_list = shopping_by_cat.keys()|list %}
+  {% set half = ((cat_list|length + 1) // 2) %}
 
+  <!-- Left column: first half of categories -->
   <div>
-    {% for item in shopping_col1 %}
-    <div class="shopping-item">
-      <span class="ing-name">{{ item.ingredient }}</span>
-      <span class="ing-amount">{{ item.amounts }}</span>
+    {% for cat_name in cat_list[:half] %}
+    <div class="cat-section">
+      <div class="cat-header">{{ cat_name }}</div>
+      {% for item in shopping_by_cat[cat_name] %}
+      <div class="shopping-item">
+        <span class="ing-name">{{ item.ingredient }}</span>
+        <span class="ing-amount">{{ item.amounts }}</span>
+      </div>
+      {% endfor %}
     </div>
     {% endfor %}
   </div>
 
+  <!-- Right column: second half of categories -->
   <div>
-    {% for item in shopping_col2 %}
-    <div class="shopping-item">
-      <span class="ing-name">{{ item.ingredient }}</span>
-      <span class="ing-amount">{{ item.amounts }}</span>
+    {% for cat_name in cat_list[half:] %}
+    <div class="cat-section">
+      <div class="cat-header">{{ cat_name }}</div>
+      {% for item in shopping_by_cat[cat_name] %}
+      <div class="shopping-item">
+        <span class="ing-name">{{ item.ingredient }}</span>
+        <span class="ing-amount">{{ item.amounts }}</span>
+      </div>
+      {% endfor %}
     </div>
     {% endfor %}
   </div>
-
 </div>
 
 <div class="footer-note">
   Quantities are per recipe. Combine amounts for items appearing in multiple meals.
-  Always check your pantry before shopping.
+  Always check your pantry before shopping — staple items (salt, oil, spices) have been excluded from this list.
 </div>
 
 </body>
