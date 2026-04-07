@@ -275,7 +275,13 @@ def generate_plan(
                 "recipe_id": bf.id,
                 "title": _extract_title(bf.raw_content),
                 "difficulty": bf.difficulty or "easy",
+                "cuisine": bf.cuisine or "",
                 "url": bf.url,
+                "quick_steps": json.loads(bf.quick_steps) if bf.quick_steps else [],
+                "prep_time": bf.prep_time,
+                "dietary_tags": json.loads(bf.dietary_tags) if bf.dietary_tags else [],
+                "spice_level": bf.spice_level or "mild",
+                "servings": bf.servings,
             }
             all_recipe_ids.append(bf.id)
         else:
@@ -299,6 +305,10 @@ def generate_plan(
                 "cuisine": dn.cuisine or "",
                 "url": dn.url,
                 "quick_steps": json.loads(dn.quick_steps) if dn.quick_steps else [],
+                "prep_time": dn.prep_time,
+                "dietary_tags": json.loads(dn.dietary_tags) if dn.dietary_tags else [],
+                "spice_level": dn.spice_level or "mild",
+                "servings": dn.servings,
             }
             all_recipe_ids.append(dn.id)
         else:
