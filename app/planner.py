@@ -14,10 +14,13 @@ weekend_cook      – easy on weekdays, medium/complex on Fri–Sun
 from __future__ import annotations
 
 import json
+import logging
 import random
 from collections import Counter
 from datetime import date
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.orm import Session
 
@@ -254,8 +257,8 @@ def generate_plan(
         if recipe and not recipe.quick_steps:
             try:
                 classify_recipe(db, recipe, client=_client)
-            except Exception:
-                pass  # best-effort; PDF will show fallback text
+            except Exception as exc:
+                logger.warning("planner: on-demand classify failed for recipe %d — %s", recipe.id, exc)
 
     # Build day-by-day schedule
     days: list[dict] = []

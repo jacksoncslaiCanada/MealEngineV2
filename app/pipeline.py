@@ -205,8 +205,8 @@ def run_weekly_pipeline(
             # Recover the session so subsequent steps can still run
             try:
                 db.rollback()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as rb_exc:  # noqa: BLE001
+                logger.warning("pipeline: rollback after extraction failure also failed — %s", rb_exc)
 
     # ── Step 3: Score ─────────────────────────────────────────────────────────
     print("Step 3/5 — Recomputing source quality scores...")

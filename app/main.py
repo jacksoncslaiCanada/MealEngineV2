@@ -3,20 +3,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.routes.ingredients import router as ingredients_router
 from app.routes.plans import router as plans_router
 from app.routes.recipes import router as recipes_router
 from app.routes.ui import router as ui_router
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="MealEngine API",
     description="Recipe ingestion and ingredient extraction API.",
     version="2.0.0",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
@@ -34,22 +41,6 @@ def root():
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     return {"status": "ok"}
-
-
-@app.get("/health/env", tags=["meta"])
-def health_env() -> dict:
-    """Show which environment variables are set (values masked)."""
-    import os
-    keys = ["ANTHROPIC_API_KEY", "DATABASE_URL", "YOUTUBE_API_KEY"]
-    result = {
-        k: ("set, length=" + str(len(os.environ[k]))) if k in os.environ else "NOT SET"
-        for k in keys
-    }
-    # Also show any key whose name contains ANTHROPIC (catches typos/casing)
-    result["_anthropic_scan"] = [
-        k for k in os.environ if "anthropic" in k.lower()
-    ]
-    return result
 
 
 @app.get("/health/pdf", tags=["meta"])

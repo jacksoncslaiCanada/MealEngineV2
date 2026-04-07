@@ -5,8 +5,12 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -107,7 +111,9 @@ def _run_classify_background(db: Session) -> None:
 
 
 @router.post("/generate", response_model=PlanDetail)
+@limiter.limit("6/hour")
 def generate(
+    request: Request,
     background_tasks: BackgroundTasks,
     variant: str = Query(..., description="One of: " + ", ".join(VARIANTS)),
     week_label: Optional[str] = Query(None),
