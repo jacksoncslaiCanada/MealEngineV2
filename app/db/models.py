@@ -49,7 +49,7 @@ class RawRecipe(Base):
 
     # Source registry linkage
     source_fk: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("sources.id"), nullable=True
+        Integer, ForeignKey("sources.id"), nullable=True, index=True
     )
     source_ref: Mapped["Source | None"] = relationship("Source", back_populates="recipes")
 
@@ -79,7 +79,7 @@ class Ingredient(Base):
     unit: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # FK back to the raw recipe this ingredient was extracted from
-    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("raw_recipes.id"), nullable=False)
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("raw_recipes.id"), nullable=False, index=True)
     recipe: Mapped["RawRecipe"] = relationship("RawRecipe", back_populates="ingredients")
 
     # Denormalized source FK — useful for querying all ingredients by platform
