@@ -98,6 +98,28 @@ class Ingredient(Base):
     )
 
 
+class Subscriber(Base):
+    """A buyer who receives weekly meal plan PDFs by email."""
+
+    __tablename__ = "subscribers"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
+    variant: Mapped[str] = mapped_column(String(32), nullable=False)       # little_ones | teen_table | etc.
+    plans_remaining: Mapped[int] = mapped_column(Integer, default=4)       # counts down from 4
+    gumroad_order_id: Mapped[str | None] = mapped_column(String(256), nullable=True, unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    purchased_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class MealPlan(Base):
     """A generated 7-day meal plan with PDF."""
 

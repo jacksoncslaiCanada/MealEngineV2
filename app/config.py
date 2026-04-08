@@ -20,6 +20,23 @@ class Settings(BaseSettings):
     discovery_min_video_count: int = 5       # min recipe videos before a YouTube channel is a candidate
     discovery_min_subreddit_hits: int = 3    # min search results before a subreddit is a candidate
 
+    # Email delivery (Resend)
+    resend_api_key: str = ""
+    email_from: str = "plans@mealengine.ca"
+
+    # Gumroad
+    gumroad_access_token: str = ""
+    gumroad_product_little_ones: str = ""   # product ID from Gumroad listing URL
+    gumroad_product_teen_table: str = ""    # product ID from Gumroad listing URL
+
+    # Supabase Storage
+    supabase_url: str = ""
+    supabase_service_key: str = ""          # service_role key (not anon key)
+    supabase_storage_bucket: str = "meal-plans"
+
+    # Internal cron secret — set this in Railway, pass in X-Cron-Secret header
+    cron_secret: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
