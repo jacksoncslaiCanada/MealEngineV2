@@ -39,10 +39,7 @@ def _require_cron_secret(x_cron_secret: str = Header(default="")) -> None:
 
 
 @router.post("/weekly-run")
-def weekly_run(
-    db: Session = Depends(get_db),
-    _: None = Depends(_require_cron_secret),
-):
+def weekly_run(_: None = Depends(_require_cron_secret)):
     """
     Saturday morning cron job. For each weekly variant:
       1. Generate a fresh meal plan PDF
@@ -50,7 +47,12 @@ def weekly_run(
       3. Update the Gumroad product file
       4. Email all active subscribers who have plans remaining
       5. Email conversion nudge to subscribers at zero plans
+
+    Each variant gets its own DB session so a failure in one cannot
+    leave the session in a broken state for the next variant.
     """
+    from app.db.session import SessionLocal
+
     today = date.today()
     year, week, _ = today.isocalendar()
     week_label = f"{year}-W{week:02d}"
@@ -69,88 +71,92 @@ def weekly_run(
             "errors": [],
         }
 
-        # ── 1. Generate plan ──────────────────────────────────────────────
+        db = SessionLocal()
         try:
-            plan = generate_plan(db, variant=variant, week_label=week_label)
-            variant_result["plan_id"] = plan.id
-        except Exception as exc:
-            logger.exception("weekly_run: plan generation failed for %s", variant)
-            variant_result["errors"].append(f"plan_generation: {exc}")
-            results[variant] = variant_result
-            continue
-
-        # ── 2. Render PDF with enriched days ─────────────────────────────
-        try:
-            days = _enrich_days(json.loads(plan.plan_json), db)
-            pdf_bytes = render_pdf(plan, days=days)
-            plan.pdf_data = pdf_bytes
-            db.commit()
-        except Exception as exc:
-            logger.exception("weekly_run: PDF render failed for %s", variant)
-            variant_result["errors"].append(f"pdf_render: {exc}")
-            results[variant] = variant_result
-            continue
-
-        # ── 3. Upload to Supabase Storage ─────────────────────────────────
-        try:
-            url = upload_pdf(pdf_bytes, variant=variant, week_label=week_label)
-            variant_result["storage_url"] = url
-        except Exception as exc:
-            logger.warning("weekly_run: storage upload failed for %s — %s", variant, exc)
-            variant_result["errors"].append(f"storage_upload: {exc}")
-
-        # ── 4. Update Gumroad product file ────────────────────────────────
-        try:
-            ok = update_product_file(pdf_bytes, variant=variant, week_label=week_label)
-            variant_result["gumroad_updated"] = ok
-        except Exception as exc:
-            logger.warning("weekly_run: Gumroad update failed for %s — %s", variant, exc)
-            variant_result["errors"].append(f"gumroad_update: {exc}")
-
-        # ── 5. Email subscribers ──────────────────────────────────────────
-        subscribers = (
-            db.query(Subscriber)
-            .filter(
-                Subscriber.variant == variant,
-                Subscriber.active == True,
-            )
-            .all()
-        )
-
-        for sub in subscribers:
+            # ── 1. Generate plan ──────────────────────────────────────────
             try:
-                if sub.plans_remaining > 0:
-                    ok = send_plan_email(
-                        to_email=sub.email,
-                        variant_label=variant_label,
-                        week_label=week_label,
-                        pdf_bytes=pdf_bytes,
-                        plans_remaining=sub.plans_remaining,
-                    )
-                    if ok:
-                        sub.plans_remaining -= 1
-                        sub.last_sent_at = datetime.now(timezone.utc)
-                        variant_result["emails_sent"] += 1
-                else:
-                    # Pack exhausted — send conversion nudge, then deactivate
-                    ok = send_conversion_email(
-                        to_email=sub.email,
-                        variant_label=variant_label,
-                    )
-                    if ok:
-                        sub.active = False
-                        variant_result["conversion_emails_sent"] += 1
-
+                plan = generate_plan(db, variant=variant, week_label=week_label)
+                variant_result["plan_id"] = plan.id
             except Exception as exc:
-                logger.warning("weekly_run: email failed for %s — %s", sub.email, exc)
-                variant_result["errors"].append(f"email:{sub.email}: {exc}")
+                logger.exception("weekly_run: plan generation failed for %s", variant)
+                variant_result["errors"].append(f"plan_generation: {exc}")
+                results[variant] = variant_result
+                continue
 
-        try:
-            db.commit()
-        except Exception as exc:
-            logger.error("weekly_run: DB commit failed after emails for %s — %s", variant, exc)
-            db.rollback()
-            variant_result["errors"].append(f"db_commit: {exc}")
+            # ── 2. Render PDF with enriched days ──────────────────────────
+            try:
+                days = _enrich_days(json.loads(plan.plan_json), db)
+                pdf_bytes = render_pdf(plan, days=days)
+                plan.pdf_data = pdf_bytes
+                db.commit()
+            except Exception as exc:
+                logger.exception("weekly_run: PDF render failed for %s", variant)
+                variant_result["errors"].append(f"pdf_render: {exc}")
+                results[variant] = variant_result
+                continue
+
+            # ── 3. Upload to Supabase Storage ─────────────────────────────
+            try:
+                url = upload_pdf(pdf_bytes, variant=variant, week_label=week_label)
+                variant_result["storage_url"] = url
+            except Exception as exc:
+                logger.warning("weekly_run: storage upload failed for %s — %s", variant, exc)
+                variant_result["errors"].append(f"storage_upload: {exc}")
+
+            # ── 4. Update Gumroad product file ────────────────────────────
+            try:
+                ok = update_product_file(pdf_bytes, variant=variant, week_label=week_label)
+                variant_result["gumroad_updated"] = ok
+            except Exception as exc:
+                logger.warning("weekly_run: Gumroad update failed for %s — %s", variant, exc)
+                variant_result["errors"].append(f"gumroad_update: {exc}")
+
+            # ── 5. Email subscribers ──────────────────────────────────────
+            subscribers = (
+                db.query(Subscriber)
+                .filter(
+                    Subscriber.variant == variant,
+                    Subscriber.active == True,
+                )
+                .all()
+            )
+
+            for sub in subscribers:
+                try:
+                    if sub.plans_remaining > 0:
+                        ok = send_plan_email(
+                            to_email=sub.email,
+                            variant_label=variant_label,
+                            week_label=week_label,
+                            pdf_bytes=pdf_bytes,
+                            plans_remaining=sub.plans_remaining,
+                        )
+                        if ok:
+                            sub.plans_remaining -= 1
+                            sub.last_sent_at = datetime.now(timezone.utc)
+                            variant_result["emails_sent"] += 1
+                    else:
+                        ok = send_conversion_email(
+                            to_email=sub.email,
+                            variant_label=variant_label,
+                        )
+                        if ok:
+                            sub.active = False
+                            variant_result["conversion_emails_sent"] += 1
+
+                except Exception as exc:
+                    logger.warning("weekly_run: email failed for %s — %s", sub.email, exc)
+                    variant_result["errors"].append(f"email:{sub.email}: {exc}")
+
+            try:
+                db.commit()
+            except Exception as exc:
+                logger.error("weekly_run: DB commit failed after emails for %s — %s", variant, exc)
+                db.rollback()
+                variant_result["errors"].append(f"db_commit: {exc}")
+
+        finally:
+            db.close()
 
         results[variant] = variant_result
         logger.info(
