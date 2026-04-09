@@ -61,6 +61,8 @@ VARIANTS = {
     "family_variety": "Family Variety",
     "asian_kitchen":  "Asian Kitchen",
     "weekend_cook":   "Weekend Cook",
+    "little_ones":    "Little Ones",
+    "teen_table":     "Teen Table",
 }
 
 # How many weekend days (Fri + Sat + Sun = indices 4,5,6)
@@ -103,6 +105,9 @@ def _pool_for_variant(
     """Return classified recipes appropriate for this variant + meal slot."""
     from sqlalchemy import or_
 
+    # prep_time filter: ≤ 30 min OR NULL (unknown — don't exclude unclassified)
+    _quick = or_(RawRecipe.prep_time <= 30, RawRecipe.prep_time.is_(None))
+
     q = db.query(RawRecipe).filter(
         RawRecipe.difficulty.isnot(None),
         or_(RawRecipe.meal_type == meal_type, RawRecipe.meal_type == "any"),
@@ -113,6 +118,25 @@ def _pool_for_variant(
 
     elif variant == "asian_kitchen":
         q = q.filter(RawRecipe.cuisine == "Asian")
+
+    elif variant == "little_ones":
+        # Easy only, mild spice, max 30 min — safest recipes for young children
+        q = q.filter(
+            RawRecipe.difficulty == "easy",
+            or_(RawRecipe.spice_level == "mild", RawRecipe.spice_level.is_(None)),
+            _quick,
+        )
+
+    elif variant == "teen_table":
+        # Easy or medium, mild or medium spice, max 30 min
+        q = q.filter(
+            RawRecipe.difficulty.in_(["easy", "medium"]),
+            or_(
+                RawRecipe.spice_level.in_(["mild", "medium"]),
+                RawRecipe.spice_level.is_(None),
+            ),
+            _quick,
+        )
 
     # family_variety and weekend_cook: no extra filter — use full classified pool
     return q.all()

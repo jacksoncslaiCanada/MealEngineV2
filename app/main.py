@@ -10,6 +10,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from app.routes.cron import router as cron_router
 from app.routes.ingredients import router as ingredients_router
 from app.routes.plans import router as plans_router
 from app.routes.recipes import router as recipes_router
@@ -31,6 +32,7 @@ app.include_router(recipes_router)
 app.include_router(ingredients_router)
 app.include_router(plans_router)
 app.include_router(ui_router)
+app.include_router(cron_router)
 
 
 @app.get("/", include_in_schema=False)
