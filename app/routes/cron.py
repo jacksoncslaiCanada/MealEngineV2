@@ -14,7 +14,7 @@ from app.config import settings
 from app.db.models import Subscriber
 from app.db.session import get_db
 from app.email_sender import send_conversion_email, send_plan_email
-from app.gumroad import update_product_file
+from app.gumroad import update_product_url
 from app.pdf_renderer import render_pdf
 from app.planner import VARIANTS, generate_plan
 from app.routes.plans import _enrich_days
@@ -131,13 +131,21 @@ def weekly_run(_: None = Depends(_require_cron_secret)):
                 logger.warning("weekly_run: storage upload failed for %s — %s", variant, exc)
                 variant_result["errors"].append(f"storage_upload: {exc}")
 
-            # ── 4. Update Gumroad product file ────────────────────────────
-            try:
-                ok = update_product_file(pdf_bytes, variant=variant, week_label=week_label)
-                variant_result["gumroad_updated"] = ok
-            except Exception as exc:
-                logger.warning("weekly_run: Gumroad update failed for %s — %s", variant, exc)
-                variant_result["errors"].append(f"gumroad_update: {exc}")
+            # ── 4. Update Gumroad delivery URL ────────────────────────────
+            # Only update if we have a storage URL to point to
+            if variant_result["storage_url"]:
+                try:
+                    ok = update_product_url(
+                        variant=variant,
+                        storage_url=variant_result["storage_url"],
+                    )
+                    variant_result["gumroad_updated"] = ok
+                except Exception as exc:
+                    logger.warning("weekly_run: Gumroad update failed for %s — %s", variant, exc)
+                    variant_result["errors"].append(f"gumroad_update: {exc}")
+            else:
+                logger.warning("weekly_run: skipping Gumroad update for %s — no storage URL", variant)
+                variant_result["errors"].append("gumroad_update: skipped, no storage_url")
 
             # ── 5. Email subscribers ──────────────────────────────────────
             subscribers = (
