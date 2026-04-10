@@ -38,6 +38,34 @@ def _require_cron_secret(x_cron_secret: str = Header(default="")) -> None:
         raise HTTPException(403, "Invalid cron secret")
 
 
+@router.get("/gumroad-check")
+def gumroad_check(_: None = Depends(_require_cron_secret)):
+    """Diagnose Gumroad API connectivity and product ID validity."""
+    import httpx
+    from app.gumroad import _product_id_for_variant
+
+    results = {}
+    for variant in ["little_ones", "teen_table"]:
+        product_id = _product_id_for_variant(variant)
+        if not product_id:
+            results[variant] = {"error": "no product ID configured in Railway"}
+            continue
+        try:
+            resp = httpx.get(
+                f"https://api.gumroad.com/v2/products/{product_id}",
+                params={"access_token": settings.gumroad_access_token},
+                timeout=10,
+            )
+            results[variant] = {
+                "product_id": product_id,
+                "status": resp.status_code,
+                "body": resp.json() if "application/json" in resp.headers.get("content-type", "") else resp.text[:300],
+            }
+        except Exception as exc:
+            results[variant] = {"product_id": product_id, "error": str(exc)}
+    return results
+
+
 @router.post("/weekly-run")
 def weekly_run(_: None = Depends(_require_cron_secret)):
     """
