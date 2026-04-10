@@ -42,15 +42,16 @@ def update_product_file(pdf_bytes: bytes, *, variant: str, week_label: str) -> b
     try:
         resp = httpx.post(
             f"{_BASE}/products/{product_id}/product_files",
-            headers={"Authorization": f"Bearer {settings.gumroad_access_token}"},
+            params={"access_token": settings.gumroad_access_token},
             files={"file": (filename, pdf_bytes, "application/pdf")},
             timeout=60,
         )
+        logger.info("gumroad: response %s — %s", resp.status_code, resp.text[:300])
         resp.raise_for_status()
         logger.info("gumroad: updated product file for %s (%s)", variant, week_label)
         return True
     except httpx.HTTPStatusError as exc:
-        logger.error("gumroad: API error %s — %s", exc.response.status_code, exc.response.text)
+        logger.error("gumroad: API error %s — %s", exc.response.status_code, exc.response.text[:500])
         return False
     except Exception as exc:
         logger.error("gumroad: unexpected error — %s", exc)
