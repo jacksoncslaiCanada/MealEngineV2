@@ -1,7 +1,8 @@
 """Gumroad API integration.
 
-Updates the product file on a standing Gumroad listing so buyers
-always see the current week's plan when they visit the product page.
+Updates the product's custom_delivery_url on a standing Gumroad listing
+so buyers always download the current week's plan from Supabase Storage.
+This avoids the unreliable product_files upload endpoint entirely.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 _BASE = "https://api.gumroad.com/v2"
 
-# Map variant → Gumroad product ID (configured in Railway env vars)
+
 def _product_id_for_variant(variant: str) -> str | None:
     mapping = {
         "little_ones": settings.gumroad_product_little_ones,
@@ -23,10 +24,11 @@ def _product_id_for_variant(variant: str) -> str | None:
     return mapping.get(variant) or None
 
 
-def update_product_file(pdf_bytes: bytes, *, variant: str, week_label: str) -> bool:
-    """Replace the product file on the Gumroad listing for this variant.
+def update_product_url(*, variant: str, storage_url: str) -> bool:
+    """Point the Gumroad product's delivery URL to the current week's Supabase PDF.
 
-    Gumroad's API requires multipart form upload. Returns True on success.
+    Uses PUT /v2/products/:id with custom_delivery_url instead of file upload.
+    Returns True on success.
     """
     if not settings.gumroad_access_token:
         logger.warning("gumroad: GUMROAD_ACCESS_TOKEN not set — skipping update")
@@ -37,18 +39,16 @@ def update_product_file(pdf_bytes: bytes, *, variant: str, week_label: str) -> b
         logger.warning("gumroad: no product ID configured for variant '%s'", variant)
         return False
 
-    filename = f"meal-plan-{week_label}-{variant}.pdf"
-
     try:
-        resp = httpx.post(
-            f"{_BASE}/products/{product_id}/product_files",
+        resp = httpx.put(
+            f"{_BASE}/products/{product_id}",
             params={"access_token": settings.gumroad_access_token},
-            files={"file": (filename, pdf_bytes, "application/pdf")},
-            timeout=60,
+            data={"custom_delivery_url": storage_url},
+            timeout=30,
         )
         logger.info("gumroad: response %s — %s", resp.status_code, resp.text[:300])
         resp.raise_for_status()
-        logger.info("gumroad: updated product file for %s (%s)", variant, week_label)
+        logger.info("gumroad: updated delivery URL for %s → %s", variant, storage_url)
         return True
     except httpx.HTTPStatusError as exc:
         logger.error("gumroad: API error %s — %s", exc.response.status_code, exc.response.text[:500])
@@ -56,3 +56,4 @@ def update_product_file(pdf_bytes: bytes, *, variant: str, week_label: str) -> b
     except Exception as exc:
         logger.error("gumroad: unexpected error — %s", exc)
         return False
+
