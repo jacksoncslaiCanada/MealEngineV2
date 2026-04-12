@@ -181,6 +181,11 @@ def extract_all_unprocessed(
     query = db.query(RawRecipe)
     if processed_ids:
         query = query.filter(RawRecipe.id.notin_(processed_ids))
+    # Skip YouTube recipes with no transcript — title+description alone
+    # yields 0 ingredients and the recipe would be retried every run.
+    query = query.filter(
+        ~((RawRecipe.source == "youtube") & (RawRecipe.has_transcript == False))
+    )
     if limit is not None:
         query = query.limit(limit)
 
