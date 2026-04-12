@@ -1,5 +1,6 @@
 """YouTube connector — fetches recipe video metadata and transcripts."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +12,8 @@ from app.config import settings
 from app.db.models import RawRecipe, Source
 from app.schemas import RawRecipeSchema
 from app.scoring import compute_youtube_engagement, get_or_create_source, mark_source_ingested
+
+logger = logging.getLogger(__name__)
 
 RECIPE_SEARCH_QUERIES = ["homemade recipe", "how to cook", "easy dinner recipe", "maangchi korean recipe"]
 
@@ -25,6 +28,11 @@ def _fetch_transcript(video_id: str) -> str:
         entries = YouTubeTranscriptApi.get_transcript(video_id)
         return " ".join(e["text"] for e in entries)
     except (TranscriptsDisabled, NoTranscriptFound):
+        return ""
+    except Exception as exc:
+        # 429 rate-limit or other transient network error — log and skip gracefully
+        # so a single blocked request doesn't abort the entire ingest.
+        logger.warning("_fetch_transcript: skipping %s — %s", video_id, exc)
         return ""
 
 
