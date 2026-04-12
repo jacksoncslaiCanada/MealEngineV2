@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.classifier import classify_unclassified
-from app.db.models import MealPlan, RawRecipe
+from app.db.models import Ingredient, MealPlan, RawRecipe
 from app.db.session import get_db
 from app.pdf_renderer import render_pdf
 from app.planner import VARIANTS, generate_plan
@@ -86,7 +86,27 @@ def _enrich_days(days: list[dict], db: Session) -> list[dict]:
             "spice_level": spice_level or "mild",
             "servings": servings,
             "url": url,
+            "ingredients": [],
         }
+
+    # Fetch per-recipe ingredient lists
+    ing_rows = (
+        db.query(
+            Ingredient.recipe_id,
+            Ingredient.ingredient_name,
+            Ingredient.quantity,
+            Ingredient.unit,
+        )
+        .filter(Ingredient.recipe_id.in_(recipe_ids))
+        .all()
+    )
+    for recipe_id, name, qty, unit in ing_rows:
+        if recipe_id in recipe_map:
+            recipe_map[recipe_id]["ingredients"].append({
+                "name": name,
+                "qty": qty or "",
+                "unit": unit or "",
+            })
 
     enriched = []
     for day in days:
