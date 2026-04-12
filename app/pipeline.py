@@ -28,6 +28,7 @@ from app.connectors.themealdb import save_themealdb_recipes
 from app.connectors.youtube import save_youtube_recipes
 from app.db.models import Source
 from app.discovery import DiscoverySummary, run_discovery_sweep
+from app.classifier import classify_unclassified
 from app.extractor import extract_all_unprocessed
 from app.schemas import RawRecipeSchema
 from app.scoring import auto_promote_candidates, recompute_source_scores
@@ -46,6 +47,7 @@ class PipelineReport:
     promoted: list[Source]
     elapsed_seconds: float
     ingredients_extracted: int = 0
+    recipes_classified: int = 0
     themealdb_new: int = 0
     rss_new: int = 0
     errors: list[str] = field(default_factory=list)
@@ -58,13 +60,13 @@ class PipelineReport:
         logger.info(
             "Pipeline complete in %.1fs — "
             "ingested %d new recipes (%d Reddit, %d YouTube, %d TheMealDB, %d RSS), "
-            "extracted %d ingredients, "
+            "extracted %d ingredients, classified %d recipes, "
             "rescored %d sources, "
             "%d new candidates, %d auto-promoted",
             self.elapsed_seconds,
             self.total_new, self.reddit_new, self.youtube_new,
             self.themealdb_new, self.rss_new,
-            self.ingredients_extracted,
+            self.ingredients_extracted, self.recipes_classified,
             self.sources_rescored,
             self.discovery.new_candidates, self.discovery.auto_promoted,
         )
@@ -74,6 +76,7 @@ class PipelineReport:
             f"({self.reddit_new} Reddit, {self.youtube_new} YouTube, "
             f"{self.themealdb_new} TheMealDB, {self.rss_new} RSS)\n"
             f"  Extracted  : {self.ingredients_extracted} ingredient(s)\n"
+            f"  Classified : {self.recipes_classified} recipe(s)\n"
             f"  Rescored   : {self.sources_rescored} sources\n"
             f"  Discovered : {self.discovery.new_candidates} new candidates, "
             f"{self.discovery.auto_promoted} auto-promoted, "
@@ -120,7 +123,7 @@ def run_weekly_pipeline(
     errors: list[str] = []
 
     # ── Step 1: Ingest ────────────────────────────────────────────────────────
-    print("Step 1/4 — Ingesting content from active sources...")
+    print("Step 1/6 — Ingesting content from active sources...")
 
     # Reddit: pull from every active subreddit in the registry.
     # Falls back to the hardcoded default list if the registry is empty.
@@ -186,7 +189,7 @@ def run_weekly_pipeline(
         errors.append(msg)
 
     # ── Step 2: Extract ingredients ───────────────────────────────────────────
-    print("Step 2/5 — Extracting ingredients from new recipes...")
+    print("Step 2/6 — Extracting ingredients from new recipes...")
     ingredients_extracted = 0
     if not settings.anthropic_api_key:
         print("  Skipped — ANTHROPIC_API_KEY not configured")
@@ -208,21 +211,41 @@ def run_weekly_pipeline(
             except Exception as rb_exc:  # noqa: BLE001
                 logger.warning("pipeline: rollback after extraction failure also failed — %s", rb_exc)
 
-    # ── Step 3: Score ─────────────────────────────────────────────────────────
-    print("Step 3/5 — Recomputing source quality scores...")
+    # ── Step 3: Classify ─────────────────────────────────────────────────────
+    print("Step 3/6 — Classifying unclassified recipes...")
+    recipes_classified = 0
+    if not settings.anthropic_api_key:
+        print("  Skipped — ANTHROPIC_API_KEY not configured")
+    else:
+        try:
+            if anthropic_client is None:
+                anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            recipes_classified = classify_unclassified(db, client=anthropic_client, limit=50)
+            print(f"  Classified {recipes_classified} recipe(s)")
+        except Exception as exc:  # noqa: BLE001
+            msg = f"Classification failed: {exc}"
+            logger.exception(msg)
+            errors.append(msg)
+            try:
+                db.rollback()
+            except Exception as rb_exc:  # noqa: BLE001
+                logger.warning("pipeline: rollback after classify failure also failed — %s", rb_exc)
+
+    # ── Step 4: Score ─────────────────────────────────────────────────────────
+    print("Step 4/6 — Recomputing source quality scores...")
     rescored = recompute_source_scores(db)
     print(f"  Rescored {len(rescored)} sources")
 
-    # ── Step 4: Discover ──────────────────────────────────────────────────────
-    print("Step 4/5 — Running discovery sweep...")
+    # ── Step 5: Discover ──────────────────────────────────────────────────────
+    print("Step 5/6 — Running discovery sweep...")
     discovery = run_discovery_sweep(
         db,
         reddit_client=reddit_client,
         youtube_client=youtube_client,
     )
 
-    # ── Step 5: Promote ───────────────────────────────────────────────────────
-    print("Step 5/5 — Promoting high-scoring candidates...")
+    # ── Step 6: Promote ───────────────────────────────────────────────────────
+    print("Step 6/6 — Promoting high-scoring candidates...")
     promoted = auto_promote_candidates(db)
     if promoted:
         for source in promoted:
@@ -235,6 +258,7 @@ def run_weekly_pipeline(
         themealdb_new=len(themealdb_saved),
         rss_new=len(rss_saved),
         ingredients_extracted=ingredients_extracted,
+        recipes_classified=recipes_classified,
         sources_rescored=len(rescored),
         discovery=discovery,
         promoted=promoted,

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import Subscriber
 from app.db.session import get_db
+from app.classifier import classify_unclassified
 from app.email_sender import send_conversion_email, send_plan_email
 from app.gumroad import update_product_url
 from app.pdf_renderer import render_pdf
@@ -36,6 +37,25 @@ def _require_cron_secret(x_cron_secret: str = Header(default="")) -> None:
         raise HTTPException(500, "CRON_SECRET not configured on server")
     if x_cron_secret != settings.cron_secret:
         raise HTTPException(403, "Invalid cron secret")
+
+
+@router.post("/classify-backlog")
+def classify_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 200,
+):
+    """
+    One-shot endpoint to classify unclassified recipes in bulk.
+
+    Call this from the Swagger UI (/docs) to clear the backlog.
+    Safe to call multiple times — already-classified recipes are skipped.
+    Default limit=200; call repeatedly until it returns classified=0.
+    """
+    import anthropic as _anthropic
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    classified = classify_unclassified(db, client=client, limit=limit)
+    return {"classified": classified, "limit": limit}
 
 
 @router.get("/gumroad-check")
