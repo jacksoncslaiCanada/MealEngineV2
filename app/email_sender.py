@@ -103,7 +103,90 @@ def send_plan_email(
         return False
 
 
-def send_conversion_email(*, to_email: str, variant_label: str) -> bool:
+def send_welcome_email(
+    *,
+    to_email: str,
+    variant_label: str,
+    week_label: str,
+    pdf_bytes: bytes | None,
+) -> bool:
+    """Send a welcome email immediately after signup.
+
+    Attaches this week's PDF if available so the buyer gets
+    instant value rather than waiting until Saturday.
+    """
+    if not settings.resend_api_key:
+        logger.warning("email_sender: RESEND_API_KEY not set — skipping welcome to %s", to_email)
+        return False
+
+    subject = f"Welcome to MealEngine — your {variant_label} plan is here"
+
+    pdf_note = (
+        "Your first plan is attached to this email — open it now and "
+        "you're ready for the week ahead."
+        if pdf_bytes
+        else "Your first plan will arrive this Saturday morning."
+    )
+
+    html_body = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1f2937;">
+      <h2 style="margin-bottom:4px;">You're all set.</h2>
+      <p style="color:#6b7280;margin-top:0;">MealEngine · {variant_label}</p>
+      <p>{pdf_note}</p>
+      <p>
+        Every <strong>Saturday morning</strong> your next week's plan will arrive
+        in this inbox — a 7-day schedule, 3-step cooking guides, and a
+        categorised shopping list ready for the weekend shop.
+      </p>
+      <p style="margin-top:16px;">
+        <strong>Tip:</strong> Add <strong>{settings.email_from}</strong> to your
+        contacts so plans never land in spam.
+      </p>
+      <p style="color:#6b7280;font-size:12px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:12px;">
+        MealEngine · mealengine.ca<br>
+        You signed up at mealengine.ca/subscribe.
+        Reply to this email if you need help.
+      </p>
+    </div>
+    """
+
+    import base64
+    payload: dict = {
+        "from": f"MealEngine <{settings.email_from}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+    }
+
+    if pdf_bytes:
+        filename = f"meal-plan-{week_label}-{variant_label.lower().replace(' ', '-')}.pdf"
+        payload["attachments"] = [
+            {"filename": filename, "content": base64.b64encode(pdf_bytes).decode()}
+        ]
+
+    try:
+        resp = httpx.post(
+            _RESEND_URL,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        logger.info("email_sender: sent welcome to %s", to_email)
+        return True
+    except httpx.HTTPStatusError as exc:
+        logger.error("email_sender: welcome email error %s — %s", exc.response.status_code, exc.response.text)
+        return False
+    except Exception as exc:
+        logger.error("email_sender: welcome email failed for %s — %s", to_email, exc)
+        return False
+
+
+def send_conversion_email(
+    *,
+    to_email: str,
+    variant_label: str,
+) -> bool:
     """Send a conversion nudge when a subscriber has used all their plans."""
     if not settings.resend_api_key:
         return False
