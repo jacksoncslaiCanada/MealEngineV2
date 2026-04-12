@@ -280,168 +280,189 @@
 
 
   /* ════════════════════════════════════════════════════════════
-     PAGE 3+ — COOKING GUIDES
+     PAGE 3 — BREAKFAST & LUNCH SUMMARY
   ════════════════════════════════════════════════════════════ */
 
-  .day-section {
-    margin-bottom: 5mm;
-    break-inside: avoid;
+  .blp-note {
+    font-size: 9pt;
+    color: #78716c;
+    padding: 3mm 5mm;
+    background: #fef3c7;
+    border-radius: 4px;
+    margin-bottom: 7mm;
+    line-height: 1.5;
   }
-  .day-header-bar {
-    background: #1c1917;
-    color: #f5f5f4;
-    padding: 2.5mm 5mm;
-    border-radius: 4px 4px 0 0;
-    font-size: 8.5pt;
+  .blp-row {
+    display: flex;
+    gap: 5mm;
+    padding: 4.5mm 0;
+    border-bottom: 1px solid #f3f2f1;
+    align-items: flex-start;
+  }
+  .blp-row:last-child { border-bottom: none; }
+  .blp-day {
+    font-size: 7pt;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    display: flex;
-    align-items: center;
-    gap: 3mm;
-  }
-  .day-amber-pip {
-    width: 5px;
-    height: 5px;
-    background: #f59e0b;
-    border-radius: 50%;
+    letter-spacing: 0.09em;
+    color: #f59e0b;
+    width: 14mm;
     flex-shrink: 0;
+    padding-top: 1mm;
   }
-  .day-cards-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3mm;
-    background: #f3f2f1;
-    padding: 3mm;
-    border-radius: 0 0 4px 4px;
+  .blp-meals { flex: 1; }
+  .blp-bf-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #1c1917;
+    margin-bottom: 1.5mm;
+    line-height: 1.25;
+  }
+  .blp-bf-meta {
+    font-size: 8pt;
+    color: #78716c;
+  }
+  .blp-lunch {
+    font-size: 8pt;
+    color: #a8a29e;
+    margin-top: 2mm;
+    font-style: italic;
   }
 
-  .recipe-card {
-    background: #ffffff;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid #e7e5e4;
+
+  /* ════════════════════════════════════════════════════════════
+     PAGES 4–10 — DINNER RECIPE CARDS
+  ════════════════════════════════════════════════════════════ */
+
+  .drp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 5mm;
   }
-  .recipe-thumb {
+  .drp-day-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #f59e0b;
+    margin-bottom: 2mm;
+  }
+  .drp-title {
+    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
+    font-size: 24pt;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: #1c1917;
+    line-height: 1.0;
+  }
+  .drp-tagline {
+    font-size: 7.5pt;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #78716c;
+    margin-top: 2mm;
+  }
+  .drp-meta-col {
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 2mm;
+  }
+  .drp-meta-item {
+    font-size: 9.5pt;
+    color: #44403c;
+    margin-bottom: 2.5mm;
+    white-space: nowrap;
+  }
+
+  .drp-image {
     width: 100%;
-    height: 26mm;
+    height: 72mm;
     object-fit: cover;
+    border-radius: 6px;
     display: block;
+    margin-bottom: 6mm;
   }
-  .recipe-thumb-placeholder {
+  .drp-image-placeholder {
     width: 100%;
-    height: 26mm;
+    height: 72mm;
     background: #fef3c7;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 6.5pt;
-    font-weight: 700;
+    font-size: 10pt;
+    font-weight: 600;
     color: #b45309;
+    text-transform: uppercase;
     letter-spacing: 0.1em;
-    text-transform: uppercase;
+    margin-bottom: 6mm;
   }
-  .recipe-body {
-    padding: 3mm 3.5mm;
+
+  .drp-body {
+    display: flex;
+    gap: 8mm;
+    align-items: flex-start;
   }
-  .recipe-slot-label {
-    font-size: 5.5pt;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #a8a29e;
-    margin-bottom: 1mm;
+  .drp-ings-panel {
+    width: 54mm;
+    flex-shrink: 0;
+    background: #f5f5f4;
+    border-radius: 6px;
+    padding: 5mm;
   }
-  .recipe-title {
-    font-size: 9pt;
+  .drp-section-title {
+    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
+    font-size: 11pt;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: #1c1917;
-    line-height: 1.3;
-    margin-bottom: 2mm;
+    margin-bottom: 4mm;
   }
-  .recipe-meta {
-    display: flex;
-    align-items: center;
-    gap: 2.5mm;
-    flex-wrap: wrap;
-    margin-bottom: 2.5mm;
-  }
-  .recipe-prep {
-    font-size: 7pt;
-    font-weight: 700;
-    color: #b45309;
-    background: #fef3c7;
-    padding: 0.8mm 2.5mm;
-    border-radius: 2px;
-    white-space: nowrap;
-  }
-  .recipe-cuisine {
-    font-size: 7pt;
-    color: #78716c;
-  }
-
-  /* Ingredient list */
-  .recipe-ings {
-    margin-bottom: 2.5mm;
-    padding-bottom: 2mm;
-    border-bottom: 1px solid #f3f2f1;
-  }
-  .ing-row {
-    display: flex;
-    align-items: baseline;
-    gap: 2mm;
-    padding: 0.4mm 0;
-    font-size: 7pt;
-    line-height: 1.3;
-  }
-  .ing-qty {
-    font-weight: 700;
-    color: #b45309;
-    flex-shrink: 0;
-    min-width: 10mm;
-  }
-  .ing-name { color: #44403c; }
-  .ing-more {
-    font-size: 6.5pt;
-    color: #a8a29e;
-    font-style: italic;
-    margin-top: 1mm;
-  }
-
-  .recipe-steps {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .recipe-steps li {
-    display: flex;
-    gap: 2.5mm;
-    padding: 1.5mm 0;
-    font-size: 7.5pt;
-    color: #44403c;
+  .drp-ing-item {
+    font-size: 9pt;
+    color: #1c1917;
+    padding: 2mm 0;
+    border-bottom: 1px solid #e7e5e4;
     line-height: 1.4;
-    border-bottom: 1px solid #f5f5f4;
   }
-  .recipe-steps li:last-child { border-bottom: none; }
-  .step-num {
-    font-size: 6.5pt;
-    font-weight: 800;
+  .drp-ing-item:last-child { border-bottom: none; }
+
+  .drp-directions { flex: 1; }
+  .drp-step {
+    display: flex;
+    gap: 3.5mm;
+    padding: 3.5mm 0;
+    border-bottom: 1px solid #f3f2f1;
+    font-size: 9.5pt;
+    color: #44403c;
+    line-height: 1.55;
+  }
+  .drp-step:last-child { border-bottom: none; }
+  .drp-step-num {
+    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
+    font-size: 12pt;
+    font-weight: 700;
     color: #f59e0b;
-    width: 3.5mm;
     flex-shrink: 0;
-    padding-top: 0.3mm;
+    width: 5mm;
+    line-height: 1.3;
   }
-  .recipe-source {
-    margin-top: 2mm;
-    font-size: 6pt;
+  .drp-source {
+    margin-top: 5mm;
+    font-size: 7pt;
     color: #a8a29e;
-    padding-top: 1.5mm;
+    padding-top: 2mm;
     border-top: 1px solid #f3f2f1;
   }
-  .no-steps {
-    font-size: 7.5pt;
+  .drp-no-steps {
+    font-size: 9pt;
     color: #a8a29e;
     font-style: italic;
+    padding: 3mm 0;
   }
 </style>
 </head>
@@ -549,150 +570,121 @@
 </div>
 
 
-<!-- ══════════════════════════ PAGE 3+: COOKING GUIDES ════════════════ -->
+<!-- ══════════════════════════ PAGE 3: BREAKFASTS & LUNCHES ════════════ -->
 <div class="page-break"></div>
 
 <div class="page-header">
-  <h2>Cooking Guides</h2>
-  <div class="sub">3 steps per meal · find tonight's day and cook</div>
+  <h2>Breakfasts &amp; Lunches</h2>
+  <div class="sub">{{ week_label }} · {{ variant_label }}</div>
+</div>
+
+<div class="blp-note">
+  Lunch every day = last night's leftovers packed the night before — no extra prep needed.
 </div>
 
 {% for day in days %}
-<div class="day-section">
-
-  <div class="day-header-bar">
-    <div class="day-amber-pip"></div>
-    {{ day.day }}
-  </div>
-
-  <div class="day-cards-row">
-
-    <!-- Breakfast -->
-    {% if day.breakfast.get('recipe_id') %}
-    <div class="recipe-card">
-      {% set bf_thumb = thumbnail_url(day.breakfast.get('url')) %}
-      {% if bf_thumb %}
-      <img class="recipe-thumb" src="{{ bf_thumb }}" alt="{{ day.breakfast.title }}">
-      {% else %}
-      <div class="recipe-thumb-placeholder">Breakfast</div>
-      {% endif %}
-      <div class="recipe-body">
-        <div class="recipe-slot-label">Breakfast</div>
-        <div class="recipe-title">{{ day.breakfast.title }}</div>
-        <div class="recipe-meta">
-          {% if day.breakfast.get('prep_time') %}
-          <span class="recipe-prep">{{ day.breakfast.prep_time }} min</span>
-          {% endif %}
-          {% if day.breakfast.get('cuisine') %}
-          <span class="recipe-cuisine">{{ day.breakfast.cuisine }}</span>
-          {% endif %}
-        </div>
-        {% set bf_ings = day.breakfast.get('ingredients') or [] %}
-        {% if bf_ings %}
-        <div class="recipe-ings">
-          {% for ing in bf_ings[:8] %}
-          <div class="ing-row">
-            <span class="ing-qty">{% if ing.qty or ing.unit %}{{ ing.qty }} {{ ing.unit }}{% endif %}</span>
-            <span class="ing-name">{{ ing.name }}</span>
-          </div>
-          {% endfor %}
-          {% if bf_ings|length > 8 %}
-          <div class="ing-more">+ {{ bf_ings|length - 8 }} more</div>
-          {% endif %}
-        </div>
-        {% endif %}
-        {% if day.breakfast.get('quick_steps') and day.breakfast.quick_steps|length > 0 %}
-        <ul class="recipe-steps">
-          {% for step in day.breakfast.quick_steps %}
-          <li>
-            <span class="step-num">{{ loop.index }}</span>
-            <span>{{ step }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="no-steps">See source for full instructions</p>
-        {% endif %}
-        {% set bf_src = short_source(day.breakfast.get('url')) %}
-        {% if bf_src %}
-        <div class="recipe-source">Source: {{ bf_src }}</div>
-        {% endif %}
-      </div>
+<div class="blp-row">
+  <div class="blp-day">{{ day.day[:3] | upper }}</div>
+  <div class="blp-meals">
+    <div class="blp-bf-title">{{ day.breakfast.title }}</div>
+    <div class="blp-bf-meta">
+      {% if day.breakfast.get('prep_time') %}{{ day.breakfast.prep_time }} min{% endif %}
+      {% if day.breakfast.get('prep_time') and day.breakfast.get('cuisine') %}&nbsp;·&nbsp;{% endif %}
+      {% if day.breakfast.get('cuisine') %}{{ day.breakfast.cuisine }}{% endif %}
+      {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
+      {% for tag in bf_tags %}
+        &nbsp;·&nbsp;{{ dietary_abbr.get(tag, tag) }}
+      {% endfor %}
     </div>
-    {% else %}
-    <div class="recipe-card">
-      <div class="recipe-thumb-placeholder">Breakfast</div>
-      <div class="recipe-body">
-        <div class="recipe-slot-label">Breakfast</div>
-        <div class="recipe-title">{{ day.breakfast.title }}</div>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- Dinner -->
-    {% if day.dinner.get('recipe_id') %}
-    <div class="recipe-card">
-      {% set dn_thumb = thumbnail_url(day.dinner.get('url')) %}
-      {% if dn_thumb %}
-      <img class="recipe-thumb" src="{{ dn_thumb }}" alt="{{ day.dinner.title }}">
-      {% else %}
-      <div class="recipe-thumb-placeholder">Dinner</div>
-      {% endif %}
-      <div class="recipe-body">
-        <div class="recipe-slot-label">Dinner</div>
-        <div class="recipe-title">{{ day.dinner.title }}</div>
-        <div class="recipe-meta">
-          {% if day.dinner.get('prep_time') %}
-          <span class="recipe-prep">{{ day.dinner.prep_time }} min</span>
-          {% endif %}
-          {% if day.dinner.get('cuisine') %}
-          <span class="recipe-cuisine">{{ day.dinner.cuisine }}</span>
-          {% endif %}
-        </div>
-        {% set dn_ings = day.dinner.get('ingredients') or [] %}
-        {% if dn_ings %}
-        <div class="recipe-ings">
-          {% for ing in dn_ings[:8] %}
-          <div class="ing-row">
-            <span class="ing-qty">{% if ing.qty or ing.unit %}{{ ing.qty }} {{ ing.unit }}{% endif %}</span>
-            <span class="ing-name">{{ ing.name }}</span>
-          </div>
-          {% endfor %}
-          {% if dn_ings|length > 8 %}
-          <div class="ing-more">+ {{ dn_ings|length - 8 }} more</div>
-          {% endif %}
-        </div>
-        {% endif %}
-        {% if day.dinner.get('quick_steps') and day.dinner.quick_steps|length > 0 %}
-        <ul class="recipe-steps">
-          {% for step in day.dinner.quick_steps %}
-          <li>
-            <span class="step-num">{{ loop.index }}</span>
-            <span>{{ step }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="no-steps">See source for full instructions</p>
-        {% endif %}
-        {% set dn_src = short_source(day.dinner.get('url')) %}
-        {% if dn_src %}
-        <div class="recipe-source">Source: {{ dn_src }}</div>
-        {% endif %}
-      </div>
-    </div>
-    {% else %}
-    <div class="recipe-card">
-      <div class="recipe-thumb-placeholder">Dinner</div>
-      <div class="recipe-body">
-        <div class="recipe-slot-label">Dinner</div>
-        <div class="recipe-title">{{ day.dinner.title }}</div>
-      </div>
-    </div>
-    {% endif %}
-
+    <div class="blp-lunch">{{ day.lunch.title }}</div>
   </div>
 </div>
+{% endfor %}
+
+
+<!-- ══════════════════════════ PAGES 4–10: ONE DINNER PER PAGE ════════ -->
+
+{% for day in days %}
+<div class="page-break"></div>
+
+<div class="drp-header">
+  <div>
+    <div class="drp-day-label">{{ day.day | upper }}</div>
+    <h1 class="drp-title">{{ day.dinner.title }}</h1>
+    <div class="drp-tagline">
+      {% if day.dinner.get('cuisine') %}{{ day.dinner.cuisine }}{% endif %}
+      {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
+      {% for tag in dn_tags %}
+        {% if loop.first and day.dinner.get('cuisine') %}&nbsp;·&nbsp;{% endif %}
+        {{ dietary_abbr.get(tag, tag) }}{% if not loop.last %}&nbsp;·&nbsp;{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div class="drp-meta-col">
+    {% if day.dinner.get('prep_time') %}
+    <div class="drp-meta-item">{{ day.dinner.prep_time }} min</div>
+    {% endif %}
+    {% if day.dinner.get('servings') %}
+    <div class="drp-meta-item">Serves {{ day.dinner.servings }}</div>
+    {% endif %}
+    {% set diff_color = difficulty_colors.get(day.dinner.get('difficulty', 'easy'), '#28a745') %}
+    <div class="drp-meta-item" style="color: {{ diff_color }}; font-weight: 700;">
+      {{ (day.dinner.get('difficulty') or 'easy') | capitalize }}
+    </div>
+  </div>
+</div>
+
+{% set dn_thumb = thumbnail_url(day.dinner.get('url')) %}
+{% if dn_thumb %}
+<img class="drp-image" src="{{ dn_thumb }}" alt="{{ day.dinner.title }}">
+{% else %}
+<div class="drp-image-placeholder">
+  <div>{{ day.dinner.title }}</div>
+</div>
+{% endif %}
+
+<div class="drp-body">
+
+  <!-- Ingredients panel -->
+  <div class="drp-ings-panel">
+    <div class="drp-section-title">Ingredients</div>
+    {% set dn_ings = day.dinner.get('ingredients') or [] %}
+    {% if dn_ings %}
+      {% for ing in dn_ings %}
+      <div class="drp-ing-item">
+        {% if ing.qty or ing.unit %}<strong>{{ ing.qty }} {{ ing.unit }}</strong>&nbsp;{% endif %}{{ ing.name }}
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="drp-no-steps">See source for ingredient list</div>
+    {% endif %}
+  </div>
+
+  <!-- Directions -->
+  <div class="drp-directions">
+    <div class="drp-section-title">Directions</div>
+    {% if day.dinner.get('quick_steps') and day.dinner.quick_steps | length > 0 %}
+      {% for step in day.dinner.quick_steps %}
+      <div class="drp-step">
+        <div class="drp-step-num">{{ loop.index }}</div>
+        <div>{{ step }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="drp-no-steps">See source for full instructions.</div>
+    {% endif %}
+
+    {% set dn_src = short_source(day.dinner.get('url')) %}
+    {% if dn_src %}
+    <div class="drp-source">
+      Recipe source: <strong>{{ dn_src }}</strong>
+      {% if day.dinner.get('url') %}&nbsp;— {{ day.dinner.url }}{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
 {% endfor %}
 
 
