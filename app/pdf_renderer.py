@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -9,6 +10,8 @@ from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
 from app.db.models import MealPlan
+
+logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
@@ -19,7 +22,6 @@ DIFFICULTY_COLORS = {
     "complex": "#dc3545",
 }
 
-# Abbreviated dietary tag labels for compact display (day grid)
 DIETARY_ABBR = {
     "gluten-free":  "GF",
     "dairy-free":   "DF",
@@ -90,17 +92,8 @@ _PANTRY = frozenset({
 
 
 def _categorize_shopping(shopping: list[dict]) -> dict[str, list[dict]]:
-    """Assign each shopping item to Produce / Protein / Dairy / Pantry / Other.
-
-    Categories are checked in order — first match wins. Empty categories
-    are omitted from the result.
-    """
     cats: dict[str, list[dict]] = {
-        "Produce": [],
-        "Protein": [],
-        "Dairy": [],
-        "Pantry": [],
-        "Other": [],
+        "Produce": [], "Protein": [], "Dairy": [], "Pantry": [], "Other": [],
     }
     for item in shopping:
         name = item["ingredient"].lower()
@@ -118,7 +111,6 @@ def _categorize_shopping(shopping: list[dict]) -> dict[str, list[dict]]:
 
 
 def _short_source(url: str | None) -> str:
-    """Return a compact domain string from a URL, or empty string."""
     if not url:
         return ""
     try:
@@ -128,16 +120,98 @@ def _short_source(url: str | None) -> str:
         return ""
 
 
+def _thumbnail_url(url: str | None) -> str | None:
+    """Return a YouTube thumbnail URL, or None for non-YouTube sources."""
+    if not url:
+        return None
+    if "youtube.com/watch?v=" in url:
+        video_id = url.split("v=")[1].split("&")[0]
+        return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+    if "youtu.be/" in url:
+        video_id = url.split("youtu.be/")[1].split("?")[0]
+        return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+    return None
+
+
+def _compute_highlights(days: list[dict]) -> list[str]:
+    """Derive 2-3 at-a-glance highlights from the week's plan."""
+    highlights: list[str] = []
+
+    all_meals = [d.get("breakfast", {}) for d in days] + [d.get("dinner", {}) for d in days]
+    prep_times = [m.get("prep_time") for m in all_meals if m.get("prep_time")]
+    if prep_times:
+        quick = sum(1 for t in prep_times if t <= 25)
+        if quick >= 5:
+            highlights.append(f"{quick} meals in 25 min or less")
+        elif quick >= 3:
+            highlights.append(f"{quick} quick meals this week")
+
+    cuisines = {
+        d.get("dinner", {}).get("cuisine", "").strip()
+        for d in days
+        if d.get("dinner", {}).get("cuisine", "").strip()
+    }
+    if len(cuisines) >= 3:
+        highlights.append(f"{len(cuisines)} different cuisines")
+    elif len(cuisines) == 2:
+        highlights.append(" & ".join(sorted(cuisines)))
+
+    spice_levels = [d.get("dinner", {}).get("spice_level") for d in days]
+    mild_count = sum(1 for s in spice_levels if s in ("mild", None, ""))
+    if mild_count == 7:
+        highlights.append("All mild & family-friendly")
+
+    if not highlights:
+        highlights.append("7 family dinners ready to go")
+
+    return highlights[:3]
+
+
+def _generate_intro(days: list[dict], variant_label: str) -> str:
+    """Generate a warm 1-2 sentence intro using Claude Haiku. Returns '' on any failure."""
+    try:
+        from app.config import settings
+        import anthropic
+        if not settings.anthropic_api_key:
+            return ""
+
+        dinners = [
+            d["dinner"]["title"]
+            for d in days
+            if d.get("dinner", {}).get("recipe_id") and d["dinner"].get("title")
+        ]
+        cuisines = list({
+            d["dinner"].get("cuisine", "")
+            for d in days
+            if d.get("dinner", {}).get("cuisine", "")
+        })
+
+        prompt = (
+            f"Write a warm, friendly 1-2 sentence intro for a family meal plan newsletter. "
+            f"Plan type: {variant_label}. "
+            f"This week's dinners: {', '.join(dinners[:5])}. "
+            f"Cuisines: {', '.join(c for c in cuisines if c) or 'varied'}. "
+            f"Keep it under 35 words. Sound like a friendly meal planning coach. No emojis."
+        )
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=80,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.content[0].text.strip()
+    except Exception as exc:
+        logger.warning("pdf_renderer: intro generation failed — %s", exc)
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # Main render entry point
 # ---------------------------------------------------------------------------
 
 def render_pdf(plan: MealPlan, *, days: list[dict] | None = None) -> bytes:
-    """Render a MealPlan to PDF bytes.
-
-    Pass ``days`` to use pre-enriched day data (with live classifier fields);
-    otherwise falls back to what is stored in plan.plan_json.
-    """
+    """Render a MealPlan to PDF bytes."""
     from app.planner import VARIANTS
 
     if days is None:
@@ -146,6 +220,8 @@ def render_pdf(plan: MealPlan, *, days: list[dict] | None = None) -> bytes:
     variant_label = VARIANTS.get(plan.variant, plan.variant)
 
     shopping_by_cat = _categorize_shopping(shopping)
+    highlights = _compute_highlights(days)
+    intro_text = _generate_intro(days, variant_label)
 
     tmpl = _env.get_template("meal_plan_pdf.html")
     html_str = tmpl.render(
@@ -158,6 +234,9 @@ def render_pdf(plan: MealPlan, *, days: list[dict] | None = None) -> bytes:
         difficulty_colors=DIFFICULTY_COLORS,
         dietary_abbr=DIETARY_ABBR,
         short_source=_short_source,
+        thumbnail_url=_thumbnail_url,
+        highlights=highlights,
+        intro_text=intro_text,
     )
 
     return HTML(string=html_str).write_pdf()
