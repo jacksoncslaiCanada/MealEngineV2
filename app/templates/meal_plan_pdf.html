@@ -3,634 +3,525 @@
 <head>
 <meta charset="utf-8">
 <style>
-  /* ── Reset / base ─────────────────────────────────────────── */
+  /* ── Reset / base ──────────────────────────────────────────── */
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   @page {
     size: A4 portrait;
-    margin: 14mm 14mm 12mm 14mm;
+    margin: 14mm 16mm 12mm 16mm;
     @bottom-center {
-      content: "MealEngine  ·  " string(week) "  ·  " counter(page) " / " counter(pages);
-      font-size: 8pt;
-      color: #9ca3af;
+      content: "MealEngine  ·  " string(week-label) "  ·  p." counter(page) " of " counter(pages);
+      font-size: 7pt;
+      color: #a8a29e;
     }
   }
 
   body {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 9.5pt;
-    color: #1f2937;
-    line-height: 1.4;
+    font-size: 10pt;
+    color: #1c1917;
+    line-height: 1.45;
   }
 
-  /* ── Header ───────────────────────────────────────────────── */
-  .header {
-    background: #1f2937;
-    color: #fff;
-    padding: 10mm 12mm;
-    border-radius: 4px;
+  .page-break { page-break-before: always; }
+
+
+  /* ════════════════════════════════════════════════════════════
+     PAGE 1 — COVER
+  ════════════════════════════════════════════════════════════ */
+
+  .amber-bar {
+    height: 3.5mm;
+    background: #f59e0b;
+    border-radius: 3px;
     margin-bottom: 7mm;
   }
-  .header-row {
+
+  .cover-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: flex-start;
+    margin-bottom: 6mm;
   }
-  .brand {
+  .cover-brand {
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #a8a29e;
+    margin-bottom: 2mm;
+  }
+  .cover-title {
+    font-size: 30pt;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: #1c1917;
+  }
+  .cover-intro {
+    margin-top: 3.5mm;
+    font-size: 9.5pt;
+    color: #57534e;
+    line-height: 1.6;
+    max-width: 100mm;
+  }
+  .cover-meta {
+    text-align: right;
+    padding-top: 1mm;
+    flex-shrink: 0;
+  }
+  .cover-week {
     font-size: 11pt;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    color: #f9fafb;
-    opacity: 0.7;
-    text-transform: uppercase;
+    color: #1c1917;
+    string-set: week-label content();
   }
-  .header h1 {
+  .cover-variant {
+    display: inline-block;
+    margin-top: 2.5mm;
+    background: #f59e0b;
+    color: #1c1917;
+    font-size: 7pt;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 1.5mm 4mm;
+    border-radius: 3px;
+  }
+
+  /* Highlights strip */
+  .highlights-bar {
+    display: flex;
+    gap: 0;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 5px;
+    padding: 3.5mm 5mm;
+    margin-bottom: 8mm;
+  }
+  .highlight-item {
+    flex: 1;
+    text-align: center;
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #92400e;
+    padding: 0 4mm;
+    border-right: 1px solid #fde68a;
+  }
+  .highlight-item:last-child { border-right: none; }
+
+  /* Section label */
+  .section-label {
+    font-size: 6.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: #a8a29e;
+    margin-bottom: 3mm;
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e7e5e4;
+  }
+
+  /* Dinner strip */
+  .dinner-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2.5mm;
+    margin-bottom: 7mm;
+  }
+  .dinner-chip {
+    background: #fafaf9;
+    border: 1px solid #e7e5e4;
+    border-top: 2.5px solid #f59e0b;
+    border-radius: 4px;
+    padding: 3mm 2.5mm;
+  }
+  .chip-day {
+    font-size: 6pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #a8a29e;
+    margin-bottom: 1.5mm;
+  }
+  .chip-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #1c1917;
+    line-height: 1.3;
+    margin-bottom: 1.5mm;
+  }
+  .chip-cuisine {
+    font-size: 6.5pt;
+    color: #78716c;
+    margin-bottom: 0.5mm;
+  }
+  .chip-prep {
+    font-size: 6pt;
+    font-weight: 700;
+    color: #b45309;
+  }
+
+  /* Breakfast list */
+  .breakfast-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1mm 8mm;
+    margin-bottom: 8mm;
+  }
+  .bf-item {
+    display: flex;
+    align-items: baseline;
+    gap: 2.5mm;
+    padding: 1.5mm 0;
+    border-bottom: 1px solid #f3f2f1;
+    font-size: 8.5pt;
+  }
+  .bf-day {
+    font-size: 6.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #a8a29e;
+    flex-shrink: 0;
+    width: 8mm;
+  }
+  .bf-title { color: #44403c; font-weight: 500; }
+
+  /* Cover page nav */
+  .page-nav {
+    text-align: center;
+    font-size: 7.5pt;
+    color: #a8a29e;
+    padding-top: 4mm;
+    border-top: 1px solid #e7e5e4;
+  }
+  .page-nav-label {
+    display: inline-block;
+    background: #1c1917;
+    color: #f5f5f4;
+    font-size: 6.5pt;
+    font-weight: 700;
+    padding: 0.8mm 2.5mm;
+    border-radius: 2px;
+    margin: 0 1mm;
+  }
+
+
+  /* ════════════════════════════════════════════════════════════
+     PAGE 2 — SHOPPING LIST
+  ════════════════════════════════════════════════════════════ */
+
+  .page-header {
+    margin-bottom: 7mm;
+    padding-bottom: 4mm;
+    border-bottom: 3px solid #f59e0b;
+  }
+  .page-header h2 {
     font-size: 22pt;
     font-weight: 800;
     letter-spacing: -0.02em;
-    margin-top: 2mm;
-    color: #f9fafb;
+    color: #1c1917;
   }
-  .header .meta { text-align: right; }
-  .header .week {
-    font-size: 13pt;
-    font-weight: 700;
-    color: #f9fafb;
-    string-set: week content();
-  }
-  .header .variant-badge {
-    margin-top: 1.5mm;
-    display: inline-block;
-    background: rgba(255,255,255,0.15);
-    color: #f9fafb;
-    font-size: 8pt;
-    font-weight: 600;
-    padding: 1.5mm 3mm;
-    border-radius: 3px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  /* ── Day grid ─────────────────────────────────────────────── */
-  .day-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 3mm;
-    margin-bottom: 6mm;
-  }
-
-  .day-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .day-header {
-    background: #374151;
-    color: #f9fafb;
-    font-size: 7.5pt;
-    font-weight: 700;
-    text-align: center;
-    padding: 2mm 1mm;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .meal-slot {
-    padding: 2mm 2.5mm;
-    border-bottom: 1px solid #f3f4f6;
-  }
-  .meal-slot:last-child { border-bottom: none; }
-
-  .slot-label {
-    font-size: 6.5pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #9ca3af;
-    margin-bottom: 0.8mm;
-  }
-  .meal-title {
-    font-size: 7.5pt;
-    font-weight: 600;
-    color: #111827;
-    line-height: 1.3;
-  }
-  .meal-note {
-    font-size: 6.5pt;
-    color: #6b7280;
-    margin-top: 0.5mm;
-    font-style: italic;
-  }
-  .difficulty-dot {
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    margin-right: 2px;
-    vertical-align: middle;
-    position: relative;
-    top: -0.5px;
-  }
-  .cuisine-tag {
-    font-size: 6pt;
-    color: #6b7280;
-    margin-top: 0.5mm;
-  }
-
-  /* Prep time + dietary tags row */
-  .meal-sub {
-    display: flex;
-    align-items: center;
-    gap: 1.5mm;
-    flex-wrap: wrap;
-    margin-top: 0.8mm;
-  }
-  .prep-badge {
-    font-size: 6pt;
-    color: #4b5563;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .dtag {
-    font-size: 5.5pt;
-    font-weight: 700;
-    color: #065f46;
-    background: #d1fae5;
-    padding: 0.3mm 1.2mm;
-    border-radius: 2px;
-    letter-spacing: 0.03em;
-    white-space: nowrap;
-  }
-
-  /* breakfast slot */
-  .slot-breakfast { background: #fffbeb; }
-  /* lunch slot */
-  .slot-lunch     { background: #f0fdf4; }
-  /* dinner slot */
-  .slot-dinner    { background: #eff6ff; }
-
-  /* ── Legend ───────────────────────────────────────────────── */
-  .legend {
-    display: flex;
-    gap: 5mm;
-    align-items: center;
-    margin-bottom: 8mm;
-    font-size: 7.5pt;
-    color: #6b7280;
-  }
-  .legend-item { display: flex; align-items: center; gap: 1.5mm; }
-  .legend-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  /* ── Page break ───────────────────────────────────────────── */
-  .page-break { page-break-before: always; }
-
-  /* ── Cooking methods ──────────────────────────────────────── */
-  .methods-header {
-    background: #1f2937;
-    color: #f9fafb;
-    padding: 5mm 8mm;
-    border-radius: 4px;
-    margin-bottom: 6mm;
-  }
-  .methods-header h2 { font-size: 16pt; font-weight: 800; letter-spacing: -0.01em; }
-  .methods-header .sub { font-size: 8.5pt; opacity: 0.65; margin-top: 1mm; }
-
-  .methods-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4mm;
-  }
-  .method-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    padding: 3.5mm 4mm;
-    display: flex;
-    flex-direction: column;
-  }
-  .method-slot-label {
-    font-size: 6pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #9ca3af;
-    margin-bottom: 0.5mm;
-  }
-  .method-day {
-    font-size: 7pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: #6b7280;
-    margin-bottom: 1mm;
-  }
-  .method-title {
+  .page-header .sub {
     font-size: 9pt;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 2mm;
-    line-height: 1.3;
-  }
-  .method-meta {
-    display: flex;
-    gap: 2.5mm;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 2mm;
-  }
-  .method-badge {
-    font-size: 6.5pt;
-    font-weight: 700;
-    padding: 0.8mm 2mm;
-    border-radius: 2px;
-    color: #fff;
-    white-space: nowrap;
-  }
-  .method-cuisine {
-    font-size: 7pt;
-    color: #6b7280;
-  }
-  .method-prep {
-    font-size: 7pt;
-    color: #4b5563;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .method-dietary {
-    display: flex;
-    gap: 1.5mm;
-    flex-wrap: wrap;
-    margin-bottom: 2mm;
-  }
-  .method-dtag {
-    font-size: 6.5pt;
-    font-weight: 700;
-    color: #065f46;
-    background: #d1fae5;
-    padding: 0.5mm 1.5mm;
-    border-radius: 2px;
-  }
-  .method-steps {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    flex: 1;
-  }
-  .method-steps li {
-    font-size: 7.5pt;
-    color: #374151;
-    padding: 1mm 0 1mm 9px;
-    border-bottom: 1px solid #f9fafb;
-    line-height: 1.3;
-    position: relative;
-  }
-  .method-steps li:last-child { border-bottom: none; }
-  .method-steps li::before {
-    content: counter(step);
-    counter-increment: step;
-    position: absolute;
-    left: 0;
-    font-size: 6.5pt;
-    font-weight: 700;
-    color: #9ca3af;
-    top: 1.5mm;
-  }
-  .method-steps { counter-reset: step; }
-  .no-steps { font-size: 7.5pt; color: #9ca3af; font-style: italic; }
-  .method-source {
-    margin-top: 2mm;
-    font-size: 6pt;
-    color: #9ca3af;
-    border-top: 1px solid #f3f4f6;
-    padding-top: 1.5mm;
+    color: #78716c;
+    margin-top: 1.5mm;
   }
 
-  /* ── Shopping list ────────────────────────────────────────── */
-  .shopping-header {
-    background: #1f2937;
-    color: #f9fafb;
-    padding: 5mm 8mm;
-    border-radius: 4px;
-    margin-bottom: 6mm;
-  }
-  .shopping-header h2 {
-    font-size: 16pt;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-  .shopping-header .sub {
-    font-size: 8.5pt;
-    opacity: 0.65;
-    margin-top: 1mm;
-  }
-
-  /* Two-column layout for categories */
-  .shopping-body {
+  .shopping-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0 10mm;
+    gap: 0 12mm;
     align-items: start;
   }
-
   .cat-section {
+    margin-bottom: 6mm;
+    break-inside: avoid;
+  }
+  .cat-name {
+    font-size: 7pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: #1c1917;
+    padding-bottom: 1.5mm;
+    margin-bottom: 2mm;
+    border-bottom: 2px solid #f59e0b;
+  }
+  .shop-item {
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    padding: 2mm 0;
+    border-bottom: 1px solid #f3f2f1;
+    font-size: 9.5pt;
+  }
+  .shop-item:last-child { border-bottom: none; }
+  .shop-check {
+    width: 4.5mm;
+    height: 4.5mm;
+    border: 1.5px solid #d4c9b8;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .shop-name { flex: 1; font-weight: 600; color: #1c1917; }
+  .shop-amount { font-size: 8.5pt; color: #78716c; flex-shrink: 0; }
+
+  .shopping-footer {
+    margin-top: 7mm;
+    padding: 3.5mm 5mm;
+    background: #fef3c7;
+    border-radius: 4px;
+    font-size: 7.5pt;
+    color: #92400e;
+    line-height: 1.55;
+  }
+
+
+  /* ════════════════════════════════════════════════════════════
+     PAGE 3+ — COOKING GUIDES
+  ════════════════════════════════════════════════════════════ */
+
+  .day-section {
     margin-bottom: 5mm;
     break-inside: avoid;
   }
-  .cat-header {
-    font-size: 7pt;
+  .day-header-bar {
+    background: #1c1917;
+    color: #f5f5f4;
+    padding: 2.5mm 5mm;
+    border-radius: 4px 4px 0 0;
+    font-size: 8.5pt;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #1f2937;
-    border-bottom: 1.5px solid #1f2937;
-    padding-bottom: 1mm;
-    margin-bottom: 2mm;
-  }
-
-  .shopping-item {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 1.5mm 0;
-    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+    gap: 3mm;
   }
-  .shopping-item:last-child { border-bottom: none; }
-
-  .ing-name {
-    font-size: 8.5pt;
-    font-weight: 600;
-    color: #111827;
-  }
-  .ing-amount {
-    font-size: 8pt;
-    color: #6b7280;
-    text-align: right;
-    margin-left: 3mm;
+  .day-amber-pip {
+    width: 5px;
+    height: 5px;
+    background: #f59e0b;
+    border-radius: 50%;
     flex-shrink: 0;
   }
+  .day-cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3mm;
+    background: #f3f2f1;
+    padding: 3mm;
+    border-radius: 0 0 4px 4px;
+  }
 
-  /* ── Footer note ──────────────────────────────────────────── */
-  .footer-note {
-    margin-top: 8mm;
-    padding: 3mm 5mm;
-    background: #f9fafb;
-    border-left: 3px solid #1f2937;
+  .recipe-card {
+    background: #ffffff;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #e7e5e4;
+  }
+  .recipe-thumb {
+    width: 100%;
+    height: 26mm;
+    object-fit: cover;
+    display: block;
+  }
+  .recipe-thumb-placeholder {
+    width: 100%;
+    height: 26mm;
+    background: #fef3c7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6.5pt;
+    font-weight: 700;
+    color: #b45309;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .recipe-body {
+    padding: 3mm 3.5mm;
+  }
+  .recipe-slot-label {
+    font-size: 5.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #a8a29e;
+    margin-bottom: 1mm;
+  }
+  .recipe-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #1c1917;
+    line-height: 1.3;
+    margin-bottom: 2mm;
+  }
+  .recipe-meta {
+    display: flex;
+    align-items: center;
+    gap: 2.5mm;
+    flex-wrap: wrap;
+    margin-bottom: 2.5mm;
+  }
+  .recipe-prep {
+    font-size: 7pt;
+    font-weight: 700;
+    color: #b45309;
+    background: #fef3c7;
+    padding: 0.8mm 2.5mm;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .recipe-cuisine {
+    font-size: 7pt;
+    color: #78716c;
+  }
+
+  .recipe-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .recipe-steps li {
+    display: flex;
+    gap: 2.5mm;
+    padding: 1.5mm 0;
     font-size: 7.5pt;
-    color: #6b7280;
+    color: #44403c;
+    line-height: 1.4;
+    border-bottom: 1px solid #f5f5f4;
+  }
+  .recipe-steps li:last-child { border-bottom: none; }
+  .step-num {
+    font-size: 6.5pt;
+    font-weight: 800;
+    color: #f59e0b;
+    width: 3.5mm;
+    flex-shrink: 0;
+    padding-top: 0.3mm;
+  }
+  .recipe-source {
+    margin-top: 2mm;
+    font-size: 6pt;
+    color: #a8a29e;
+    padding-top: 1.5mm;
+    border-top: 1px solid #f3f2f1;
+  }
+  .no-steps {
+    font-size: 7.5pt;
+    color: #a8a29e;
+    font-style: italic;
   }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════ PAGE 1: MEAL PLAN ═══════════════════════ -->
 
-<div class="header">
-  <div class="header-row">
-    <div>
-      <div class="brand">MealEngine</div>
-      <h1>Weekly Meal Plan</h1>
-    </div>
-    <div class="meta">
-      <div class="week">{{ week_label }}</div>
-      <div class="variant-badge">{{ variant_label }}</div>
-    </div>
+<!-- ══════════════════════════ PAGE 1: COVER ══════════════════════════ -->
+
+<div class="amber-bar"></div>
+
+<div class="cover-header">
+  <div>
+    <div class="cover-brand">MealEngine</div>
+    <h1 class="cover-title">Weekly<br>Meal Plan</h1>
+    {% if intro_text %}
+    <p class="cover-intro">{{ intro_text }}</p>
+    {% endif %}
+  </div>
+  <div class="cover-meta">
+    <div class="cover-week">{{ week_label }}</div>
+    <div class="cover-variant">{{ variant_label }}</div>
   </div>
 </div>
 
-<!-- Day grid -->
-<div class="day-grid">
+{% if highlights %}
+<div class="highlights-bar">
+  {% for h in highlights %}
+  <div class="highlight-item">{{ h }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="section-label">This week's dinners</div>
+<div class="dinner-strip">
   {% for day in days %}
-  <div class="day-card">
-    <div class="day-header">{{ day.day[:3] }}</div>
-
-    <!-- Breakfast -->
-    <div class="meal-slot slot-breakfast">
-      <div class="slot-label">Breakfast</div>
-      <div class="meal-title">
-        {% if day.breakfast.get('difficulty') %}
-        <span class="difficulty-dot"
-              style="background:{{ difficulty_colors.get(day.breakfast.difficulty, '#9ca3af') }}"></span>
-        {% endif %}
-        {{ day.breakfast.title }}
-      </div>
-      {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
-      {% set bf_prep = day.breakfast.get('prep_time') %}
-      {% if bf_prep or bf_tags %}
-      <div class="meal-sub">
-        {% if bf_prep %}<span class="prep-badge">{{ bf_prep }}m</span>{% endif %}
-        {% for tag in bf_tags[:2] %}
-        <span class="dtag">{{ dietary_abbr.get(tag, tag[:2].upper()) }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Lunch -->
-    <div class="meal-slot slot-lunch">
-      <div class="slot-label">Lunch</div>
-      <div class="meal-title">{{ day.lunch.title }}</div>
-      {% if day.lunch.get('note') %}
-      <div class="meal-note">{{ day.lunch.note }}</div>
-      {% endif %}
-    </div>
-
-    <!-- Dinner -->
-    <div class="meal-slot slot-dinner">
-      <div class="slot-label">Dinner</div>
-      <div class="meal-title">
-        {% if day.dinner.get('difficulty') %}
-        <span class="difficulty-dot"
-              style="background:{{ difficulty_colors.get(day.dinner.difficulty, '#9ca3af') }}"></span>
-        {% endif %}
-        {{ day.dinner.title }}
-      </div>
-      {% if day.dinner.get('cuisine') %}
-      <div class="cuisine-tag">{{ day.dinner.cuisine }}</div>
-      {% endif %}
-      {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
-      {% set dn_prep = day.dinner.get('prep_time') %}
-      {% if dn_prep or dn_tags %}
-      <div class="meal-sub">
-        {% if dn_prep %}<span class="prep-badge">{{ dn_prep }}m</span>{% endif %}
-        {% for tag in dn_tags[:2] %}
-        <span class="dtag">{{ dietary_abbr.get(tag, tag[:2].upper()) }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-
+  <div class="dinner-chip">
+    <div class="chip-day">{{ day.day[:3] }}</div>
+    <div class="chip-title">{{ day.dinner.title }}</div>
+    {% if day.dinner.get('cuisine') %}
+    <div class="chip-cuisine">{{ day.dinner.cuisine }}</div>
+    {% endif %}
+    {% if day.dinner.get('prep_time') %}
+    <div class="chip-prep">{{ day.dinner.prep_time }} min</div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>
 
-<!-- Legend -->
-<div class="legend">
-  <span>Difficulty:</span>
-  {% for diff, color in difficulty_colors.items() %}
-  <span class="legend-item">
-    <span class="legend-dot" style="background:{{ color }}"></span>
-    {{ diff|capitalize }}
-  </span>
+<div class="section-label">Breakfasts</div>
+<div class="breakfast-list">
+  {% for day in days %}
+  <div class="bf-item">
+    <span class="bf-day">{{ day.day[:3] }}</span>
+    <span class="bf-title">{{ day.breakfast.title }}</span>
+  </div>
   {% endfor %}
-  <span style="margin-left:4mm;">
-    <span class="dtag" style="font-size:6pt;">GF</span> Gluten-free
-  </span>
-  <span>
-    <span class="dtag" style="font-size:6pt;">V</span> Vegetarian
-  </span>
-  <span>
-    <span class="dtag" style="font-size:6pt;">VG</span> Vegan
-  </span>
-  <span style="margin-left:auto; font-size:7pt;">
-    Lunch = previous night's leftovers · pack the night before
-  </span>
+</div>
+
+<div class="page-nav">
+  <span class="page-nav-label">p.2</span> Shopping list
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <span class="page-nav-label">p.3</span> Cooking guides (one card per night)
 </div>
 
 
-<!-- ═══════════════════════ PAGE 2: COOKING METHODS ══════════════════ -->
-
+<!-- ══════════════════════════ PAGE 2: SHOPPING LIST ══════════════════ -->
 <div class="page-break"></div>
 
-<div class="methods-header">
-  <h2>Cooking Methods</h2>
-  <div class="sub">3-step guide for breakfast and dinner — every day this week</div>
-</div>
-
-<div class="methods-grid">
-  {% for day in days %}
-
-  {# ── Breakfast card ── #}
-  {% if day.breakfast.get('recipe_id') %}
-  <div class="method-card">
-    <div class="method-slot-label">Breakfast</div>
-    <div class="method-day">{{ day.day }}</div>
-    <div class="method-title">{{ day.breakfast.title }}</div>
-    <div class="method-meta">
-      {% if day.breakfast.get('difficulty') %}
-      <span class="method-badge"
-            style="background:{{ difficulty_colors.get(day.breakfast.difficulty, '#9ca3af') }}">
-        {{ day.breakfast.difficulty }}
-      </span>
-      {% endif %}
-      {% if day.breakfast.get('prep_time') %}
-      <span class="method-prep">{{ day.breakfast.prep_time }} min</span>
-      {% endif %}
-      {% if day.breakfast.get('cuisine') %}
-      <span class="method-cuisine">{{ day.breakfast.cuisine }}</span>
-      {% endif %}
-    </div>
-    {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
-    {% if bf_tags %}
-    <div class="method-dietary">
-      {% for tag in bf_tags %}
-      <span class="method-dtag">{{ tag }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% if day.breakfast.get('quick_steps') and day.breakfast.quick_steps|length > 0 %}
-    <ul class="method-steps">
-      {% for step in day.breakfast.quick_steps %}
-      <li>{{ step }}</li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="no-steps">See source recipe for full instructions</div>
-    {% endif %}
-    {% set bf_src = short_source(day.breakfast.get('url')) %}
-    {% if bf_src %}
-    <div class="method-source">Source: {{ bf_src }}</div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  {# ── Dinner card ── #}
-  {% if day.dinner.get('recipe_id') %}
-  <div class="method-card">
-    <div class="method-slot-label">Dinner</div>
-    <div class="method-day">{{ day.day }}</div>
-    <div class="method-title">{{ day.dinner.title }}</div>
-    <div class="method-meta">
-      {% if day.dinner.get('difficulty') %}
-      <span class="method-badge"
-            style="background:{{ difficulty_colors.get(day.dinner.difficulty, '#9ca3af') }}">
-        {{ day.dinner.difficulty }}
-      </span>
-      {% endif %}
-      {% if day.dinner.get('prep_time') %}
-      <span class="method-prep">{{ day.dinner.prep_time }} min</span>
-      {% endif %}
-      {% if day.dinner.get('cuisine') %}
-      <span class="method-cuisine">{{ day.dinner.cuisine }}</span>
-      {% endif %}
-    </div>
-    {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
-    {% if dn_tags %}
-    <div class="method-dietary">
-      {% for tag in dn_tags %}
-      <span class="method-dtag">{{ tag }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% if day.dinner.get('quick_steps') and day.dinner.quick_steps|length > 0 %}
-    <ul class="method-steps">
-      {% for step in day.dinner.quick_steps %}
-      <li>{{ step }}</li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="no-steps">See source recipe for full instructions</div>
-    {% endif %}
-    {% set dn_src = short_source(day.dinner.get('url')) %}
-    {% if dn_src %}
-    <div class="method-source">Source: {{ dn_src }}</div>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  {% endfor %}
-</div>
-
-
-<!-- ═══════════════════════ PAGE 3: SHOPPING LIST ═══════════════════ -->
-<div class="page-break"></div>
-
-<div class="shopping-header">
+<div class="page-header">
   <h2>Shopping List</h2>
-  <div class="sub">{{ week_label }} · {{ variant_label }} · {{ shopping_total }} items</div>
+  <div class="sub">{{ week_label }} · {{ variant_label }} · {{ shopping_total }} items to buy</div>
 </div>
 
-<div class="shopping-body">
+<div class="shopping-grid">
   {% set cat_list = shopping_by_cat.keys()|list %}
   {% set half = ((cat_list|length + 1) // 2) %}
 
-  <!-- Left column: first half of categories -->
   <div>
     {% for cat_name in cat_list[:half] %}
     <div class="cat-section">
-      <div class="cat-header">{{ cat_name }}</div>
+      <div class="cat-name">{{ cat_name }}</div>
       {% for item in shopping_by_cat[cat_name] %}
-      <div class="shopping-item">
-        <span class="ing-name">{{ item.ingredient }}</span>
-        <span class="ing-amount">{{ item.amounts }}</span>
+      <div class="shop-item">
+        <div class="shop-check"></div>
+        <span class="shop-name">{{ item.ingredient }}</span>
+        <span class="shop-amount">{{ item.amounts }}</span>
       </div>
       {% endfor %}
     </div>
     {% endfor %}
   </div>
 
-  <!-- Right column: second half of categories -->
   <div>
     {% for cat_name in cat_list[half:] %}
     <div class="cat-section">
-      <div class="cat-header">{{ cat_name }}</div>
+      <div class="cat-name">{{ cat_name }}</div>
       {% for item in shopping_by_cat[cat_name] %}
-      <div class="shopping-item">
-        <span class="ing-name">{{ item.ingredient }}</span>
-        <span class="ing-amount">{{ item.amounts }}</span>
+      <div class="shop-item">
+        <div class="shop-check"></div>
+        <span class="shop-name">{{ item.ingredient }}</span>
+        <span class="shop-amount">{{ item.amounts }}</span>
       </div>
       {% endfor %}
     </div>
@@ -638,10 +529,131 @@
   </div>
 </div>
 
-<div class="footer-note">
-  Quantities are per recipe. Combine amounts for items appearing in multiple meals.
-  Always check your pantry before shopping — staple items (salt, oil, spices) have been excluded from this list.
+<div class="shopping-footer">
+  Quantities shown per recipe — combine for ingredients used in multiple meals.
+  Pantry staples (salt, oil, pepper, basic spices) are excluded.
+  Lunch every day = last night's leftovers, packed the night before.
 </div>
+
+
+<!-- ══════════════════════════ PAGE 3+: COOKING GUIDES ════════════════ -->
+<div class="page-break"></div>
+
+<div class="page-header">
+  <h2>Cooking Guides</h2>
+  <div class="sub">3 steps per meal · find tonight's day and cook</div>
+</div>
+
+{% for day in days %}
+<div class="day-section">
+
+  <div class="day-header-bar">
+    <div class="day-amber-pip"></div>
+    {{ day.day }}
+  </div>
+
+  <div class="day-cards-row">
+
+    <!-- Breakfast -->
+    {% if day.breakfast.get('recipe_id') %}
+    <div class="recipe-card">
+      {% set bf_thumb = thumbnail_url(day.breakfast.get('url')) %}
+      {% if bf_thumb %}
+      <img class="recipe-thumb" src="{{ bf_thumb }}" alt="{{ day.breakfast.title }}">
+      {% else %}
+      <div class="recipe-thumb-placeholder">Breakfast</div>
+      {% endif %}
+      <div class="recipe-body">
+        <div class="recipe-slot-label">Breakfast</div>
+        <div class="recipe-title">{{ day.breakfast.title }}</div>
+        <div class="recipe-meta">
+          {% if day.breakfast.get('prep_time') %}
+          <span class="recipe-prep">{{ day.breakfast.prep_time }} min</span>
+          {% endif %}
+          {% if day.breakfast.get('cuisine') %}
+          <span class="recipe-cuisine">{{ day.breakfast.cuisine }}</span>
+          {% endif %}
+        </div>
+        {% if day.breakfast.get('quick_steps') and day.breakfast.quick_steps|length > 0 %}
+        <ul class="recipe-steps">
+          {% for step in day.breakfast.quick_steps %}
+          <li>
+            <span class="step-num">{{ loop.index }}</span>
+            <span>{{ step }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="no-steps">See source for full instructions</p>
+        {% endif %}
+        {% set bf_src = short_source(day.breakfast.get('url')) %}
+        {% if bf_src %}
+        <div class="recipe-source">Source: {{ bf_src }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="recipe-card">
+      <div class="recipe-thumb-placeholder">Breakfast</div>
+      <div class="recipe-body">
+        <div class="recipe-slot-label">Breakfast</div>
+        <div class="recipe-title">{{ day.breakfast.title }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Dinner -->
+    {% if day.dinner.get('recipe_id') %}
+    <div class="recipe-card">
+      {% set dn_thumb = thumbnail_url(day.dinner.get('url')) %}
+      {% if dn_thumb %}
+      <img class="recipe-thumb" src="{{ dn_thumb }}" alt="{{ day.dinner.title }}">
+      {% else %}
+      <div class="recipe-thumb-placeholder">Dinner</div>
+      {% endif %}
+      <div class="recipe-body">
+        <div class="recipe-slot-label">Dinner</div>
+        <div class="recipe-title">{{ day.dinner.title }}</div>
+        <div class="recipe-meta">
+          {% if day.dinner.get('prep_time') %}
+          <span class="recipe-prep">{{ day.dinner.prep_time }} min</span>
+          {% endif %}
+          {% if day.dinner.get('cuisine') %}
+          <span class="recipe-cuisine">{{ day.dinner.cuisine }}</span>
+          {% endif %}
+        </div>
+        {% if day.dinner.get('quick_steps') and day.dinner.quick_steps|length > 0 %}
+        <ul class="recipe-steps">
+          {% for step in day.dinner.quick_steps %}
+          <li>
+            <span class="step-num">{{ loop.index }}</span>
+            <span>{{ step }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="no-steps">See source for full instructions</p>
+        {% endif %}
+        {% set dn_src = short_source(day.dinner.get('url')) %}
+        {% if dn_src %}
+        <div class="recipe-source">Source: {{ dn_src }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="recipe-card">
+      <div class="recipe-thumb-placeholder">Dinner</div>
+      <div class="recipe-body">
+        <div class="recipe-slot-label">Dinner</div>
+        <div class="recipe-title">{{ day.dinner.title }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endfor %}
+
 
 </body>
 </html>
