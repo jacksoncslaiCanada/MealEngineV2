@@ -126,10 +126,10 @@ def _thumbnail_url(url: str | None) -> str | None:
         return None
     if "youtube.com/watch?v=" in url:
         video_id = url.split("v=")[1].split("&")[0]
-        return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+        return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
     if "youtu.be/" in url:
         video_id = url.split("youtu.be/")[1].split("?")[0]
-        return f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+        return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
     return None
 
 
