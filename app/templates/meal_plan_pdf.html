@@ -131,17 +131,20 @@
 
   /* Dinner strip */
   .dinner-strip {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    display: flex;
+    flex-direction: row;
     gap: 2.5mm;
     margin-bottom: 7mm;
   }
   .dinner-chip {
+    flex: 1;
+    min-width: 0;
     background: #fafaf9;
     border: 1px solid #e7e5e4;
     border-top: 2.5px solid #f59e0b;
     border-radius: 4px;
     padding: 3mm 2.5mm;
+    overflow: hidden;
   }
   .chip-day {
     font-size: 6pt;
@@ -168,32 +171,6 @@
     font-weight: 700;
     color: #b45309;
   }
-
-  /* Breakfast list */
-  .breakfast-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1mm 8mm;
-    margin-bottom: 8mm;
-  }
-  .bf-item {
-    display: flex;
-    align-items: baseline;
-    gap: 2.5mm;
-    padding: 1.5mm 0;
-    border-bottom: 1px solid #f3f2f1;
-    font-size: 8.5pt;
-  }
-  .bf-day {
-    font-size: 6.5pt;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: #a8a29e;
-    flex-shrink: 0;
-    width: 8mm;
-  }
-  .bf-title { color: #44403c; font-weight: 500; }
 
   /* Cover page nav */
   .page-nav {
@@ -458,23 +435,13 @@
   {% for day in days %}
   <div class="dinner-chip">
     <div class="chip-day">{{ day.day[:3] }}</div>
-    <div class="chip-title">{{ day.dinner.title }}</div>
+    <div class="chip-title">{{ day.dinner.title[:28] }}</div>
     {% if day.dinner.get('cuisine') %}
     <div class="chip-cuisine">{{ day.dinner.cuisine }}</div>
     {% endif %}
     {% if day.dinner.get('prep_time') %}
     <div class="chip-prep">{{ day.dinner.prep_time }} min</div>
     {% endif %}
-  </div>
-  {% endfor %}
-</div>
-
-<div class="section-label">Breakfasts</div>
-<div class="breakfast-list">
-  {% for day in days %}
-  <div class="bf-item">
-    <span class="bf-day">{{ day.day[:3] }}</span>
-    <span class="bf-title">{{ day.breakfast.title }}</span>
   </div>
   {% endfor %}
 </div>
