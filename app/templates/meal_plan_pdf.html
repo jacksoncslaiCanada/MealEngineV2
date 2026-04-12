@@ -249,8 +249,24 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .shop-name { flex: 1; font-weight: 600; color: #1c1917; }
-  .shop-amount { font-size: 8.5pt; color: #78716c; flex-shrink: 0; }
+  .shop-name {
+    font-weight: 600;
+    color: #1c1917;
+    white-space: nowrap;
+  }
+  .shop-leader {
+    flex: 1;
+    border-bottom: 1.5px dotted #d4c9b8;
+    margin: 0 3mm;
+    position: relative;
+    top: -1.5mm;
+  }
+  .shop-amount {
+    font-size: 8.5pt;
+    color: #78716c;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 
   .shopping-footer {
     margin-top: 7mm;
@@ -473,7 +489,8 @@
       <div class="shop-item">
         <div class="shop-check"></div>
         <span class="shop-name">{{ item.ingredient }}</span>
-        <span class="shop-amount">{{ item.amounts }}</span>
+        <span class="shop-leader"></span>
+        {% if item.amounts %}<span class="shop-amount">{{ item.amounts }}</span>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -488,7 +505,8 @@
       <div class="shop-item">
         <div class="shop-check"></div>
         <span class="shop-name">{{ item.ingredient }}</span>
-        <span class="shop-amount">{{ item.amounts }}</span>
+        <span class="shop-leader"></span>
+        {% if item.amounts %}<span class="shop-amount">{{ item.amounts }}</span>{% endif %}
       </div>
       {% endfor %}
     </div>
