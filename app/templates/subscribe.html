@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}Subscribe · MealEngine{% endblock %}
+
+{% block extra_head %}
+<style>
+  .subscribe-hero {
+    background: #1f2937;
+    color: #f9fafb;
+    border-radius: .5rem;
+    padding: 2.5rem 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  .subscribe-hero h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin-bottom: .5rem;
+  }
+  .subscribe-hero p {
+    font-size: 1.05rem;
+    opacity: .75;
+    margin-bottom: 0;
+  }
+
+  .variant-card {
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+    border-radius: .5rem;
+    padding: 1.25rem;
+    transition: border-color .15s, box-shadow .15s;
+    height: 100%;
+  }
+  .variant-card:hover {
+    border-color: #86b7fe;
+    box-shadow: 0 2px 8px rgba(13,110,253,.15);
+  }
+  .variant-card.selected {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13,110,253,.25);
+    background: #f0f6ff;
+  }
+  .variant-card .check-icon {
+    opacity: 0;
+    color: #0d6efd;
+    transition: opacity .15s;
+  }
+  .variant-card.selected .check-icon { opacity: 1; }
+  .variant-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: .25rem;
+  }
+  .variant-desc {
+    font-size: .85rem;
+    color: #6b7280;
+    margin: 0;
+  }
+  .variant-tag {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: .2rem .6rem;
+    border-radius: 2rem;
+    margin-bottom: .5rem;
+    display: inline-block;
+  }
+
+  .subscribe-box {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: .5rem;
+    padding: 2rem;
+  }
+
+  .benefit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    margin-bottom: .75rem;
+    font-size: .9rem;
+    color: #374151;
+  }
+  .benefit-icon {
+    color: #0d6efd;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="subscribe-hero">
+  <h1>Your weekly meal plan, delivered.</h1>
+  <p>Every Saturday morning — a 7-day plan your family will actually enjoy.</p>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: form -->
+  <div class="col-lg-7">
+    <div class="subscribe-box">
+
+      {% if success %}
+      <!-- ── Success state ── -->
+      <div class="text-center py-3">
+        <div style="font-size:3rem; margin-bottom:1rem;">✓</div>
+        <h4 class="fw-bold mb-2">You're signed up!</h4>
+        <p class="text-muted mb-3">
+          Check your inbox — we've sent your first plan right now.<br>
+          From here, your next plan arrives <strong>this Saturday morning</strong>.
+        </p>
+        <a href="/subscribe" class="btn btn-outline-primary btn-sm">Sign up another email</a>
+      </div>
+
+      {% elif error %}
+      <!-- ── Error state ── -->
+      <div class="alert alert-danger py-2 mb-3" role="alert">
+        <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
+      </div>
+      <!-- fall through to form below -->
+      {% endif %}
+
+      {% if not success %}
+      <form method="POST" action="/subscribe" id="subscribeForm">
+
+        <!-- Variant picker -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold mb-2">Choose your plan type</label>
+          <div class="row g-2">
+
+            <div class="col-sm-6">
+              <div class="variant-card {% if prefill_variant == 'little_ones' %}selected{% endif %}"
+                   onclick="selectVariant('little_ones', this)">
+                <div class="d-flex justify-content-between align-items-start">
+                  <span class="variant-tag bg-warning text-dark">Ages 2–10</span>
+                  <i class="bi bi-check-circle-fill check-icon fs-5"></i>
+                </div>
+                <div class="variant-title">Little Ones</div>
+                <p class="variant-desc">Easy meals, mild flavours, 30 minutes or less. Built for young kids.</p>
+              </div>
+            </div>
+
+            <div class="col-sm-6">
+              <div class="variant-card {% if prefill_variant == 'teen_table' %}selected{% endif %}"
+                   onclick="selectVariant('teen_table', this)">
+                <div class="d-flex justify-content-between align-items-start">
+                  <span class="variant-tag bg-info text-dark">Ages 11+</span>
+                  <i class="bi bi-check-circle-fill check-icon fs-5"></i>
+                </div>
+                <div class="variant-title">Teen Table</div>
+                <p class="variant-desc">More variety, bigger portions, flavours teenagers actually like.</p>
+              </div>
+            </div>
+
+          </div>
+          <input type="hidden" name="variant" id="variantInput"
+                 value="{{ prefill_variant or '' }}">
+          {% if variant_error %}
+          <div class="text-danger small mt-1">
+            <i class="bi bi-exclamation-circle me-1"></i>Please select a plan type.
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Email -->
+        <div class="mb-4">
+          <label for="emailInput" class="form-label fw-semibold">Your email address</label>
+          <input type="email" class="form-control" id="emailInput" name="email"
+                 placeholder="you@example.com"
+                 value="{{ prefill_email or '' }}"
+                 required>
+          <div class="form-text">
+            Your plan arrives every Saturday morning. Unsubscribe any time.
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
+                id="submitBtn">
+          <i class="bi bi-send me-1"></i> Start receiving my weekly plan
+        </button>
+
+        <p class="text-center text-muted small mt-3 mb-0">
+          Already purchased on
+          <a href="https://jacksonia020.gumroad.com" target="_blank"
+             class="text-muted">Gumroad</a>?
+          Enter your email above to activate your delivery.
+        </p>
+
+      </form>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- Right: benefits -->
+  <div class="col-lg-5">
+    <h5 class="fw-bold mb-3">What you get every week</h5>
+
+    <div class="benefit-item">
+      <i class="bi bi-calendar-week benefit-icon"></i>
+      <div>
+        <strong>7-day breakfast and dinner schedule</strong><br>
+        <span class="text-muted small">Lunch is yesterday's leftovers — packed the night before.</span>
+      </div>
+    </div>
+
+    <div class="benefit-item">
+      <i class="bi bi-lightning-charge benefit-icon"></i>
+      <div>
+        <strong>3-step cooking guide for every meal</strong><br>
+        <span class="text-muted small">No long recipes. Just what you need to get it on the table.</span>
+      </div>
+    </div>
+
+    <div class="benefit-item">
+      <i class="bi bi-basket benefit-icon"></i>
+      <div>
+        <strong>Complete shopping list</strong><br>
+        <span class="text-muted small">Organised by store section. Hand it to a partner and it still works.</span>
+      </div>
+    </div>
+
+    <div class="benefit-item">
+      <i class="bi bi-clock benefit-icon"></i>
+      <div>
+        <strong>30 minutes or less, every night</strong><br>
+        <span class="text-muted small">No elaborate techniques. No decisions at 6pm.</span>
+      </div>
+    </div>
+
+    <div class="benefit-item">
+      <i class="bi bi-envelope benefit-icon"></i>
+      <div>
+        <strong>Arrives Saturday morning</strong><br>
+        <span class="text-muted small">Ready to read over the weekend. Shop Sunday, cook Monday.</span>
+      </div>
+    </div>
+
+    <div class="mt-4 p-3 bg-light rounded border">
+      <div class="small text-muted">
+        <i class="bi bi-shield-check me-1 text-success"></i>
+        <strong>4 weeks included</strong> with your Gumroad purchase.
+        After that, continue for $12/month — cancel any time.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function selectVariant(value, card) {
+    document.querySelectorAll('.variant-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('variantInput').value = value;
+  }
+
+  // Pre-select if URL has ?variant=
+  document.addEventListener('DOMContentLoaded', function() {
+    const val = document.getElementById('variantInput').value;
+    if (val) {
+      const cards = document.querySelectorAll('.variant-card');
+      const idx = val === 'little_ones' ? 0 : 1;
+      if (cards[idx]) cards[idx].classList.add('selected');
+    }
+  });
+
+  // Disable submit button on click to prevent double submit
+  document.getElementById('subscribeForm')?.addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Signing you up…';
+  });
+</script>
+{% endblock %}
