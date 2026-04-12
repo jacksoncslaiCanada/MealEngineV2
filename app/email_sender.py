@@ -180,6 +180,13 @@ def send_welcome_email(
     except Exception as exc:
         logger.error("email_sender: welcome email failed for %s — %s", to_email, exc)
         return False
+
+
+def send_conversion_email(
+    *,
+    to_email: str,
+    variant_label: str,
+) -> bool:
     """Send a conversion nudge when a subscriber has used all their plans."""
     if not settings.resend_api_key:
         return False
