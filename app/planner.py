@@ -202,7 +202,7 @@ def _aggregate_shopping(db: Session, recipe_ids: list[int]) -> list[dict]:
                 parts.append(e["qty"])
         shopping.append({
             "ingredient": key,
-            "amounts": ", ".join(parts) if parts else "as needed",
+            "amounts": ", ".join(parts),
         })
 
     return shopping
