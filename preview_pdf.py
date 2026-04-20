@@ -78,6 +78,11 @@ DAYS = [
                 {"name": "spring onions", "qty": "2", "unit": "stalks"},
                 {"name": "steamed rice", "qty": "", "unit": "to serve"},
             ],
+            "components": [
+                {"role": "base", "label": "Jasmine Rice"},
+                {"role": "flavor", "label": "Honey Garlic Glaze"},
+                {"role": "protein", "label": "Salmon fillets"},
+            ],
         },
     },
     {
@@ -131,6 +136,11 @@ DAYS = [
                 {"name": "vegetable oil", "qty": "2", "unit": "tbsp"},
                 {"name": "spring onions", "qty": "3", "unit": "stalks"},
             ],
+            "components": [
+                {"role": "base", "label": "Jasmine Rice"},
+                {"role": "flavor", "label": "Soy Sesame Sauce"},
+                {"role": "protein", "label": "Chicken breast"},
+            ],
         },
     },
     {
@@ -181,6 +191,11 @@ DAYS = [
                 {"name": "oyster sauce", "qty": "2", "unit": "tbsp"},
                 {"name": "sesame oil", "qty": "1", "unit": "tsp"},
                 {"name": "cornstarch", "qty": "3", "unit": "tsp"},
+            ],
+            "components": [
+                {"role": "base", "label": "Steamed Rice"},
+                {"role": "flavor", "label": "Oyster Soy Stir-fry Sauce"},
+                {"role": "protein", "label": "Beef sirloin"},
             ],
         },
     },
@@ -234,6 +249,11 @@ DAYS = [
                 {"name": "Parmesan, grated", "qty": "½", "unit": "cup"},
                 {"name": "fresh basil", "qty": "", "unit": "handful"},
             ],
+            "components": [
+                {"role": "base", "label": "Penne Pasta"},
+                {"role": "flavor", "label": "Creamy Tomato Base"},
+                {"role": "protein", "label": "Parmesan"},
+            ],
         },
     },
     {
@@ -285,6 +305,11 @@ DAYS = [
                 {"name": "lime", "qty": "2", "unit": ""},
                 {"name": "cumin", "qty": "1", "unit": "tsp"},
                 {"name": "paprika", "qty": "1", "unit": "tsp"},
+            ],
+            "components": [
+                {"role": "base", "label": "Flour Tortillas"},
+                {"role": "flavor", "label": "Cumin Paprika Rub"},
+                {"role": "protein", "label": "Chicken thighs"},
             ],
         },
     },
@@ -338,6 +363,11 @@ DAYS = [
                 {"name": "cucumber", "qty": "1", "unit": ""},
                 {"name": "edamame", "qty": "½", "unit": "cup"},
                 {"name": "sesame seeds", "qty": "", "unit": "to garnish"},
+            ],
+            "components": [
+                {"role": "base", "label": "Steamed Rice"},
+                {"role": "flavor", "label": "Teriyaki Glaze"},
+                {"role": "protein", "label": "Salmon fillets"},
             ],
         },
     },
@@ -394,6 +424,11 @@ DAYS = [
                 {"name": "sesame oil", "qty": "1", "unit": "tbsp"},
                 {"name": "cornstarch", "qty": "2", "unit": "tbsp"},
                 {"name": "sesame seeds", "qty": "", "unit": "to garnish"},
+            ],
+            "components": [
+                {"role": "base", "label": "Steamed Rice"},
+                {"role": "flavor", "label": "Soy Sesame Vinegar Sauce"},
+                {"role": "protein", "label": "Firm tofu"},
             ],
         },
     },

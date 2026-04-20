@@ -241,3 +241,172 @@ def classify_unclassified(
 
     logger.info("Classified %d recipe(s)", count)
     return count
+
+
+# ---------------------------------------------------------------------------
+# Component classification  (Base / Flavor / Protein)
+# ---------------------------------------------------------------------------
+
+_COMPONENTS_TOOL: anthropic.types.ToolParam = {
+    "name": "identify_components",
+    "description": (
+        "Identify the key meal components of a recipe: the base (grain/starch), "
+        "the flavor (sauce or glaze — give it a descriptive name), and the protein. "
+        "Only include roles that clearly apply."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "components": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "role": {
+                            "type": "string",
+                            "enum": ["base", "flavor", "protein", "other"],
+                            "description": (
+                                "base = grain/starch/bulk veg cooked in batch; "
+                                "flavor = sauce, glaze, or marinade (name it descriptively); "
+                                "protein = main protein source; "
+                                "other = anything else worth highlighting"
+                            ),
+                        },
+                        "label": {
+                            "type": "string",
+                            "description": (
+                                "Specific display name. For flavor, infer the sauce name from "
+                                "the ingredient cluster (e.g. 'Honey Garlic Glaze', "
+                                "'Teriyaki Sauce', 'Creamy Tomato Base'). "
+                                "For base and protein, use the ingredient name."
+                            ),
+                        },
+                    },
+                    "required": ["role", "label"],
+                },
+                "minItems": 1,
+                "maxItems": 4,
+            },
+        },
+        "required": ["components"],
+    },
+}
+
+
+def classify_components(
+    db: Session,
+    recipe: RawRecipe,
+    *,
+    client: Optional[anthropic.Anthropic] = None,
+    force: bool = False,
+) -> int:
+    """Identify base/flavor/protein components for a recipe. Returns count of components saved."""
+    from app.db.models import Ingredient, RecipeComponent
+
+    if not force:
+        existing = db.query(RecipeComponent).filter(RecipeComponent.recipe_id == recipe.id).count()
+        if existing > 0:
+            return 0
+
+    ings = db.query(Ingredient).filter(Ingredient.recipe_id == recipe.id).all()
+    if not ings:
+        return 0
+
+    if client is None:
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    title = recipe.raw_content.strip().splitlines()[0][:80] if recipe.raw_content.strip() else "Unknown"
+    ing_list = "; ".join(
+        " ".join(filter(None, [i.quantity, i.unit, i.ingredient_name])).strip()
+        for i in ings
+    )
+
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            tools=[_COMPONENTS_TOOL],
+            tool_choice={"type": "tool", "name": "identify_components"},
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Recipe: {title}\n"
+                    f"Ingredients: {ing_list}\n\n"
+                    "Identify up to 4 components (base, flavor, protein, other). "
+                    "For the flavor role, infer a descriptive sauce/glaze name."
+                ),
+            }],
+        )
+    except Exception as exc:
+        logger.warning("classify_components: recipe %d API call failed — %s", recipe.id, exc)
+        return 0
+
+    components: list[dict] = []
+    for block in resp.content:
+        if block.type == "tool_use" and block.name == "identify_components":
+            components = block.input.get("components", [])
+            break
+
+    if not components:
+        return 0
+
+    # Remove any existing components before writing (handles force=True)
+    db.query(RecipeComponent).filter(RecipeComponent.recipe_id == recipe.id).delete()
+
+    for order, comp in enumerate(components):
+        db.add(RecipeComponent(
+            recipe_id=recipe.id,
+            role=comp["role"],
+            label=comp["label"],
+            display_order=order,
+        ))
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    logger.debug("recipe %d: %d component(s) saved", recipe.id, len(components))
+    return len(components)
+
+
+def classify_unclassified_components(
+    db: Session,
+    *,
+    client: Optional[anthropic.Anthropic] = None,
+    limit: int = 100,
+) -> int:
+    """Classify components for recipes that have ingredients but no components yet."""
+    from sqlalchemy import exists
+    from app.db.models import Ingredient, RecipeComponent
+
+    subq = exists().where(RecipeComponent.recipe_id == RawRecipe.id)
+    has_ings = exists().where(Ingredient.recipe_id == RawRecipe.id)
+
+    recipes = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.difficulty.isnot(None),
+            has_ings,
+            ~subq,
+        )
+        .limit(limit)
+        .all()
+    )
+
+    if not recipes:
+        return 0
+
+    if client is None:
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    total = 0
+    for recipe in recipes:
+        try:
+            total += classify_components(db, recipe, client=client)
+        except Exception as exc:
+            logger.warning("classify_components batch: recipe %d failed — %s", recipe.id, exc)
+
+    logger.info("Component classification: %d component(s) saved across %d recipe(s)", total, len(recipes))
+    return total

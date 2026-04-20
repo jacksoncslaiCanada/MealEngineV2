@@ -58,6 +58,25 @@ def classify_backlog(
     return {"classified": classified, "limit": limit}
 
 
+@router.post("/classify-components-backlog")
+def classify_components_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 100,
+):
+    """
+    One-shot endpoint to populate recipe_components for all classified recipes.
+
+    Call repeatedly (default limit=100) until it returns {"saved": 0}.
+    Already-processed recipes are skipped automatically.
+    """
+    import anthropic as _anthropic
+    from app.classifier import classify_unclassified_components
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    saved = classify_unclassified_components(db, client=client, limit=limit)
+    return {"saved": saved, "limit": limit}
+
+
 @router.get("/gumroad-check")
 def gumroad_check(_: None = Depends(_require_cron_secret)):
     """Diagnose Gumroad API connectivity and product ID validity."""

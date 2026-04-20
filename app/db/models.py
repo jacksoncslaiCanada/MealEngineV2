@@ -120,6 +120,20 @@ class Subscriber(Base):
     )
 
 
+class RecipeComponent(Base):
+    """A named meal component (base/flavor/protein) — powers the Blueprint card view."""
+
+    __tablename__ = "recipe_components"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    recipe_id: Mapped[int] = mapped_column(Integer, ForeignKey("raw_recipes.id"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(16))       # "base" | "flavor" | "protein" | "other"
+    label: Mapped[str] = mapped_column(String(256))     # e.g. "Honey Garlic Glaze", "Jasmine Rice"
+    display_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    recipe: Mapped["RawRecipe"] = relationship("RawRecipe")
+
+
 class MealPlan(Base):
     """A generated 7-day meal plan with PDF."""
 

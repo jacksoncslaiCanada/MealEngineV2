@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.classifier import classify_unclassified
-from app.db.models import Ingredient, MealPlan, RawRecipe
+from app.db.models import Ingredient, MealPlan, RawRecipe, RecipeComponent
 from app.db.session import get_db
 from app.pdf_renderer import render_pdf
 from app.planner import VARIANTS, generate_plan
@@ -87,6 +87,7 @@ def _enrich_days(days: list[dict], db: Session) -> list[dict]:
             "servings": servings,
             "url": url,
             "ingredients": [],
+            "components": [],
         }
 
     # Fetch per-recipe ingredient lists
@@ -107,6 +108,21 @@ def _enrich_days(days: list[dict], db: Session) -> list[dict]:
                 "qty": qty or "",
                 "unit": unit or "",
             })
+
+    # Fetch blueprint components (base / flavor / protein)
+    comp_rows = (
+        db.query(
+            RecipeComponent.recipe_id,
+            RecipeComponent.role,
+            RecipeComponent.label,
+        )
+        .filter(RecipeComponent.recipe_id.in_(recipe_ids))
+        .order_by(RecipeComponent.recipe_id, RecipeComponent.display_order)
+        .all()
+    )
+    for recipe_id, role, label in comp_rows:
+        if recipe_id in recipe_map:
+            recipe_map[recipe_id]["components"].append({"role": role, "label": label})
 
     enriched = []
     for day in days:
