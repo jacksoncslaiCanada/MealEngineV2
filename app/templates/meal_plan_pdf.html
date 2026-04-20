@@ -280,189 +280,138 @@
 
 
   /* ════════════════════════════════════════════════════════════
-     PAGE 3 — BREAKFAST & LUNCH SUMMARY
+     PAGE 3 — CATEGORY OVERVIEW  (Breakfasts · Dinners)
   ════════════════════════════════════════════════════════════ */
 
-  .blp-note {
-    font-size: 9pt;
-    color: #78716c;
-    padding: 3mm 5mm;
-    background: #fef3c7;
-    border-radius: 4px;
+  .co-section {
     margin-bottom: 7mm;
-    line-height: 1.5;
   }
-  .blp-row {
-    display: flex;
-    gap: 5mm;
-    padding: 4.5mm 0;
-    border-bottom: 1px solid #f3f2f1;
-    align-items: flex-start;
-  }
-  .blp-row:last-child { border-bottom: none; }
-  .blp-day {
+  .co-section-header {
     font-size: 7pt;
     font-weight: 800;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
     color: #f59e0b;
-    width: 14mm;
-    flex-shrink: 0;
-    padding-top: 1mm;
+    border-bottom: 2px solid #f59e0b;
+    padding-bottom: 2mm;
+    margin-bottom: 0;
   }
-  .blp-meals { flex: 1; }
-  .blp-bf-title {
-    font-size: 11pt;
+  .co-row {
+    display: flex;
+    align-items: baseline;
+    border-bottom: 1px solid #f3f2f1;
+  }
+  .co-row:nth-child(odd)  { background: #fafaf9; }
+  .co-row:nth-child(even) { background: #ffffff; }
+  .co-row:last-child { border-bottom: none; }
+  .co-day {
+    font-size: 6.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #d6d3d1;
+    width: 9mm;
+    flex-shrink: 0;
+    padding: 2.5mm 0 2.5mm 2mm;
+  }
+  .co-name {
+    font-size: 9.5pt;
     font-weight: 700;
     color: #1c1917;
-    margin-bottom: 1.5mm;
-    line-height: 1.25;
+    width: 52mm;
+    flex-shrink: 0;
+    padding: 2.5mm 3mm;
+    line-height: 1.3;
   }
-  .blp-bf-meta {
+  .co-desc {
+    font-size: 8.5pt;
+    color: #78716c;
+    flex: 1;
+    padding: 2.5mm 2mm 2.5mm 0;
+    line-height: 1.4;
+  }
+  .co-lunch-note {
     font-size: 8pt;
     color: #78716c;
-  }
-  .blp-lunch {
-    font-size: 8pt;
-    color: #a8a29e;
-    margin-top: 2mm;
-    font-style: italic;
+    background: #fef3c7;
+    border-left: 3px solid #f59e0b;
+    padding: 2.5mm 4mm;
+    margin: 4mm 0 7mm 0;
+    line-height: 1.5;
   }
 
 
   /* ════════════════════════════════════════════════════════════
-     PAGES 4–10 — DINNER RECIPE CARDS
+     PAGE 4 — COOKING GUIDE  (7-card grid)
   ════════════════════════════════════════════════════════════ */
 
-  .drp-header {
+  .cg-grid {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 5mm;
+    flex-wrap: wrap;
+    gap: 4mm;
   }
-  .drp-day-label {
-    font-size: 7.5pt;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+  .cg-card {
+    width: calc(50% - 2mm);
+    border: 1px solid #e7e5e4;
+    border-radius: 7px;
+    overflow: hidden;
+    background: #ffffff;
+    break-inside: avoid;
+  }
+  .cg-card-header {
+    background: #1c1917;
+    padding: 2mm 3.5mm;
+    display: flex;
+    align-items: baseline;
+    gap: 3mm;
+  }
+  .cg-day {
+    font-size: 6pt;
+    font-weight: 800;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
     color: #f59e0b;
-    margin-bottom: 2mm;
-  }
-  .drp-title {
-    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
-    font-size: 24pt;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    text-transform: uppercase;
-    color: #1c1917;
-    line-height: 1.0;
-  }
-  .drp-tagline {
-    font-size: 7.5pt;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #78716c;
-    margin-top: 2mm;
-  }
-  .drp-meta-col {
-    text-align: right;
     flex-shrink: 0;
-    padding-top: 2mm;
   }
-  .drp-meta-item {
-    font-size: 9.5pt;
-    color: #44403c;
-    margin-bottom: 2.5mm;
-    white-space: nowrap;
-  }
-
-  .drp-image {
-    width: 100%;
-    height: 72mm;
-    object-fit: cover;
-    border-radius: 6px;
-    display: block;
-    margin-bottom: 6mm;
-  }
-  .drp-image-placeholder {
-    width: 100%;
-    height: 72mm;
-    background: #fef3c7;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .cg-title {
+    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
     font-size: 10pt;
-    font-weight: 600;
-    color: #b45309;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 6mm;
-  }
-
-  .drp-body {
-    display: flex;
-    gap: 8mm;
-    align-items: flex-start;
-  }
-  .drp-ings-panel {
-    width: 54mm;
-    flex-shrink: 0;
-    background: #f5f5f4;
-    border-radius: 6px;
-    padding: 5mm;
-  }
-  .drp-section-title {
-    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
-    font-size: 11pt;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #1c1917;
-    margin-bottom: 4mm;
+    color: #fef3c7;
+    line-height: 1.2;
   }
-  .drp-ing-item {
-    font-size: 9pt;
-    color: #1c1917;
-    padding: 2mm 0;
-    border-bottom: 1px solid #e7e5e4;
-    line-height: 1.4;
+  .cg-body {
+    padding: 3mm 3.5mm;
   }
-  .drp-ing-item:last-child { border-bottom: none; }
-
-  .drp-directions { flex: 1; }
-  .drp-step {
-    display: flex;
-    gap: 3.5mm;
-    padding: 3.5mm 0;
+  .cg-summary {
+    font-size: 8pt;
+    color: #78716c;
+    font-style: italic;
+    margin-bottom: 2.5mm;
+    line-height: 1.45;
     border-bottom: 1px solid #f3f2f1;
-    font-size: 9.5pt;
-    color: #44403c;
-    line-height: 1.55;
+    padding-bottom: 2.5mm;
   }
-  .drp-step:last-child { border-bottom: none; }
-  .drp-step-num {
-    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
-    font-size: 12pt;
+  .cg-ings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5mm 3mm;
+  }
+  .cg-ing {
+    font-size: 7pt;
+    color: #44403c;
+    line-height: 1.7;
+  }
+  .cg-ing-qty {
     font-weight: 700;
     color: #f59e0b;
-    flex-shrink: 0;
-    width: 5mm;
-    line-height: 1.3;
   }
-  .drp-source {
-    margin-top: 5mm;
-    font-size: 7pt;
-    color: #a8a29e;
-    padding-top: 2mm;
-    border-top: 1px solid #f3f2f1;
-  }
-  .drp-no-steps {
-    font-size: 9pt;
-    color: #a8a29e;
-    font-style: italic;
-    padding: 3mm 0;
+  .cg-source {
+    font-size: 6.5pt;
+    color: #d6d3d1;
+    margin-top: 2mm;
+    border-top: 1px solid #f5f5f4;
+    padding-top: 1.5mm;
   }
 </style>
 </head>
@@ -570,122 +519,86 @@
 </div>
 
 
-<!-- ══════════════════════════ PAGE 3: BREAKFASTS & LUNCHES ════════════ -->
+<!-- ══════════════════════════ PAGE 3: CATEGORY OVERVIEW ══════════════ -->
 <div class="page-break"></div>
 
 <div class="page-header">
-  <h2>Breakfasts &amp; Lunches</h2>
+  <h2>This Week's Meals</h2>
   <div class="sub">{{ week_label }} · {{ variant_label }}</div>
 </div>
 
-<div class="blp-note">
-  Lunch every day = last night's leftovers packed the night before — no extra prep needed.
-</div>
-
-{% for day in days %}
-<div class="blp-row">
-  <div class="blp-day">{{ day.day[:3] | upper }}</div>
-  <div class="blp-meals">
-    <div class="blp-bf-title">{{ day.breakfast.title }}</div>
-    <div class="blp-bf-meta">
-      {% if day.breakfast.get('prep_time') %}{{ day.breakfast.prep_time }} min{% endif %}
-      {% if day.breakfast.get('prep_time') and day.breakfast.get('cuisine') %}&nbsp;·&nbsp;{% endif %}
-      {% if day.breakfast.get('cuisine') %}{{ day.breakfast.cuisine }}{% endif %}
-      {% set bf_tags = day.breakfast.get('dietary_tags') or [] %}
-      {% for tag in bf_tags %}
-        &nbsp;·&nbsp;{{ dietary_abbr.get(tag, tag) }}
-      {% endfor %}
+<!-- BREAKFASTS -->
+<div class="co-section">
+  <div class="co-section-header">Breakfasts</div>
+  {% for day in days %}
+  <div class="co-row">
+    <div class="co-day">{{ day.day[:3] }}</div>
+    <div class="co-name">{{ day.breakfast.title }}</div>
+    <div class="co-desc">
+      {% set bf_steps = day.breakfast.get('quick_steps') or [] %}
+      {% if bf_steps %}{{ bf_steps[0] }}{% else %}See source for details.{% endif %}
     </div>
-    <div class="blp-lunch">{{ day.lunch.title }}</div>
   </div>
+  {% endfor %}
 </div>
-{% endfor %}
+
+<!-- LUNCH NOTE -->
+<div class="co-lunch-note">
+  <strong>Lunch every day</strong> — last night's dinner leftovers, packed the night before. No extra prep needed.
+</div>
+
+<!-- DINNERS -->
+<div class="co-section">
+  <div class="co-section-header">Dinners</div>
+  {% for day in days %}
+  <div class="co-row">
+    <div class="co-day">{{ day.day[:3] }}</div>
+    <div class="co-name">{{ day.dinner.title }}</div>
+    <div class="co-desc">
+      {% set dn_steps = day.dinner.get('quick_steps') or [] %}
+      {% if dn_steps %}{{ dn_steps[0] }}{% else %}See source for details.{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
 
 
-<!-- ══════════════════════════ PAGES 4–10: ONE DINNER PER PAGE ════════ -->
-
-{% for day in days %}
+<!-- ══════════════════════════ PAGE 4: COOKING GUIDE GRID ═════════════ -->
 <div class="page-break"></div>
 
-<div class="drp-header">
-  <div>
-    <div class="drp-day-label">{{ day.day | upper }}</div>
-    <h1 class="drp-title">{{ day.dinner.title }}</h1>
-    <div class="drp-tagline">
-      {% if day.dinner.get('cuisine') %}{{ day.dinner.cuisine }}{% endif %}
-      {% set dn_tags = day.dinner.get('dietary_tags') or [] %}
-      {% for tag in dn_tags %}
-        {% if loop.first and day.dinner.get('cuisine') %}&nbsp;·&nbsp;{% endif %}
-        {{ dietary_abbr.get(tag, tag) }}{% if not loop.last %}&nbsp;·&nbsp;{% endif %}
-      {% endfor %}
-    </div>
-  </div>
-  <div class="drp-meta-col">
-    {% if day.dinner.get('prep_time') %}
-    <div class="drp-meta-item">{{ day.dinner.prep_time }} min</div>
-    {% endif %}
-    {% if day.dinner.get('servings') %}
-    <div class="drp-meta-item">Serves {{ day.dinner.servings }}</div>
-    {% endif %}
-    {% set diff_color = difficulty_colors.get(day.dinner.get('difficulty', 'easy'), '#28a745') %}
-    <div class="drp-meta-item" style="color: {{ diff_color }}; font-weight: 700;">
-      {{ (day.dinner.get('difficulty') or 'easy') | capitalize }}
-    </div>
-  </div>
+<div class="page-header">
+  <h2>Cooking Guide</h2>
+  <div class="sub">Ingredients &amp; method at a glance — one card per night</div>
 </div>
 
-{% set dn_thumb = thumbnail_url(day.dinner.get('url')) %}
-{% if dn_thumb %}
-<img class="drp-image" src="{{ dn_thumb }}" alt="{{ day.dinner.title }}">
-{% else %}
-<div class="drp-image-placeholder">
-  <div>{{ day.dinner.title }}</div>
-</div>
-{% endif %}
-
-<div class="drp-body">
-
-  <!-- Ingredients panel -->
-  <div class="drp-ings-panel">
-    <div class="drp-section-title">Ingredients</div>
-    {% set dn_ings = day.dinner.get('ingredients') or [] %}
-    {% if dn_ings %}
-      {% for ing in dn_ings %}
-      <div class="drp-ing-item">
-        {% if ing.qty or ing.unit %}<strong>{{ ing.qty }} {{ ing.unit }}</strong>&nbsp;{% endif %}{{ ing.name }}
+<div class="cg-grid">
+{% for day in days %}
+  <div class="cg-card">
+    <div class="cg-card-header">
+      <div class="cg-day">{{ day.day[:3] }}</div>
+      <div class="cg-title">{{ day.dinner.title }}</div>
+    </div>
+    <div class="cg-body">
+      {% set dn_steps = day.dinner.get('quick_steps') or [] %}
+      <div class="cg-summary">
+        {% if dn_steps %}{{ dn_steps[0] }}{% else %}See source for full instructions.{% endif %}
       </div>
-      {% endfor %}
-    {% else %}
-    <div class="drp-no-steps">See source for ingredient list</div>
-    {% endif %}
-  </div>
-
-  <!-- Directions -->
-  <div class="drp-directions">
-    <div class="drp-section-title">Directions</div>
-    {% if day.dinner.get('quick_steps') and day.dinner.quick_steps | length > 0 %}
-      {% for step in day.dinner.quick_steps %}
-      <div class="drp-step">
-        <div class="drp-step-num">{{ loop.index }}</div>
-        <div>{{ step }}</div>
+      <div class="cg-ings">
+        {% set dn_ings = day.dinner.get('ingredients') or [] %}
+        {% for ing in dn_ings %}
+        <div class="cg-ing">
+          {% if ing.qty or ing.unit %}<span class="cg-ing-qty">{{ ing.qty }}{% if ing.unit %} {{ ing.unit }}{% endif %}</span>&nbsp;{% endif %}{{ ing.name }}
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    {% else %}
-    <div class="drp-no-steps">See source for full instructions.</div>
-    {% endif %}
-
-    {% set dn_src = short_source(day.dinner.get('url')) %}
-    {% if dn_src %}
-    <div class="drp-source">
-      Recipe source: <strong>{{ dn_src }}</strong>
-      {% if day.dinner.get('url') %}&nbsp;— {{ day.dinner.url }}{% endif %}
+      {% set dn_src = short_source(day.dinner.get('url')) %}
+      {% if dn_src %}
+      <div class="cg-source">{{ dn_src }}</div>
+      {% endif %}
     </div>
-    {% endif %}
   </div>
-
-</div>
-
 {% endfor %}
+</div>
 
 
 </body>
