@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealEngine PDF Mockup — Design Iteration</title>
+<style>
+/* ── Preview wrapper ─────────────────────────────────────────── */
+body {
+  background: #e5e7eb;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding: 30px 20px;
+  margin: 0;
+}
+h2.variant-label {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.compare-row {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+/* A4 page simulation: 210mm × 297mm @ 96dpi ≈ 794px × 1123px */
+.page {
+  width: 794px;
+  min-height: 1123px;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  padding: 53px 60px 45px 60px;   /* 14mm top, 16mm sides, 12mm bottom */
+  position: relative;
+  box-sizing: border-box;
+}
+.page-label {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   VARIANT A — CURRENT (simplified from production)
+════════════════════════════════════════════════════════════════ */
+.va * { box-sizing: border-box; margin: 0; padding: 0; }
+
+.va-drp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.va-day-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f59e0b;
+  margin-bottom: 6px;
+}
+.va-title {
+  font-family: Georgia, serif;
+  font-size: 24pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #1c1917;
+  line-height: 1.0;
+  letter-spacing: 0.01em;
+}
+.va-tagline {
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #78716c;
+  margin-top: 6px;
+}
+.va-meta-col {
+  text-align: right;
+  flex-shrink: 0;
+  padding-top: 6px;
+}
+.va-meta-item {
+  font-size: 9.5pt;
+  color: #44403c;
+  margin-bottom: 7px;
+  white-space: nowrap;
+}
+.va-image {
+  width: 100%;
+  height: 272px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+  margin-bottom: 22px;
+  background: #fef3c7;
+}
+.va-image-placeholder {
+  width: 100%;
+  height: 272px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #b45309;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 22px;
+}
+.va-body {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+.va-ings-panel {
+  width: 204px;
+  flex-shrink: 0;
+  background: #f5f5f4;
+  border-radius: 6px;
+  padding: 18px;
+}
+.va-section-title {
+  font-family: Georgia, serif;
+  font-size: 11pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #1c1917;
+  margin-bottom: 12px;
+}
+.va-ing-item {
+  font-size: 9pt;
+  color: #1c1917;
+  padding: 6px 0;
+  border-bottom: 1px solid #e7e5e4;
+  line-height: 1.4;
+}
+.va-ing-item:last-child { border-bottom: none; }
+.va-directions { flex: 1; }
+.va-step {
+  display: flex;
+  gap: 11px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f3f2f1;
+  font-size: 9.5pt;
+  color: #44403c;
+  line-height: 1.55;
+}
+.va-step:last-child { border-bottom: none; }
+.va-step-num {
+  font-family: Georgia, serif;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #f59e0b;
+  flex-shrink: 0;
+  width: 18px;
+  line-height: 1.3;
+}
+.va-source {
+  margin-top: 18px;
+  font-size: 7pt;
+  color: #a8a29e;
+  padding-top: 6px;
+  border-top: 1px solid #f3f2f1;
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   VARIANT B — PROPOSED REDESIGN
+════════════════════════════════════════════════════════════════ */
+.vb * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Amber accent stripe across the top of the page */
+.vb-top-stripe {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  border-radius: 0;
+}
+
+/* Day crumb + breadcrumb row */
+.vb-crumb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.vb-crumb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+.vb-day-label {
+  font-size: 7pt;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+.vb-crumb-sep { color: #d6d3d1; font-size: 8pt; }
+.vb-plan-crumb {
+  font-size: 7pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d6d3d1;
+  font-weight: 500;
+}
+
+/* Title block */
+.vb-title-block {
+  margin-bottom: 14px;
+  border-bottom: 2px solid #f59e0b;
+  padding-bottom: 10px;
+}
+.vb-title {
+  font-family: Georgia, "Liberation Serif", serif;
+  font-size: 28pt;
+  font-weight: 700;
+  color: #1c1917;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.vb-tagline {
+  font-size: 8.5pt;
+  font-weight: 500;
+  color: #78716c;
+  letter-spacing: 0.04em;
+}
+
+/* Meta badges row */
+.vb-meta-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.vb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 8.5pt;
+  color: #44403c;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.vb-badge-icon {
+  font-size: 10pt;
+  line-height: 1;
+}
+.vb-badge-easy  { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+.vb-badge-medium{ border-color: #fed7aa; background: #fff7ed; color: #c2410c; }
+.vb-badge-complex{ border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+
+/* Hero image */
+.vb-image {
+  width: 100%;
+  height: 252px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 18px;
+}
+.vb-image-placeholder {
+  width: 100%;
+  height: 252px;
+  background: linear-gradient(160deg, #fef3c7 0%, #fde68a 60%, #f59e0b22 100%);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #b45309;
+  letter-spacing: 0.06em;
+  margin-bottom: 18px;
+  border: 1.5px dashed #fcd34d;
+}
+.vb-image-placeholder small {
+  font-size: 8pt;
+  color: #d97706;
+  font-weight: 400;
+}
+
+/* Two-column body */
+.vb-body {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+}
+.vb-ings-panel {
+  width: 190px;
+  flex-shrink: 0;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.vb-panel-header {
+  background: #1c1917;
+  color: #fef3c7;
+  padding: 8px 14px;
+  font-family: Georgia, serif;
+  font-size: 8.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.vb-panel-body { padding: 8px 14px; }
+.vb-ing-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f3f2f1;
+  font-size: 8.5pt;
+  line-height: 1.35;
+}
+.vb-ing-item:last-child { border-bottom: none; }
+.vb-ing-check {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #d6d3d1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.vb-ing-qty {
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #f59e0b;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+.vb-ing-name {
+  color: #1c1917;
+  font-size: 8.5pt;
+}
+
+/* Directions */
+.vb-directions { flex: 1; }
+.vb-dir-header {
+  font-family: Georgia, serif;
+  font-size: 8.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #1c1917;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #f5f5f4;
+}
+.vb-step {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f4;
+  align-items: flex-start;
+}
+.vb-step:last-child { border-bottom: none; }
+.vb-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 9pt;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.vb-step-text {
+  font-size: 9.5pt;
+  color: #1c1917;
+  line-height: 1.6;
+  flex: 1;
+}
+.vb-step-time {
+  font-size: 7.5pt;
+  color: #a8a29e;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* Source */
+.vb-source {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fafaf9;
+  border: 1px solid #f3f2f1;
+  border-radius: 6px;
+  font-size: 7.5pt;
+  color: #78716c;
+}
+.vb-source-label {
+  font-weight: 600;
+  color: #a8a29e;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.vb-source-url { color: #1c1917; word-break: break-all; }
+
+
+/* ════════════════════════════════════════════════════════════════
+   B&L SUMMARY PAGE (same for both, just for reference)
+════════════════════════════════════════════════════════════════ */
+.blp-page { padding-top: 53px; }
+.blp-page-header { margin-bottom: 18px; }
+.blp-page-title {
+  font-family: Georgia, serif;
+  font-size: 18pt;
+  font-weight: 700;
+  color: #1c1917;
+  margin-bottom: 3px;
+}
+.blp-page-sub {
+  font-size: 8pt;
+  color: #a8a29e;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.blp-note {
+  font-size: 9pt;
+  color: #78716c;
+  padding: 10px 16px;
+  background: #fef3c7;
+  border-radius: 6px;
+  margin-bottom: 22px;
+  line-height: 1.5;
+  border-left: 3px solid #f59e0b;
+}
+.blp-row {
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f2f1;
+  align-items: flex-start;
+}
+.blp-row:last-child { border-bottom: none; }
+.blp-day {
+  font-size: 7pt;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #f59e0b;
+  width: 40px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.blp-meals { flex: 1; }
+.blp-bf-title {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1c1917;
+  margin-bottom: 4px;
+  line-height: 1.25;
+}
+.blp-bf-meta {
+  font-size: 8pt;
+  color: #78716c;
+  margin-bottom: 4px;
+}
+.blp-lunch {
+  font-size: 8pt;
+  color: #a8a29e;
+  font-style: italic;
+}
+
+</style>
+</head>
+<body>
+
+<h2 class="variant-label">Dinner Recipe Page — Current vs Proposed</h2>
+
+<div class="compare-row">
+
+  <!-- ═══ VARIANT A: CURRENT ═══════════════════════════════════ -->
+  <div>
+    <div class="page-label">A · Current</div>
+    <div class="page va">
+
+      <!-- Header -->
+      <div class="va-drp-header">
+        <div>
+          <div class="va-day-label">Monday</div>
+          <div class="va-title">Honey Garlic<br>Salmon</div>
+          <div class="va-tagline">Asian · GF · DF</div>
+        </div>
+        <div class="va-meta-col">
+          <div class="va-meta-item">25 min</div>
+          <div class="va-meta-item">Serves 4</div>
+          <div class="va-meta-item" style="color:#28a745;font-weight:700;">Easy</div>
+        </div>
+      </div>
+
+      <!-- Hero image -->
+      <div class="va-image-placeholder">No thumbnail available</div>
+
+      <!-- Body -->
+      <div class="va-body">
+        <div class="va-ings-panel">
+          <div class="va-section-title">Ingredients</div>
+          <div class="va-ing-item"><strong>4 fillets</strong> salmon</div>
+          <div class="va-ing-item"><strong>3 tbsp</strong> honey</div>
+          <div class="va-ing-item"><strong>3 cloves</strong> garlic, minced</div>
+          <div class="va-ing-item"><strong>2 tbsp</strong> soy sauce</div>
+          <div class="va-ing-item"><strong>1 tbsp</strong> olive oil</div>
+          <div class="va-ing-item"><strong>1 tsp</strong> sesame oil</div>
+          <div class="va-ing-item">lemon, sliced</div>
+          <div class="va-ing-item">spring onions</div>
+        </div>
+        <div class="va-directions">
+          <div class="va-section-title">Directions</div>
+          <div class="va-step">
+            <div class="va-step-num">1</div>
+            <div>Whisk together honey, minced garlic, soy sauce, and sesame oil in a small bowl to make the glaze.</div>
+          </div>
+          <div class="va-step">
+            <div class="va-step-num">2</div>
+            <div>Heat olive oil in a large skillet over medium-high heat. Season salmon with salt and pepper. Sear skin-side down for 4 minutes until crispy.</div>
+          </div>
+          <div class="va-step">
+            <div class="va-step-num">3</div>
+            <div>Flip salmon, pour glaze over fillets, and cook for 3–4 more minutes, spooning glaze continuously. Serve over rice, garnish with lemon and spring onions.</div>
+          </div>
+          <div class="va-source">Source: youtube.com · https://youtube.com/watch?v=abc123</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══ VARIANT B: PROPOSED ═══════════════════════════════════ -->
+  <div>
+    <div class="page-label">B · Proposed</div>
+    <div class="page vb" style="position:relative;">
+
+      <!-- Amber top stripe -->
+      <div class="vb-top-stripe"></div>
+
+      <!-- Breadcrumb -->
+      <div class="vb-crumb-row" style="margin-top:8px;">
+        <div class="vb-crumb-dot"></div>
+        <div class="vb-day-label">Monday</div>
+        <div class="vb-crumb-sep">›</div>
+        <div class="vb-plan-crumb">Little Ones · 2026-W15</div>
+      </div>
+
+      <!-- Title block with amber underline -->
+      <div class="vb-title-block">
+        <div class="vb-title">Honey Garlic Salmon</div>
+        <div class="vb-tagline">Asian cuisine &nbsp;·&nbsp; Gluten-free &nbsp;·&nbsp; Dairy-free</div>
+      </div>
+
+      <!-- Meta badges -->
+      <div class="vb-meta-row">
+        <div class="vb-badge"><span class="vb-badge-icon">⏱</span> 25 minutes</div>
+        <div class="vb-badge"><span class="vb-badge-icon">🍽</span> Serves 4</div>
+        <div class="vb-badge vb-badge-easy"><span class="vb-badge-icon">✓</span> Easy</div>
+      </div>
+
+      <!-- Hero image (placeholder) -->
+      <div class="vb-image-placeholder">
+        <span>📷 Recipe photo</span>
+        <small>YouTube thumbnail shown here when available</small>
+      </div>
+
+      <!-- Two-column body -->
+      <div class="vb-body">
+
+        <!-- Ingredients panel — dark header -->
+        <div class="vb-ings-panel">
+          <div class="vb-panel-header">Ingredients</div>
+          <div class="vb-panel-body">
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">4</div>
+              <div class="vb-ing-name">salmon fillets</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">3 tbsp</div>
+              <div class="vb-ing-name">honey</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">3</div>
+              <div class="vb-ing-name">garlic cloves, minced</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">2 tbsp</div>
+              <div class="vb-ing-name">soy sauce</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">1 tbsp</div>
+              <div class="vb-ing-name">olive oil</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty">1 tsp</div>
+              <div class="vb-ing-name">sesame oil</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty"></div>
+              <div class="vb-ing-name">lemon, sliced to serve</div>
+            </div>
+            <div class="vb-ing-item">
+              <div class="vb-ing-check"></div>
+              <div class="vb-ing-qty"></div>
+              <div class="vb-ing-name">spring onions, chopped</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Directions -->
+        <div class="vb-directions">
+          <div class="vb-dir-header">Step-by-step directions</div>
+
+          <div class="vb-step">
+            <div class="vb-step-num">1</div>
+            <div class="vb-step-text">Whisk together honey, minced garlic, soy sauce, and sesame oil in a small bowl to make the glaze. Set aside.</div>
+            <div class="vb-step-time">2 min</div>
+          </div>
+          <div class="vb-step">
+            <div class="vb-step-num">2</div>
+            <div class="vb-step-text">Heat olive oil in a large skillet over medium-high. Season salmon with salt and pepper. Sear skin-side down for 4 minutes until crispy.</div>
+            <div class="vb-step-time">5 min</div>
+          </div>
+          <div class="vb-step">
+            <div class="vb-step-num">3</div>
+            <div class="vb-step-text">Flip salmon, pour glaze over fillets, and cook 3–4 more minutes, spooning glaze over the top continuously until caramelised.</div>
+            <div class="vb-step-time">4 min</div>
+          </div>
+          <div class="vb-step">
+            <div class="vb-step-num">4</div>
+            <div class="vb-step-text">Serve over steamed rice. Garnish with sliced lemon and spring onions.</div>
+            <div class="vb-step-time">1 min</div>
+          </div>
+
+          <div class="vb-source">
+            <span class="vb-source-label">Source</span>
+            <span class="vb-source-url">youtube.com &nbsp;·&nbsp; https://youtube.com/watch?v=abc123</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- end compare-row -->
+
+
+<!-- ════════════════ B&L SUMMARY PAGE (Proposed) ════════════ -->
+<br><br>
+<h2 class="variant-label" style="margin-top:20px;">Breakfasts &amp; Lunches Summary Page — Proposed</h2>
+
+<div style="display:flex;justify-content:center;">
+  <div>
+    <div class="page-label">B · Proposed (B&amp;L page)</div>
+    <div class="page" style="padding-top:53px;position:relative;">
+      <div class="vb-top-stripe"></div>
+
+      <div class="blp-page-header">
+        <div class="blp-page-title">Breakfasts &amp; Lunches</div>
+        <div class="blp-page-sub">Little Ones · Week of 2026-W15</div>
+      </div>
+
+      <div class="blp-note">
+        <strong>Lunch tip:</strong> Every day's lunch is last night's dinner leftovers — pack them the night before for zero morning prep.
+      </div>
+
+      <div class="blp-row">
+        <div class="blp-day">Mon</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Banana Oat Pancakes</div>
+          <div class="blp-bf-meta">20 min &nbsp;·&nbsp; Easy &nbsp;·&nbsp; GF · VG</div>
+          <div class="blp-lunch">Lunch: Leftovers from Sunday's Roast Chicken</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Tue</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Scrambled Eggs &amp; Toast</div>
+          <div class="blp-bf-meta">10 min &nbsp;·&nbsp; Easy</div>
+          <div class="blp-lunch">Lunch: Leftovers from Monday's Honey Garlic Salmon</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Wed</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Greek Yogurt Parfait</div>
+          <div class="blp-bf-meta">5 min &nbsp;·&nbsp; Easy &nbsp;·&nbsp; GF</div>
+          <div class="blp-lunch">Lunch: Leftovers from Tuesday's Chicken Fried Rice</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Thu</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Avocado Toast with Poached Eggs</div>
+          <div class="blp-bf-meta">15 min &nbsp;·&nbsp; Easy &nbsp;·&nbsp; DF</div>
+          <div class="blp-lunch">Lunch: Leftovers from Wednesday's Pasta Bolognese</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Fri</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Overnight Oats with Berries</div>
+          <div class="blp-bf-meta">5 min (+ overnight) &nbsp;·&nbsp; Easy &nbsp;·&nbsp; VG</div>
+          <div class="blp-lunch">Lunch: Leftovers from Thursday's Beef Tacos</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Sat</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">Blueberry Smoothie Bowl</div>
+          <div class="blp-bf-meta">10 min &nbsp;·&nbsp; Easy &nbsp;·&nbsp; VG · GF</div>
+          <div class="blp-lunch">Lunch: Leftovers from Friday's Teriyaki Chicken</div>
+        </div>
+      </div>
+      <div class="blp-row">
+        <div class="blp-day">Sun</div>
+        <div class="blp-meals">
+          <div class="blp-bf-title">French Toast with Maple Syrup</div>
+          <div class="blp-bf-meta">20 min &nbsp;·&nbsp; Easy</div>
+          <div class="blp-lunch">Lunch: Leftovers from Saturday's Veggie Stir-fry</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════ NOTES ════════════════ -->
+<div style="max-width:800px;margin:40px auto;background:#fff;border-radius:8px;padding:28px 32px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+  <h3 style="font-size:14px;font-weight:700;color:#1c1917;margin-bottom:14px;letter-spacing:0.04em;text-transform:uppercase;">What changed — A → B</h3>
+  <ul style="font-size:13px;color:#44403c;line-height:2;padding-left:18px;">
+    <li><strong>Amber top stripe</strong> — thin gradient bar anchors every page to the brand</li>
+    <li><strong>Breadcrumb row</strong> — day + plan name so parents know which page they're on at a glance</li>
+    <li><strong>Title uses mixed case</strong> (not all-caps) + amber underline rule for elegance</li>
+    <li><strong>Meta badges</strong> replace plain text lines — pill chips with icon, coloured by difficulty</li>
+    <li><strong>Ingredient panel</strong> — dark header bar, checkbox circles, amber qty, no bold tag</li>
+    <li><strong>Step numbers</strong> — filled amber circle with white digit (vs plain amber numeral)</li>
+    <li><strong>Step timing</strong> — right-aligned time hint per step (when classifiable)</li>
+    <li><strong>Source block</strong> — styled card, not an afterthought line</li>
+    <li><strong>B&amp;L note</strong> — left amber border accent on the tip box</li>
+  </ul>
+  <p style="font-size:12px;color:#a8a29e;margin-top:16px;">Note: step timing column is decorative in this mockup. In the real PDF the classifier only provides step text, not per-step durations — that column would be hidden unless we add it to the classifier prompt.</p>
+</div>
+
+</body>
+</html>
