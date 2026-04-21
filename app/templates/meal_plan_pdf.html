@@ -2,22 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   /* ── Reset / base ──────────────────────────────────────────── */
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  @page {
-    size: A4 portrait;
-    margin: 14mm 16mm 12mm 16mm;
-    @bottom-center {
-      content: "MealEngine  ·  " string(week-label) "  ·  p." counter(page) " of " counter(pages);
-      font-size: 7pt;
-      color: #a8a29e;
-    }
-  }
-
   body {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: 'Nunito', "Helvetica Neue", Arial, sans-serif;
     font-size: 10pt;
     color: #1c1917;
     line-height: 1.45;
@@ -374,7 +367,7 @@
     flex-shrink: 0;
   }
   .cg-title {
-    font-family: Georgia, "Liberation Serif", "DejaVu Serif", serif;
+    font-family: 'Playfair Display', Georgia, serif;
     font-size: 10pt;
     font-weight: 700;
     color: #fef3c7;

@@ -1,4 +1,4 @@
-"""PDF renderer for MealPlan using WeasyPrint + Jinja2."""
+"""PDF renderer for MealPlan using Playwright (headless Chromium) + Jinja2."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 
 from app.db.models import MealPlan
 
@@ -239,4 +238,40 @@ def render_pdf(plan: MealPlan, *, days: list[dict] | None = None) -> bytes:
         intro_text=intro_text,
     )
 
-    return HTML(string=html_str).write_pdf()
+    return _render_with_playwright(html_str, week_label=plan.week_label)
+
+
+def _render_with_playwright(html_str: str, *, week_label: str = "") -> bytes:
+    """Render HTML to PDF bytes using headless Chromium via Playwright."""
+    from playwright.sync_api import sync_playwright
+
+    footer = (
+        f'<div style="font-size:7pt;color:#a8a29e;width:100%;text-align:center;'
+        f'font-family:Nunito,Arial,sans-serif;padding-bottom:2mm;">'
+        f'MealEngine &nbsp;·&nbsp; {week_label}'
+        f' &nbsp;·&nbsp; p. <span class="pageNumber"></span>'
+        f' of <span class="totalPages"></span></div>'
+    )
+
+    # Allow overriding the Chromium binary path via env var — useful in
+    # local dev environments where the Playwright CDN is blocked.
+    import os
+    launch_kwargs: dict = {}
+    if ep := os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
+        launch_kwargs["executable_path"] = ep
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page()
+        page.set_content(html_str, wait_until="networkidle")
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "14mm", "right": "16mm", "bottom": "16mm", "left": "16mm"},
+            display_header_footer=True,
+            header_template="<span></span>",
+            footer_template=footer,
+        )
+        browser.close()
+
+    return pdf_bytes
