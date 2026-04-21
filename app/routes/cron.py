@@ -77,6 +77,54 @@ def classify_components_backlog(
     return {"saved": saved, "limit": limit}
 
 
+@router.post("/generate-card-steps-backlog")
+def generate_card_steps_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 50,
+):
+    """
+    Generate detailed card_steps + card_tip for recipes that don't have them yet.
+
+    Uses Claude Haiku to produce 5-6 detailed cooking steps and a chef's tip from
+    each recipe's raw_content. Results are cached in raw_recipes.card_steps / card_tip.
+    Call repeatedly until it returns {"saved": 0}.
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+    from app.card_renderer import generate_card_steps
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.card_steps.is_(None),
+            RawRecipe.raw_content.isnot(None),
+            RawRecipe.quick_steps.isnot(None),  # only classified recipes
+        )
+        .limit(limit)
+        .all()
+    )
+
+    saved = 0
+    for recipe in rows:
+        try:
+            steps, tip = generate_card_steps(recipe.raw_content, recipe.title or "")
+            if steps:
+                recipe.card_steps = _json.dumps(steps)
+                recipe.card_tip = tip
+                saved += 1
+        except Exception as exc:
+            logger.warning("card_steps backlog: recipe %s failed — %s", recipe.id, exc)
+
+    if saved:
+        db.commit()
+
+    return {"saved": saved, "limit": limit}
+
+
 @router.get("/gumroad-check")
 def gumroad_check(_: None = Depends(_require_cron_secret)):
     """Diagnose Gumroad API connectivity and product ID validity."""
