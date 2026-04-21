@@ -50,6 +50,7 @@ RECIPES: list[dict] = [
             "Flip the fillets, reduce heat to medium, and pour the honey garlic glaze over the top. Cook 3–4 minutes, spooning the glaze over the fish continuously as it caramelises.",
             "Transfer to plates over steamed jasmine rice. Spoon any remaining pan glaze over the top. Garnish with sliced lemon and spring onions and serve immediately.",
         ],
+        "card_summary": "The honey caramelises into a lacquered glaze that tastes far more complex than the 25-minute cook time suggests. Crispy skin, silky flesh, and a sauce you'll want to spoon over everything.",
         "card_tip": "Don't move the salmon while it sears — those 4 undisturbed minutes build the crispy crust.",
         "ingredients": [
             {"name": "salmon fillets", "qty": "4", "unit": ""},
@@ -85,6 +86,7 @@ RECIPES: list[dict] = [
             "Flip once and cook a further 2 minutes until the underside is golden. These pancakes are denser than regular ones — don't rush them on high heat.",
             "Stack on warm plates. Serve with fresh mixed berries, a dollop of Greek yogurt, and a drizzle of maple syrup.",
         ],
+        "card_summary": "Two ingredients you always have on hand turn into a surprisingly fluffy, naturally sweet stack. Ready in 20 minutes and the kids won't even notice there's no flour.",
         "card_tip": "The riper the bananas, the sweeter the pancakes — no extra sugar needed.",
         "ingredients": [
             {"name": "ripe bananas", "qty": "2", "unit": ""},
@@ -117,6 +119,7 @@ RECIPES: list[dict] = [
             "Push the beef to one side. Add a splash of oil, then fry 3 minced garlic cloves and 1 tsp grated ginger for 20 seconds until fragrant.",
             "Add the broccoli back in, pour the sauce over everything, and toss vigorously for 1–2 minutes until the sauce thickens and coats the beef in a glossy sheen. Serve immediately over steamed rice.",
         ],
+        "card_summary": "Better than takeout and on the table in 30 minutes. The secret is a smoking-hot wok and cooking the beef in batches — that's what gives it that irresistible charred, restaurant edge.",
         "card_tip": "Cook the beef in batches on screaming-hot heat — crowding the pan makes it steam and turn grey.",
         "ingredients": [
             {"name": "beef sirloin, thinly sliced", "qty": "500", "unit": "g"},
@@ -151,6 +154,7 @@ RECIPES: list[dict] = [
             "Drain the pasta and add directly to the sauce. Toss to coat, adding splashes of the reserved pasta water until the sauce clings silkily to every piece.",
             "Serve in warmed bowls. Finish with a generous handful of grated Parmesan, fresh basil leaves, and a crack of black pepper.",
         ],
+        "card_summary": "A weeknight pasta that feels indulgent without being heavy. The trick is finishing the sauce with a splash of starchy pasta water — it's what makes everything cling together instead of slide off.",
         "card_tip": "Always save pasta water — its starch is what makes the sauce cling instead of pool at the bottom.",
         "ingredients": [
             {"name": "penne pasta", "qty": "400", "unit": "g"},
@@ -185,6 +189,7 @@ RECIPES: list[dict] = [
             "Warm 12 small flour tortillas in a dry pan for 30 seconds each side, or wrap in a damp paper towel and microwave for 45 seconds.",
             "Set up a taco bar: shredded chicken, diced tomatoes, shredded lettuce, sliced avocado, fresh lime wedges, and hot sauce. Let everyone build their own.",
         ],
+        "card_summary": "Taco night done properly — smoky spiced chicken that's juicy inside and charred at the edges. Set up the toppings in bowls and let everyone build their own for a dinner the whole table gets excited about.",
         "card_tip": "Rest the chicken before shredding — cut too soon and all the juices run out onto the board.",
         "ingredients": [
             {"name": "chicken thighs", "qty": "500", "unit": "g"},

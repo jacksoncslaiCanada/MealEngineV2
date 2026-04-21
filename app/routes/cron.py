@@ -111,10 +111,11 @@ def generate_card_steps_backlog(
     saved = 0
     for recipe in rows:
         try:
-            steps, tip = generate_card_steps(recipe.raw_content, recipe.title or "")
+            steps, tip, summary = generate_card_steps(recipe.raw_content, recipe.title or "")
             if steps:
                 recipe.card_steps = _json.dumps(steps)
                 recipe.card_tip = tip
+                recipe.card_summary = summary
                 saved += 1
         except Exception as exc:
             logger.warning("card_steps backlog: recipe %s failed — %s", recipe.id, exc)

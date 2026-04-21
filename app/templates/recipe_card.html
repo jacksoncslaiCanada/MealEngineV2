@@ -224,6 +224,17 @@ body {
   line-height: 1.45;
 }
 
+/* Summary headnote */
+.card-summary {
+  font-size: 8pt;
+  color: var(--stone);
+  font-style: italic;
+  line-height: 1.55;
+  margin-bottom: 3.5mm;
+  padding-bottom: 3mm;
+  border-bottom: 1px solid var(--cream-dark);
+}
+
 /* Chef's tip */
 .card-tip {
   margin-top: 3mm;
@@ -444,6 +455,7 @@ body {
 {% set tags     = recipe.dietary_tags or [] %}
 {% set steps    = recipe.card_steps or recipe.quick_steps or [] %}
 {% set tip      = recipe.card_tip or '' %}
+{% set summary  = recipe.card_summary or '' %}
 {% set has_macros = macros.get('cals', 0) > 0 %}
 
 <div class="card">
@@ -497,6 +509,10 @@ body {
       {% endif %}
 
       <div class="card-title">{{ recipe.title }}</div>
+
+      {% if summary %}
+      <div class="card-summary">{{ summary }}</div>
+      {% endif %}
 
       <div class="steps-label">How to make it</div>
       <ol class="steps-list">
