@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
 
+    openai_api_key: str = ""
+
     # Source scoring configuration
     source_quality_threshold: float = 0.75  # auto-promote candidates above this score
     source_promotion_min_content: int = 2   # min recipes seen before a candidate can be promoted
