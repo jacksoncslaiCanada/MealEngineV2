@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --sage:       #687f6a;
+  --sage-dark:  #4e6150;
+  --sage-light: #edf2ee;
+  --sage-mid:   #c8d9c9;
+  --cream:      #f7f3ec;
+  --cream-card: #f0ebe2;
+  --cream-dark: #e5dfd5;
+  --gold:       #c9943a;
+  --charcoal:   #1c1917;
+  --stone:      #57534e;
+  --pebble:     #a8a29e;
+  --white:      #ffffff;
+}
+
+body {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 10pt;
+  color: var(--charcoal);
+  background: var(--cream);
+  line-height: 1.5;
+}
+
+.page-break { page-break-before: always; }
+
+
+/* ── PAGE WRAPPER ─────────────────────────────────────── */
+.card {
+  width: 178mm;
+  min-height: 267mm;
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* ── TOP BAR ──────────────────────────────────────────── */
+.card-topbar {
+  background: var(--sage);
+  padding: 3mm 6mm 2.5mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.card-brand {
+  font-size: 7pt;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+}
+.card-chips {
+  display: flex;
+  gap: 1.5mm;
+}
+.chip {
+  font-size: 6.5pt;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.7mm 2.2mm;
+  border-radius: 10px;
+  color: var(--white);
+  white-space: nowrap;
+}
+.chip-time { background: rgba(255,255,255,0.22); }
+.chip-diff { background: rgba(255,255,255,0.14); }
+.chip-diet { background: rgba(255,255,255,0.10); font-size: 6pt; }
+
+
+/* ── MAIN CONTENT ─────────────────────────────────────── */
+.card-body {
+  flex: 1;
+  padding: 6mm 6mm 4mm;
+  overflow: hidden;
+}
+
+
+/* ── FLOATING CIRCLE IMAGE ────────────────────────────── */
+.photo-circle {
+  float: right;
+  width: 68mm;
+  height: 68mm;
+  border-radius: 50%;
+  shape-outside: circle(50%);
+  shape-margin: 5mm;
+  margin: 0 0 4mm 0;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.photo-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-circle-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--sage-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3mm;
+}
+.photo-circle-placeholder svg { opacity: 0.25; }
+.photo-circle-placeholder span {
+  font-size: 6pt;
+  color: var(--sage);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+
+/* ── TITLE BLOCK ──────────────────────────────────────── */
+.card-cuisine {
+  font-size: 6.5pt;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 1.5mm;
+}
+.card-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 26pt;
+  font-weight: 800;
+  line-height: 1.0;
+  color: var(--charcoal);
+  letter-spacing: -0.03em;
+  margin-bottom: 3mm;
+}
+.card-tags {
+  display: flex;
+  gap: 1.5mm;
+  margin-bottom: 3mm;
+  flex-wrap: wrap;
+}
+.diet-pill {
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sage-dark);
+  background: var(--sage-light);
+  border: 0.5px solid var(--sage-mid);
+  padding: 0.4mm 1.8mm;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+.card-summary {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-size: 9pt;
+  color: var(--stone);
+  line-height: 1.6;
+  margin-bottom: 4mm;
+}
+
+
+/* ── STEPS ────────────────────────────────────────────── */
+.steps-label {
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 2.5mm;
+  clear: none;
+}
+.steps-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+  margin-bottom: 5mm;
+}
+.step-item {
+  display: flex;
+  gap: 2.5mm;
+  align-items: flex-start;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 5mm;
+  height: 5mm;
+  background: var(--sage);
+  color: var(--white);
+  border-radius: 50%;
+  font-size: 6pt;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.6mm;
+}
+.step-text {
+  font-size: 8pt;
+  color: var(--charcoal);
+  line-height: 1.45;
+}
+
+
+/* ── CHEF'S TIP ───────────────────────────────────────── */
+.card-tip {
+  clear: both;
+  margin-bottom: 4mm;
+  padding: 2.5mm 3mm 2.5mm 3.5mm;
+  background: var(--cream-card);
+  border-left: 2.5px solid var(--gold);
+  border-radius: 0 4px 4px 0;
+}
+.card-tip-label {
+  font-size: 5.5pt;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.8mm;
+}
+.card-tip-text {
+  font-size: 7.5pt;
+  color: var(--stone);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+
+/* ── COMPONENTS CARD ──────────────────────────────────── */
+.card-components {
+  background: var(--sage-light);
+  border-radius: 6px;
+  padding: 3mm 4mm;
+  margin-bottom: 3mm;
+  display: flex;
+  gap: 2.5mm;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.comp-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+}
+.comp-role {
+  font-size: 5.5pt;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage-dark);
+  background: var(--sage-mid);
+  padding: 0.4mm 1.6mm;
+  border-radius: 3px;
+}
+.comp-label {
+  font-size: 7.5pt;
+  font-weight: 600;
+  color: var(--charcoal);
+}
+.comp-dot { color: var(--pebble); font-size: 7pt; }
+
+
+/* ── INGREDIENTS CARD ─────────────────────────────────── */
+.card-ingredients {
+  background: var(--cream-card);
+  border-radius: 6px;
+  padding: 3mm 4mm;
+  margin-bottom: 3mm;
+}
+.ing-label {
+  font-size: 6pt;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pebble);
+  margin-bottom: 2mm;
+}
+.ing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1mm 3mm;
+}
+.ing-item {
+  font-size: 7.5pt;
+  color: var(--stone);
+  display: flex;
+  gap: 1mm;
+  align-items: baseline;
+  overflow: hidden;
+}
+.ing-qty { font-weight: 700; color: var(--charcoal); flex-shrink: 0; }
+.ing-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* ── MACRO BAR ────────────────────────────────────────── */
+.card-macros {
+  background: var(--charcoal);
+  border-radius: 6px;
+  padding: 3mm 4mm;
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  margin-bottom: 3mm;
+}
+.macro-bar-wrap { flex-shrink: 0; width: 22mm; }
+.macro-bar-track {
+  height: 5px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+}
+.macro-seg-p { background: #7fc8a9; }
+.macro-seg-c { background: #f0c987; }
+.macro-seg-f { background: #e08c74; }
+.macro-bar-legend { display: flex; gap: 2.5mm; margin-top: 1.5mm; }
+.macro-legend-item {
+  display: flex; align-items: center; gap: 1mm;
+  font-size: 5.5pt; color: rgba(255,255,255,0.45); font-weight: 600;
+}
+.macro-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; margin-top: 1px; }
+.macro-dot-p { background: #7fc8a9; }
+.macro-dot-c { background: #f0c987; }
+.macro-dot-f { background: #e08c74; }
+.macro-stats { display: flex; gap: 4mm; align-items: baseline; }
+.macro-stat { display: flex; flex-direction: column; align-items: center; }
+.macro-val { font-size: 13pt; font-weight: 800; color: var(--white); line-height: 1; }
+.macro-val-zero { color: rgba(255,255,255,0.3); }
+.macro-unit {
+  font-size: 6pt; font-weight: 600; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4); text-transform: uppercase; margin-top: 0.5mm;
+}
+.macro-divider { width: 1px; height: 8mm; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+
+
+/* ── FOOTER ───────────────────────────────────────────── */
+.card-footer {
+  padding: 2mm 6mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--cream-dark);
+}
+.card-source { font-size: 7pt; color: var(--pebble); }
+.card-source span { color: var(--stone); font-weight: 600; }
+.card-serving {
+  font-size: 6.5pt; color: var(--pebble); font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+{% for recipe in recipes %}
+{% if not loop.first %}<div class="page-break"></div>{% endif %}
+
+{% set macros   = recipe.macros or {} %}
+{% set pct      = recipe.macro_pct or {} %}
+{% set comps    = recipe.components or [] %}
+{% set ings     = recipe.ingredients or [] %}
+{% set tags     = recipe.dietary_tags or [] %}
+{% set steps    = recipe.card_steps or recipe.quick_steps or [] %}
+{% set tip      = recipe.card_tip or '' %}
+{% set summary  = recipe.card_summary or '' %}
+{% set has_macros = macros.get('cals', 0) > 0 %}
+
+<div class="card">
+
+  <!-- TOP BAR -->
+  <div class="card-topbar">
+    <span class="card-brand">MealEngine &nbsp;·&nbsp; Quick-Prep</span>
+    <div class="card-chips">
+      {% if recipe.prep_time %}<span class="chip chip-time">{{ recipe.prep_time }} min</span>{% endif %}
+      {% if recipe.difficulty %}<span class="chip chip-diff">{{ recipe.difficulty | capitalize }}</span>{% endif %}
+      {% for tag in tags %}<span class="chip chip-diet">{{ dietary_abbr.get(tag, tag) }}</span>{% endfor %}
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="card-body">
+
+    <!-- FLOATING CIRCLE — declared before title so float is established first -->
+    <div class="photo-circle">
+      {% if recipe.image_url %}
+      <img src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
+      {% else %}
+      <div class="photo-circle-placeholder">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#687f6a" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21,15 16,10 5,21"/>
+        </svg>
+        <span>No image</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- TITLE + TAGS + SUMMARY — flow left of circle -->
+    {% if recipe.cuisine %}
+    <div class="card-cuisine">{{ recipe.cuisine }}</div>
+    {% endif %}
+
+    <div class="card-title">{{ recipe.title }}</div>
+
+    {% if tags %}
+    <div class="card-tags">
+      {% for tag in tags %}<span class="diet-pill">{{ dietary_abbr.get(tag, tag) }}</span>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if summary %}
+    <div class="card-summary">{{ summary }}</div>
+    {% endif %}
+
+    <!-- STEPS — continue flowing around circle, then full-width once clear -->
+    <div class="steps-label">How to make it</div>
+    <ol class="steps-list">
+      {% for step in steps %}
+      <li class="step-item">
+        <span class="step-num">{{ loop.index }}</span>
+        <span class="step-text">{{ step }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+
+    <!-- CHEF'S TIP — clear:both so it's always full width -->
+    {% if tip %}
+    <div class="card-tip">
+      <div class="card-tip-label">Chef's tip</div>
+      <div class="card-tip-text">{{ tip }}</div>
+    </div>
+    {% endif %}
+
+    <!-- COMPONENTS -->
+    {% if comps %}
+    <div class="card-components">
+      {% for comp in comps %}
+      {% if not loop.first %}<span class="comp-dot">·</span>{% endif %}
+      <div class="comp-group">
+        <span class="comp-role">{{ comp.role | upper }}</span>
+        <span class="comp-label">{{ comp.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- INGREDIENTS -->
+    {% if ings %}
+    <div class="card-ingredients">
+      <div class="ing-label">Ingredients &nbsp;(serves {{ recipe.servings or '4' }})</div>
+      <div class="ing-grid">
+        {% for ing in ings %}
+        <div class="ing-item">
+          <span class="ing-qty">
+            {%- if ing.qty and ing.unit -%}{{ ing.qty }}&thinsp;{{ ing.unit }}
+            {%- elif ing.qty -%}{{ ing.qty }}
+            {%- elif ing.unit -%}{{ ing.unit }}
+            {%- else -%}—{%- endif -%}
+          </span>
+          <span class="ing-name">{{ ing.name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- MACROS -->
+    <div class="card-macros">
+      <div class="macro-bar-wrap">
+        <div class="macro-bar-track">
+          {% if has_macros %}
+          <div class="macro-seg-p" style="width:{{ pct.get('protein_pct',33) }}%"></div>
+          <div class="macro-seg-c" style="width:{{ pct.get('carbs_pct',34) }}%"></div>
+          <div class="macro-seg-f" style="width:{{ pct.get('fat_pct',33) }}%"></div>
+          {% endif %}
+        </div>
+        <div class="macro-bar-legend">
+          <div class="macro-legend-item"><div class="macro-dot macro-dot-p"></div>Protein</div>
+          <div class="macro-legend-item"><div class="macro-dot macro-dot-c"></div>Carbs</div>
+          <div class="macro-legend-item"><div class="macro-dot macro-dot-f"></div>Fat</div>
+        </div>
+      </div>
+      <div class="macro-stats">
+        <div class="macro-stat">
+          <span class="macro-val {% if not has_macros %}macro-val-zero{% endif %}">{{ macros.get('cals','—') }}</span>
+          <span class="macro-unit">cal</span>
+        </div>
+        <div class="macro-divider"></div>
+        <div class="macro-stat">
+          <span class="macro-val {% if not has_macros %}macro-val-zero{% endif %}">{% if has_macros %}{{ macros.get('protein',0) }}g{% else %}—{% endif %}</span>
+          <span class="macro-unit">protein</span>
+        </div>
+        <div class="macro-divider"></div>
+        <div class="macro-stat">
+          <span class="macro-val {% if not has_macros %}macro-val-zero{% endif %}">{% if has_macros %}{{ macros.get('carbs',0) }}g{% else %}—{% endif %}</span>
+          <span class="macro-unit">carbs</span>
+        </div>
+        <div class="macro-divider"></div>
+        <div class="macro-stat">
+          <span class="macro-val {% if not has_macros %}macro-val-zero{% endif %}">{% if has_macros %}{{ macros.get('fat',0) }}g{% else %}—{% endif %}</span>
+          <span class="macro-unit">fat</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.card-body -->
+
+  <!-- FOOTER -->
+  <div class="card-footer">
+    <div class="card-source">
+      {% if recipe.url %}From: <span>{{ recipe.url | replace('https://','') | replace('http://','') | truncate(60,True,'…') }}</span>
+      {% else %}<span>MealEngine Recipe</span>{% endif %}
+    </div>
+    <div class="card-serving">Per serving</div>
+  </div>
+
+</div><!-- /.card -->
+{% endfor %}
+
+</body>
+</html>
