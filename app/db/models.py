@@ -67,6 +67,8 @@ class RawRecipe(Base):
     dietary_tags: Mapped[str | None] = mapped_column(Text, nullable=True)       # JSON: list of tags
     spice_level: Mapped[str | None] = mapped_column(String(16), nullable=True)  # mild|medium|hot
     servings: Mapped[int | None] = mapped_column(Integer, nullable=True)        # number of servings
+    card_steps: Mapped[str | None] = mapped_column(Text, nullable=True)         # JSON: 5-6 detailed steps for recipe card
+    card_tip: Mapped[str | None] = mapped_column(Text, nullable=True)           # chef's tip for recipe card
 
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 

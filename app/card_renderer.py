@@ -101,6 +101,48 @@ def estimate_macros(title: str, ingredients: list[dict], servings: int) -> dict:
         return default
 
 
+def generate_card_steps(raw_content: str, title: str) -> tuple[list[str], str]:
+    """Generate 5-6 detailed cooking steps + a chef's tip from raw recipe content.
+
+    Returns (steps_list, tip_string). Falls back to ([], "") on any failure.
+    Uses Claude Haiku — call once and cache result in raw_recipes.card_steps / card_tip.
+    """
+    try:
+        import anthropic
+        from app.config import settings
+        if not settings.anthropic_api_key or not raw_content:
+            return [], ""
+
+        prompt = (
+            f"You are writing the cooking instructions for a premium recipe card for: {title}.\n\n"
+            f"Source material (recipe transcript or post):\n{raw_content[:4000]}\n\n"
+            f"Task:\n"
+            f"1. Write exactly 5-6 clear, detailed cooking steps. Each step should be 1-2 sentences "
+            f"covering a distinct action. Include specific temperatures, timings, and sensory cues "
+            f"(e.g. 'until golden brown', 'when the oil shimmers'). Number them 1-6.\n"
+            f"2. Write one concise Chef's Tip (max 20 words) — a technique insight, make-ahead note, "
+            f"or substitution that genuinely helps.\n\n"
+            f"Reply ONLY with valid JSON in this exact shape:\n"
+            f'{{"steps": ["step 1...", "step 2...", ...], "tip": "Tip text here."}}'
+        )
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = resp.content[0].text.strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        if start >= 0 and end > start:
+            data = json.loads(text[start:end])
+            return data.get("steps", []), data.get("tip", "")
+        return [], ""
+    except Exception as exc:
+        logger.warning("card_renderer: card_steps generation failed — %s", exc)
+        return [], ""
+
+
 def _macro_pct(macros: dict) -> dict:
     """Compute rough calorie-share percentages for the macro bar."""
     p_cals = macros.get("protein", 0) * 4
