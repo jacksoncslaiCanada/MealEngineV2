@@ -108,10 +108,13 @@ def generate_card_steps_backlog(
         .all()
     )
 
+    from app.card_renderer import _extract_title
+
     saved = 0
     for recipe in rows:
         try:
-            steps, tip, summary = generate_card_steps(recipe.raw_content, recipe.title or "")
+            title = getattr(recipe, "title", None) or _extract_title(recipe.raw_content or "")
+            steps, tip, summary = generate_card_steps(recipe.raw_content, title)
             if steps:
                 recipe.card_steps = _json.dumps(steps)
                 recipe.card_tip = tip
@@ -160,15 +163,18 @@ def resolve_card_images_backlog(
         .all()
     )
 
+    from app.card_renderer import _extract_title
+
     saved = 0
     for recipe in rows:
         ingredients = [
             {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
             for ing in recipe.ingredients
         ]
+        title = getattr(recipe, "title", None) or _extract_title(recipe.raw_content or "")
         url = resolve_card_image(
             recipe_id=recipe.id,
-            title=recipe.title or "",
+            title=title,
             cuisine=recipe.cuisine or "",
             ingredients=ingredients,
             source_url=recipe.url,

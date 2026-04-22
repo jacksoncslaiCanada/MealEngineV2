@@ -69,6 +69,15 @@ def _fetch_thumbnail(video_id: str) -> bytes | None:
     return None
 
 
+def _extract_title(raw_content: str) -> str:
+    """Best-effort title extraction from raw recipe content."""
+    for line in raw_content.splitlines():
+        line = line.strip()
+        if 10 < len(line) < 120 and not line.startswith(("http", "#", "/")):
+            return line
+    return ""
+
+
 def _build_flux_prompt(title: str, cuisine: str, ingredients: list[dict]) -> str:
     key_ingredients = ", ".join(i["name"] for i in ingredients[:5])
     cuisine_prefix = f"{cuisine} cuisine, " if cuisine else ""
