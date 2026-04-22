@@ -134,6 +134,7 @@ def resolve_card_images_backlog(
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
     limit: int = 20,
+    retry_unavailable: bool = False,
 ):
     """
     Resolve and store card images for recipes that don't have one yet.
@@ -145,25 +146,33 @@ def resolve_card_images_backlog(
     is cached in raw_recipes.card_image_url.
 
     Keep limit low (default 20) since each Flux call takes ~5-10s.
-    Call repeatedly until {"saved": 0}.
+    Call repeatedly until {"saved": 0, "attempted": 0}.
+
+    retry_unavailable=true  Re-processes recipes previously marked "unavailable"
+                            (e.g. after fixing a missing API key or network issue).
 
     Prerequisites:
       - REPLICATE_API_KEY set in Railway env vars (for Flux fallback)
       - SUPABASE_URL + SUPABASE_SERVICE_KEY configured
       - recipe-images bucket created in Supabase Storage (set to public)
     """
-    import json as _json
-    from app.db.models import RawRecipe, Ingredient
-    from app.card_renderer import resolve_card_image
+    from app.db.models import RawRecipe
+    from app.card_renderer import resolve_card_image, _extract_title
 
-    rows = (
-        db.query(RawRecipe)
-        .filter(RawRecipe.card_image_url.is_(None))
-        .limit(limit)
-        .all()
-    )
-
-    from app.card_renderer import _extract_title
+    if retry_unavailable:
+        rows = (
+            db.query(RawRecipe)
+            .filter(RawRecipe.card_image_url == "unavailable")
+            .limit(limit)
+            .all()
+        )
+    else:
+        rows = (
+            db.query(RawRecipe)
+            .filter(RawRecipe.card_image_url.is_(None))
+            .limit(limit)
+            .all()
+        )
 
     saved = 0
     for recipe in rows:
@@ -183,13 +192,12 @@ def resolve_card_images_backlog(
             recipe.card_image_url = url
             saved += 1
         else:
-            # Mark as attempted with sentinel so we don't retry endlessly
             recipe.card_image_url = "unavailable"
 
-    if saved or rows:
+    if rows:
         db.commit()
 
-    return {"saved": saved, "attempted": len(rows), "limit": limit}
+    return {"saved": saved, "attempted": len(rows), "limit": limit, "retry_unavailable": retry_unavailable}
 
 
 @router.get("/gumroad-check")
