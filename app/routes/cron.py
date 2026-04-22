@@ -126,6 +126,66 @@ def generate_card_steps_backlog(
     return {"saved": saved, "limit": limit}
 
 
+@router.post("/resolve-card-images-backlog")
+def resolve_card_images_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 20,
+):
+    """
+    Resolve and store card images for recipes that don't have one yet.
+
+    For each recipe:
+      - Uses the YouTube thumbnail if it's a real image (not placeholder)
+      - Falls back to Flux Schnell generation via Replicate (~$0.003/image)
+    Images are uploaded to the Supabase recipe-images bucket and the URL
+    is cached in raw_recipes.card_image_url.
+
+    Keep limit low (default 20) since each Flux call takes ~5-10s.
+    Call repeatedly until {"saved": 0}.
+
+    Prerequisites:
+      - REPLICATE_API_KEY set in Railway env vars (for Flux fallback)
+      - SUPABASE_URL + SUPABASE_SERVICE_KEY configured
+      - recipe-images bucket created in Supabase Storage (set to public)
+    """
+    import json as _json
+    from app.db.models import RawRecipe, Ingredient
+    from app.card_renderer import resolve_card_image
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(RawRecipe.card_image_url.is_(None))
+        .limit(limit)
+        .all()
+    )
+
+    saved = 0
+    for recipe in rows:
+        ingredients = [
+            {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
+            for ing in recipe.ingredients
+        ]
+        url = resolve_card_image(
+            recipe_id=recipe.id,
+            title=recipe.title or "",
+            cuisine=recipe.cuisine or "",
+            ingredients=ingredients,
+            source_url=recipe.url,
+        )
+        if url:
+            recipe.card_image_url = url
+            saved += 1
+        else:
+            # Mark as attempted with sentinel so we don't retry endlessly
+            recipe.card_image_url = "unavailable"
+
+    if saved or rows:
+        db.commit()
+
+    return {"saved": saved, "attempted": len(rows), "limit": limit}
+
+
 @router.get("/gumroad-check")
 def gumroad_check(_: None = Depends(_require_cron_secret)):
     """Diagnose Gumroad API connectivity and product ID validity."""

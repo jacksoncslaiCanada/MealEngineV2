@@ -1,10 +1,13 @@
-"""Recipe card renderer: DALL-E 3 food image + Claude macro estimation + Playwright PDF."""
+"""Recipe card renderer: image resolution, Claude macro estimation + Playwright PDF."""
 from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
+from urllib.parse import urlparse
 
+import httpx
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
@@ -25,6 +28,165 @@ DIETARY_ABBR = {
     "vegan":       "VG",
     "nut-free":    "NF",
 }
+
+
+# ---------------------------------------------------------------------------
+# Image resolution: thumbnail → Flux fallback → Supabase upload
+# ---------------------------------------------------------------------------
+
+# YouTube grey placeholder is always < 5 KB; real thumbnails are 20 KB+
+_THUMBNAIL_MIN_BYTES = 5_000
+
+
+def _youtube_video_id(url: str | None) -> str | None:
+    """Extract YouTube video ID from a watch or short URL."""
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        if "youtube.com" in parsed.netloc and parsed.query:
+            for part in parsed.query.split("&"):
+                if part.startswith("v="):
+                    return part[2:]
+        if "youtu.be" in parsed.netloc:
+            return parsed.path.lstrip("/").split("?")[0] or None
+    except Exception:
+        pass
+    return None
+
+
+def _fetch_thumbnail(video_id: str) -> bytes | None:
+    """Try to fetch a real YouTube thumbnail. Returns bytes or None if placeholder/missing."""
+    # maxresdefault only exists for videos with custom thumbnails — best quality
+    for quality in ("maxresdefault", "hqdefault"):
+        url = f"https://img.youtube.com/vi/{video_id}/{quality}.jpg"
+        try:
+            resp = httpx.get(url, timeout=10, follow_redirects=True)
+            if resp.status_code == 200 and len(resp.content) >= _THUMBNAIL_MIN_BYTES:
+                return resp.content
+        except Exception:
+            pass
+    return None
+
+
+def _build_flux_prompt(title: str, cuisine: str, ingredients: list[dict]) -> str:
+    key_ingredients = ", ".join(i["name"] for i in ingredients[:5])
+    cuisine_prefix = f"{cuisine} cuisine, " if cuisine else ""
+    return (
+        f"Professional food photography of {title}. "
+        f"{cuisine_prefix}"
+        f"Key ingredients visible: {key_ingredients}. "
+        f"Shot from a 45-degree overhead angle on a sage green and warm cream linen backdrop. "
+        f"Soft natural window light from the left, minimal white ceramic props, "
+        f"fresh herbs as garnish, highly appetising, magazine quality, shallow depth of field."
+    )
+
+
+def _generate_with_flux(prompt: str, api_key: str) -> bytes | None:
+    """Generate an image via Flux Schnell on Replicate. Returns raw image bytes or None."""
+    try:
+        # Use Prefer: wait so Replicate blocks until done (avoids polling in most cases)
+        resp = httpx.post(
+            "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Prefer": "wait",
+            },
+            json={
+                "input": {
+                    "prompt": prompt,
+                    "aspect_ratio": "1:1",
+                    "output_format": "webp",
+                    "output_quality": 85,
+                    "num_outputs": 1,
+                    "num_inference_steps": 4,
+                }
+            },
+            timeout=90,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        output = data.get("output") or []
+
+        # If Prefer: wait timed out, poll until done
+        if not output and data.get("id"):
+            prediction_id = data["id"]
+            for _ in range(30):
+                time.sleep(2)
+                poll = httpx.get(
+                    f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=15,
+                )
+                poll_data = poll.json()
+                if poll_data.get("status") == "succeeded":
+                    output = poll_data.get("output") or []
+                    break
+                if poll_data.get("status") in ("failed", "canceled"):
+                    logger.warning("card_renderer: Flux prediction %s %s", prediction_id, poll_data.get("status"))
+                    return None
+
+        if not output:
+            return None
+
+        img_resp = httpx.get(str(output[0]), timeout=30)
+        img_resp.raise_for_status()
+        return img_resp.content
+
+    except Exception as exc:
+        logger.warning("card_renderer: Flux generation failed — %s", exc)
+        return None
+
+
+def resolve_card_image(
+    recipe_id: int,
+    title: str,
+    cuisine: str,
+    ingredients: list[dict],
+    source_url: str | None,
+) -> str | None:
+    """Resolve the best image for a recipe card and store it in Supabase.
+
+    Priority:
+      1. YouTube thumbnail (fetched directly if real, not placeholder)
+      2. Flux Schnell generation (sage/cream backdrop, consistent style)
+
+    Returns the Supabase public URL, or None if both sources fail / not configured.
+    """
+    from app.config import settings
+    from app.storage import upload_image
+
+    image_bytes: bytes | None = None
+    content_type = "image/jpeg"
+
+    # --- Try YouTube thumbnail ---
+    video_id = _youtube_video_id(source_url)
+    if video_id:
+        thumb = _fetch_thumbnail(video_id)
+        if thumb:
+            image_bytes = thumb
+            logger.info("card_renderer: using YouTube thumbnail for recipe %s", recipe_id)
+
+    # --- Fall back to Flux ---
+    if image_bytes is None:
+        if not settings.replicate_api_key:
+            logger.info("card_renderer: no Replicate key — skipping Flux generation")
+            return None
+        prompt = _build_flux_prompt(title, cuisine, ingredients)
+        image_bytes = _generate_with_flux(prompt, settings.replicate_api_key)
+        content_type = "image/webp"
+        if image_bytes:
+            logger.info("card_renderer: generated Flux image for recipe %s", recipe_id)
+
+    if not image_bytes:
+        return None
+
+    # --- Upload to Supabase recipe-images bucket ---
+    ext = "jpg" if content_type == "image/jpeg" else "webp"
+    filename = f"cards/{recipe_id}.{ext}"
+    return upload_image(image_bytes, filename=filename, content_type=content_type)
 
 
 def generate_food_image(title: str, cuisine: str, ingredients: list[dict]) -> str | None:

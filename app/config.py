@@ -12,6 +12,12 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
 
+    # Replicate — used for Flux image generation
+    replicate_api_key: str = ""
+
+    # Supabase Storage — images bucket (separate from meal-plans PDF bucket)
+    supabase_images_bucket: str = "recipe-images"
+
     # Source scoring configuration
     source_quality_threshold: float = 0.75  # auto-promote candidates above this score
     source_promotion_min_content: int = 2   # min recipes seen before a candidate can be promoted

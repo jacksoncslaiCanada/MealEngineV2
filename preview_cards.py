@@ -9,6 +9,14 @@ Flags (env vars):
     FLOW=1               Use recipe_card_flow.html (circular image, shape-outside text wrap).
                          Default: off (uses recipe_card.html, rigid two-column).
 
+    RESOLVE_IMAGES=1     Resolve real images for each recipe:
+                         - YouTube thumbnail if available and not a placeholder
+                         - Flux Schnell via Replicate as fallback (~$0.003/image)
+                         Requires REPLICATE_API_KEY in your .env.
+                         Images are NOT uploaded to Supabase in preview mode —
+                         they are embedded as base64 directly in the PDF.
+                         Default: off (placeholder shown instead).
+
     GENERATE_IMAGES=1    Call DALL-E 3 to generate food photos (~$0.20 for 5 cards).
                          Requires OPENAI_API_KEY in your .env or environment.
                          Default: off (placeholder image shown instead).
@@ -32,7 +40,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from app.card_renderer import generate_food_image, estimate_macros, render_recipe_cards
+from app.card_renderer import (
+    generate_food_image, estimate_macros, render_recipe_cards,
+    _youtube_video_id, _fetch_thumbnail, _generate_with_flux, _build_flux_prompt,
+)
 
 # ---------------------------------------------------------------------------
 # 5 test recipes — covers breakfast, dinner, multiple cuisines, tag combos
@@ -221,16 +232,37 @@ RECIPES: list[dict] = [
 
 GENERATE_IMAGES  = os.getenv("GENERATE_IMAGES", "0") == "1"
 ESTIMATE_MACROS  = os.getenv("ESTIMATE_MACROS", "0") == "1"
+RESOLVE_IMAGES   = os.getenv("RESOLVE_IMAGES",  "0") == "1"
 USE_FLOW_LAYOUT  = os.getenv("FLOW", "0") == "1"
 
-if GENERATE_IMAGES or ESTIMATE_MACROS:
-    # Load .env so API keys are available
+if GENERATE_IMAGES or ESTIMATE_MACROS or RESOLVE_IMAGES:
     from dotenv import load_dotenv
     load_dotenv()
 
 for recipe in RECIPES:
-    if GENERATE_IMAGES:
-        print(f"  Generating image for '{recipe['title']}'…")
+    if RESOLVE_IMAGES:
+        # Try thumbnail first, then Flux — embed as base64 for local preview
+        import base64
+        video_id = _youtube_video_id(recipe.get("url"))
+        img_bytes = _fetch_thumbnail(video_id) if video_id else None
+        source = "thumbnail"
+        if img_bytes is None:
+            replicate_key = os.getenv("REPLICATE_API_KEY", "")
+            if replicate_key:
+                print(f"  Generating Flux image for '{recipe['title']}'…")
+                prompt = _build_flux_prompt(
+                    recipe["title"], recipe.get("cuisine", ""), recipe["ingredients"]
+                )
+                img_bytes = _generate_with_flux(prompt, replicate_key)
+                source = "flux"
+        if img_bytes:
+            ext = "jpeg" if source == "thumbnail" else "webp"
+            recipe["image_url"] = f"data:image/{ext};base64,{base64.b64encode(img_bytes).decode()}"
+            print(f"  Image resolved ({source}) for '{recipe['title']}'")
+        else:
+            recipe.setdefault("image_url", None)
+    elif GENERATE_IMAGES:
+        print(f"  Generating DALL-E image for '{recipe['title']}'…")
         recipe["image_url"] = generate_food_image(
             recipe["title"],
             recipe.get("cuisine", ""),
@@ -297,5 +329,6 @@ print("  python preview_cards.py          # two-column layout")
 print("  FLOW=1 python preview_cards.py   # flowing circle layout")
 print()
 print("AI feature flags:")
+print("  RESOLVE_IMAGES=1  python preview_cards.py   # thumbnail or Flux (~$0.015)")
 print("  GENERATE_IMAGES=1 python preview_cards.py   # DALL-E 3 food photos (~$0.20)")
 print("  ESTIMATE_MACROS=1 python preview_cards.py   # Claude Haiku macro estimates")

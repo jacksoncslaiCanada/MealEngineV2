@@ -70,6 +70,7 @@ class RawRecipe(Base):
     card_steps: Mapped[str | None] = mapped_column(Text, nullable=True)         # JSON: 5-6 detailed steps for recipe card
     card_tip: Mapped[str | None] = mapped_column(Text, nullable=True)           # chef's tip for recipe card
     card_summary: Mapped[str | None] = mapped_column(Text, nullable=True)       # 2-3 sentence enticing headnote for recipe card
+    card_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # resolved image URL (thumbnail or Flux-generated)
 
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
