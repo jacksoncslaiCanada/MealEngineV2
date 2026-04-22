@@ -2,9 +2,13 @@
 Standalone recipe card preview script — no database required.
 
 Usage:
-    python preview_cards.py
+    python preview_cards.py              # rigid two-column layout
+    FLOW=1 python preview_cards.py       # flowing circle layout (shape-outside)
 
 Flags (env vars):
+    FLOW=1               Use recipe_card_flow.html (circular image, shape-outside text wrap).
+                         Default: off (uses recipe_card.html, rigid two-column).
+
     GENERATE_IMAGES=1    Call DALL-E 3 to generate food photos (~$0.20 for 5 cards).
                          Requires OPENAI_API_KEY in your .env or environment.
                          Default: off (placeholder image shown instead).
@@ -17,9 +21,10 @@ Flags (env vars):
                          Override the Chromium binary path (needed in some dev envs).
 
 Output:
-    preview_cards.pdf in the project root.
+    preview_cards.pdf      — two-column layout
+    preview_cards_flow.pdf — flowing circle layout (when FLOW=1)
 
-Edit app/templates/recipe_card.html and re-run to iterate on design.
+Edit the relevant template and re-run to iterate on design.
 """
 import os
 import sys
@@ -216,6 +221,7 @@ RECIPES: list[dict] = [
 
 GENERATE_IMAGES  = os.getenv("GENERATE_IMAGES", "0") == "1"
 ESTIMATE_MACROS  = os.getenv("ESTIMATE_MACROS", "0") == "1"
+USE_FLOW_LAYOUT  = os.getenv("FLOW", "0") == "1"
 
 if GENERATE_IMAGES or ESTIMATE_MACROS:
     # Load .env so API keys are available
@@ -245,20 +251,51 @@ for recipe in RECIPES:
 # Render
 # ---------------------------------------------------------------------------
 
-OUTPUT = Path(__file__).parent / "preview_cards.pdf"
+if USE_FLOW_LAYOUT:
+    from app.card_renderer import _env as _card_env, _macro_pct
+    from app.pdf_renderer import _render_with_playwright
+    from jinja2 import Environment, FileSystemLoader
+    from pathlib import Path as _Path
+    _flow_env = Environment(
+        loader=FileSystemLoader(str(_Path(__file__).parent / "app" / "templates")),
+        autoescape=True,
+    )
+    _tmpl = _flow_env.get_template("recipe_card_flow.html")
+    _enriched = [{**r, "macro_pct": _macro_pct(r.get("macros") or {})} for r in RECIPES]
+    from app.card_renderer import DIFFICULTY_COLORS, DIETARY_ABBR
+    _html = _tmpl.render(
+        recipes=_enriched,
+        difficulty_colors=DIFFICULTY_COLORS,
+        dietary_abbr=DIETARY_ABBR,
+    )
+    OUTPUT = Path(__file__).parent / "preview_cards_flow.pdf"
+    print("Rendering flow-layout recipe cards…")
+    try:
+        pdf_bytes = _render_with_playwright(_html, week_label="Recipe Cards")
+        OUTPUT.write_bytes(pdf_bytes)
+        print(f"Done — {len(pdf_bytes) // 1024} KB written to {OUTPUT}")
+    except Exception as exc:
+        print(f"ERROR: {exc}")
+        raise
+else:
+    OUTPUT = Path(__file__).parent / "preview_cards.pdf"
+    print("Rendering recipe cards…")
+    try:
+        pdf_bytes = render_recipe_cards(RECIPES)
+        OUTPUT.write_bytes(pdf_bytes)
+        print(f"Done — {len(pdf_bytes) // 1024} KB written to {OUTPUT}")
+    except Exception as exc:
+        print(f"ERROR: {exc}")
+        raise
 
-print("Rendering recipe cards…")
-try:
-    pdf_bytes = render_recipe_cards(RECIPES)
-    OUTPUT.write_bytes(pdf_bytes)
-    print(f"Done — {len(pdf_bytes) // 1024} KB written to {OUTPUT}")
-    print()
-    print("Open with:  xdg-open preview_cards.pdf   (Linux)")
-    print("            open preview_cards.pdf        (macOS)")
-    print()
-    print("Re-run with flags to activate AI features:")
-    print("  GENERATE_IMAGES=1 python preview_cards.py   # DALL-E 3 food photos (~$0.20)")
-    print("  ESTIMATE_MACROS=1 python preview_cards.py   # Claude Haiku macro estimates")
-except Exception as exc:
-    print(f"ERROR: {exc}")
-    raise
+print()
+print(f"Open with:  xdg-open {OUTPUT.name}   (Linux)")
+print(f"            open {OUTPUT.name}        (macOS)")
+print()
+print("Layout flags:")
+print("  python preview_cards.py          # two-column layout")
+print("  FLOW=1 python preview_cards.py   # flowing circle layout")
+print()
+print("AI feature flags:")
+print("  GENERATE_IMAGES=1 python preview_cards.py   # DALL-E 3 food photos (~$0.20)")
+print("  ESTIMATE_MACROS=1 python preview_cards.py   # Claude Haiku macro estimates")
