@@ -249,26 +249,44 @@ def diagnose_image_pipeline(
                 except Exception as exc:
                     result["thumbnail_error"] = str(exc)
 
-    # 3. Test Flux generation (tiny prompt)
+    # 3. Test Flux generation with direct API call to capture full error
     if settings.replicate_api_key:
         try:
-            test_bytes = _generate_with_flux(
-                "A simple bowl of tomato soup, food photography, white background",
-                settings.replicate_api_key,
+            import httpx as _httpx
+            test_resp = _httpx.post(
+                "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                headers={
+                    "Authorization": f"Bearer {settings.replicate_api_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "wait",
+                },
+                json={"input": {"prompt": "bowl of tomato soup", "num_outputs": 1, "num_inference_steps": 4}},
+                timeout=90,
             )
-            result["flux_generation"] = "ok" if test_bytes else "returned None (check Replicate dashboard)"
-            result["flux_bytes"] = len(test_bytes) if test_bytes else 0
+            result["replicate_http_status"] = test_resp.status_code
+            body = test_resp.json()
+            if test_resp.status_code != 201:
+                result["flux_generation"] = f"error {test_resp.status_code}"
+                result["replicate_error"] = body.get("detail") or body.get("error") or str(body)
+            else:
+                output = body.get("output") or []
+                result["flux_generation"] = "ok" if output else f"no output — status={body.get('status')} error={body.get('error')}"
+                result["flux_bytes"] = 0
 
-            # 4. Test Supabase upload
-            if test_bytes and settings.supabase_url and settings.supabase_service_key:
-                try:
-                    url = upload_image(test_bytes, filename="diagnostics/test.webp", content_type="image/webp")
-                    result["supabase_upload"] = "ok" if url else "returned None"
-                    result["supabase_test_url"] = url
-                except Exception as exc:
-                    result["supabase_upload"] = f"error: {exc}"
+                if output:
+                    img = _httpx.get(str(output[0]), timeout=30)
+                    result["flux_bytes"] = len(img.content)
+
+                    # 4. Test Supabase upload
+                    if settings.supabase_url and settings.supabase_service_key:
+                        try:
+                            url = upload_image(img.content, filename="diagnostics/test.webp", content_type="image/webp")
+                            result["supabase_upload"] = "ok" if url else "returned None"
+                            result["supabase_test_url"] = url
+                        except Exception as exc:
+                            result["supabase_upload"] = f"error: {exc}"
         except Exception as exc:
-            result["flux_generation"] = f"error: {exc}"
+            result["flux_generation"] = f"exception: {exc}"
     else:
         result["flux_generation"] = "skipped — REPLICATE_API_KEY not set"
 
