@@ -4,3 +4,7 @@ builder = "dockerfile"
 [deploy]
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
+
+[[deploy.cronJobs]]
+schedule = "0 6 * * *"
+command = "curl -sf -X POST https://$RAILWAY_PUBLIC_DOMAIN/internal/process-new-recipes -H \"X-Cron-Secret: $CRON_SECRET\" -o /dev/null"
