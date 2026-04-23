@@ -88,6 +88,11 @@ def _extract_title(raw_content: str) -> str:
             if sep in clean:
                 clean = clean.split(sep)[0].strip()
                 break
+        # Strip "How to cook/make/bake X" → "X"
+        clean = re.sub(
+            r'^How\s+to\s+(?:cook|make|prepare|bake|grill|fry|roast|steam|boil)\s+',
+            '', clean, flags=re.IGNORECASE,
+        ).strip()
         if 5 < len(clean) < 100:
             return clean
     return ""

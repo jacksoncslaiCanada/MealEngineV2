@@ -201,6 +201,58 @@ def resolve_card_images_backlog(
     return {"saved": saved, "attempted": len(rows), "limit": limit, "retry_unavailable": retry_unavailable}
 
 
+@router.post("/scan-face-images")
+def scan_face_images(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 20,
+):
+    """
+    Scan existing stored card images for human faces and reset them for regeneration.
+
+    Checks YouTube-sourced recipes only (faces come from YouTube thumbnails).
+    Resets card_image_url to NULL for any image containing a face — then call
+    resolve-card-images-backlog to regenerate those with Flux.
+
+    Call repeatedly until {"reset": 0} to clear all face images.
+    """
+    import httpx as _httpx
+    from app.db.models import RawRecipe
+    from app.card_renderer import _has_person_face, _youtube_video_id
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.card_image_url.isnot(None),
+            RawRecipe.card_image_url != "unavailable",
+            RawRecipe.url.ilike("%youtube%"),
+        )
+        .limit(limit)
+        .all()
+    )
+
+    checked = 0
+    reset = 0
+    for recipe in rows:
+        try:
+            img_resp = _httpx.get(recipe.card_image_url, timeout=15, follow_redirects=True)
+            if img_resp.status_code != 200:
+                continue
+            content_type = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
+            checked += 1
+            if _has_person_face(img_resp.content, content_type):
+                recipe.card_image_url = None
+                reset += 1
+                logger.info("scan_face_images: reset recipe %s (face detected)", recipe.id)
+        except Exception as exc:
+            logger.warning("scan_face_images: recipe %s failed — %s", recipe.id, exc)
+
+    if reset:
+        db.commit()
+
+    return {"checked": checked, "reset": reset, "limit": limit}
+
+
 @router.get("/diagnose-image-pipeline")
 def diagnose_image_pipeline(
     recipe_id: int | None = None,
@@ -568,7 +620,13 @@ def preview_card(
     card_steps   = _json.loads(recipe.card_steps)   if recipe.card_steps   else []
     quick_steps  = _json.loads(recipe.quick_steps)  if recipe.quick_steps  else []
 
-    title = _extract_title(recipe.raw_content or "") or recipe.cuisine or "Recipe"
+    title = _extract_title(recipe.raw_content or "")
+    if not title and recipe.card_summary:
+        # Use first sentence of AI-generated summary as fallback title
+        first = recipe.card_summary.split(".")[0].strip()
+        if len(first) > 8:
+            title = first
+    title = title or recipe.cuisine or "Recipe"
 
     recipe_dict = {
         "title":        title,
