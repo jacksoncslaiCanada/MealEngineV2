@@ -8,6 +8,7 @@ import logging
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -396,3 +397,96 @@ def weekly_run_dry(
             results[variant] = {"status": "error", "detail": str(exc)}
 
     return {"week_label": week_label, "dry_run": True, "results": results}
+
+
+@router.get("/preview-card")
+def preview_card(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    recipe_id: int | None = None,
+):
+    """
+    Render a single recipe card as a PDF and return it for download.
+
+    Useful for checking card design with real data without generating a full weekly plan.
+    Picks the first fully-populated recipe if no recipe_id is given.
+
+    Query params:
+        recipe_id=123   Render a specific recipe (optional)
+    """
+    import json as _json
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+    from app.db.models import RawRecipe, Ingredient, RecipeComponent
+    from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR
+    from app.pdf_renderer import _render_with_playwright
+
+    q = db.query(RawRecipe).filter(
+        RawRecipe.card_image_url.isnot(None),
+        RawRecipe.card_image_url != "unavailable",
+        RawRecipe.card_steps.isnot(None),
+        RawRecipe.quick_steps.isnot(None),
+    )
+    if recipe_id:
+        recipe = q.filter(RawRecipe.id == recipe_id).first()
+    else:
+        recipe = q.first()
+
+    if not recipe:
+        raise HTTPException(404, "No fully-populated recipe found. Run the backlog endpoints first.")
+
+    ingredients = (
+        db.query(Ingredient)
+        .filter(Ingredient.recipe_id == recipe.id)
+        .all()
+    )
+    components = (
+        db.query(RecipeComponent)
+        .filter(RecipeComponent.recipe_id == recipe.id)
+        .order_by(RecipeComponent.display_order)
+        .all()
+    )
+
+    dietary_tags = _json.loads(recipe.dietary_tags) if recipe.dietary_tags else []
+    card_steps   = _json.loads(recipe.card_steps)   if recipe.card_steps   else []
+    quick_steps  = _json.loads(recipe.quick_steps)  if recipe.quick_steps  else []
+
+    recipe_dict = {
+        "title":        "",
+        "cuisine":      recipe.cuisine or "",
+        "difficulty":   recipe.difficulty or "",
+        "prep_time":    recipe.prep_time,
+        "servings":     recipe.servings or 4,
+        "dietary_tags": dietary_tags,
+        "url":          recipe.url,
+        "image_url":    recipe.card_image_url,
+        "card_steps":   card_steps,
+        "quick_steps":  quick_steps,
+        "card_tip":     recipe.card_tip or "",
+        "card_summary": recipe.card_summary or "",
+        "ingredients":  [
+            {"name": i.ingredient_name, "qty": i.quantity or "", "unit": i.unit or ""}
+            for i in ingredients
+        ],
+        "components":   [
+            {"role": c.role, "label": c.label}
+            for c in components
+        ],
+        "macros":    {},
+        "macro_pct": _macro_pct({}),
+    }
+
+    template_dir = Path(__file__).parent.parent / "templates"
+    env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=True)
+    html = env.get_template("recipe_card_flow.html").render(
+        recipes=[recipe_dict],
+        difficulty_colors=DIFFICULTY_COLORS,
+        dietary_abbr=DIETARY_ABBR,
+    )
+
+    pdf_bytes = _render_with_playwright(html, week_label="Recipe Card Preview")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=recipe-card-{recipe.id}.pdf"},
+    )
