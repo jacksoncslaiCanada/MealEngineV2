@@ -149,6 +149,33 @@ def _generate_with_flux(prompt: str, api_key: str) -> bytes | None:
         return None
 
 
+def _has_person_face(image_bytes: bytes, content_type: str = "image/jpeg") -> bool:
+    """Return True if the image contains a human face or person using Claude vision."""
+    import base64
+    import anthropic
+    try:
+        from app.config import settings
+        if not settings.anthropic_api_key:
+            return False
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        b64 = base64.standard_b64encode(image_bytes).decode()
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": b64}},
+                    {"type": "text", "text": "Does this image contain a human face or person? Reply only YES or NO."},
+                ],
+            }],
+        )
+        return "YES" in resp.content[0].text.upper()
+    except Exception as exc:
+        logger.warning("card_renderer: face check failed — %s", exc)
+        return False
+
+
 def resolve_card_image(
     recipe_id: int,
     title: str,
@@ -170,13 +197,16 @@ def resolve_card_image(
     image_bytes: bytes | None = None
     content_type = "image/jpeg"
 
-    # --- Try YouTube thumbnail ---
+    # --- Try YouTube thumbnail (reject if it contains a person) ---
     video_id = _youtube_video_id(source_url)
     if video_id:
         thumb = _fetch_thumbnail(video_id)
         if thumb:
-            image_bytes = thumb
-            logger.info("card_renderer: using YouTube thumbnail for recipe %s", recipe_id)
+            if _has_person_face(thumb, "image/jpeg"):
+                logger.info("card_renderer: thumbnail has person face, falling back to Flux for recipe %s", recipe_id)
+            else:
+                image_bytes = thumb
+                logger.info("card_renderer: using YouTube thumbnail for recipe %s", recipe_id)
 
     # --- Fall back to Flux ---
     if image_bytes is None:
