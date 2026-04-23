@@ -71,10 +71,25 @@ def _fetch_thumbnail(video_id: str) -> bytes | None:
 
 def _extract_title(raw_content: str) -> str:
     """Best-effort title extraction from raw recipe content."""
+    import re
     for line in raw_content.splitlines():
         line = line.strip()
-        if 10 < len(line) < 120 and not line.startswith(("http", "#", "/")):
-            return line
+        if not (10 < len(line) < 120):
+            continue
+        if line.lower().startswith(("http", "#", "/")):
+            continue
+        # Strip field-label prefixes like "Title:", "Recipe Title:", "Recipe:"
+        clean = re.sub(
+            r'^(?:title|recipe\s+title|recipe\s+name|recipe|name)\s*[:–\-]\s*',
+            '', line, flags=re.IGNORECASE,
+        ).strip()
+        # Take the first segment when separated by " | " or " — " (YouTube-style)
+        for sep in (" | ", " – ", " — ", " // "):
+            if sep in clean:
+                clean = clean.split(sep)[0].strip()
+                break
+        if 5 < len(clean) < 100:
+            return clean
     return ""
 
 
