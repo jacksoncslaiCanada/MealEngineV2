@@ -322,6 +322,46 @@ def generate_food_image(title: str, cuisine: str, ingredients: list[dict]) -> st
         return None
 
 
+def generate_card_title(raw_content: str, card_summary: str, cuisine: str) -> str:
+    """Generate a clean 3-6 word dish name using Claude Haiku. Returns '' on failure."""
+    try:
+        import anthropic
+        from app.config import settings
+        if not settings.anthropic_api_key:
+            return ""
+
+        context = ""
+        if card_summary:
+            context += f"Summary: {card_summary[:200]}\n"
+        if raw_content:
+            context += f"Content excerpt: {raw_content[:500]}"
+
+        prompt = (
+            f"Extract or generate a short, clean dish name (3-6 words) from this recipe content.\n"
+            f"Cuisine: {cuisine or 'unknown'}\n"
+            f"{context}\n\n"
+            f"Rules:\n"
+            f"- Just the dish name, nothing else\n"
+            f"- No 'How to make', 'Easy', 'Best ever', 'Recipe' suffix\n"
+            f"- No channel names or author names\n"
+            f"- Capitalise each word\n"
+            f"Examples: 'Crispy Garlic Butter Chicken', 'No-Bake Peanut Butter Bars', 'Creamy Mushroom Pasta'\n\n"
+            f"Dish name:"
+        )
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        title = resp.content[0].text.strip().strip('"').strip("'")
+        return title if 3 < len(title) < 80 else ""
+    except Exception as exc:
+        logger.warning("card_renderer: title generation failed — %s", exc)
+        return ""
+
+
 def estimate_macros(title: str, ingredients: list[dict], servings: int) -> dict:
     """Estimate per-serving macros via Claude Haiku. Returns {cals, protein, carbs, fat}."""
     default: dict = {"cals": 0, "protein": 0, "carbs": 0, "fat": 0}
