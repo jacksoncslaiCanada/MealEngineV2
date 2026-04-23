@@ -418,7 +418,7 @@ def preview_card(
     from pathlib import Path
     from jinja2 import Environment, FileSystemLoader
     from app.db.models import RawRecipe, Ingredient, RecipeComponent
-    from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR
+    from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR, _extract_title
     from app.pdf_renderer import _render_with_playwright
 
     q = db.query(RawRecipe).filter(
@@ -451,8 +451,10 @@ def preview_card(
     card_steps   = _json.loads(recipe.card_steps)   if recipe.card_steps   else []
     quick_steps  = _json.loads(recipe.quick_steps)  if recipe.quick_steps  else []
 
+    title = _extract_title(recipe.raw_content or "") or recipe.cuisine or "Recipe"
+
     recipe_dict = {
-        "title":        "",
+        "title":        title,
         "cuisine":      recipe.cuisine or "",
         "difficulty":   recipe.difficulty or "",
         "prep_time":    recipe.prep_time,

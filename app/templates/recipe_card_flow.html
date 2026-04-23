@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Oswald:wght@600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Lato', Arial, sans-serif;
+  font-family: 'Lora', Georgia, serif;
   font-size: 10pt;
   color: #1a1a1a;
-  background: #ffffff;
+  background: #fffdf8;
   line-height: 1.5;
 }
 
@@ -22,7 +22,7 @@ body {
 .card {
   width: 178mm;
   min-height: 267mm;
-  background: #ffffff;
+  background: #fffdf8;
   padding: 10mm 12mm 8mm;
   display: flex;
   flex-direction: column;
@@ -40,24 +40,24 @@ body {
 .header-left { flex: 1; min-width: 0; }
 
 .card-title {
-  font-family: 'Abril Fatface', Georgia, serif;
-  font-size: 34pt;
-  font-weight: 400;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 32pt;
+  font-weight: 900;
   line-height: 1.0;
-  color: #1a1a1a;
+  color: #1a1208;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin-bottom: 2mm;
+  letter-spacing: 0.03em;
+  margin-bottom: 2.5mm;
   word-break: break-word;
 }
 
 .card-tagline {
-  font-family: 'Lato', Arial, sans-serif;
-  font-size: 7.5pt;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #555555;
+  font-family: 'Lora', Georgia, serif;
+  font-size: 8pt;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.03em;
+  color: #6b5744;
 }
 
 .header-meta {
@@ -73,8 +73,9 @@ body {
   display: flex;
   align-items: center;
   gap: 2mm;
+  font-family: 'Lora', Georgia, serif;
   font-size: 9pt;
-  color: #333333;
+  color: #4a3828;
   white-space: nowrap;
 }
 
@@ -129,18 +130,18 @@ body {
 
 /* ── SECTION HEADERS ──────────────────────────────────── */
 .section-header {
-  font-family: 'Oswald', Arial, sans-serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 13pt;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #1a1a1a;
-  letter-spacing: 0.04em;
+  color: #1a1208;
+  letter-spacing: 0.06em;
   margin-bottom: 4mm;
 }
 
 /* ── INGREDIENTS ──────────────────────────────────────── */
 .ing-box {
-  background: #f0f0f0;
+  background: #f2ede6;
   border-radius: 8px;
   padding: 4mm 5mm;
 }
@@ -149,17 +150,19 @@ body {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 1.8mm;
+  gap: 2mm;
 }
 
 .ing-item {
+  font-family: 'Lora', Georgia, serif;
   font-size: 8.5pt;
-  color: #1a1a1a;
-  line-height: 1.3;
+  color: #2a1f14;
+  line-height: 1.35;
 }
 
 .ing-qty {
-  font-weight: 700;
+  font-weight: 600;
+  color: #6b5744;
 }
 
 /* ── DIRECTIONS ───────────────────────────────────────── */
@@ -174,13 +177,16 @@ body {
   display: flex;
   gap: 2mm;
   align-items: flex-start;
+  font-family: 'Lora', Georgia, serif;
   font-size: 8.5pt;
-  line-height: 1.45;
-  color: #1a1a1a;
+  line-height: 1.5;
+  color: #2a1f14;
 }
 
 .step-num {
+  font-family: 'Playfair Display', Georgia, serif;
   font-weight: 700;
+  color: #6b5744;
   flex-shrink: 0;
   min-width: 5mm;
 }
@@ -304,12 +310,11 @@ body {
         <ul class="ing-list">
           {% for ing in ings %}
           <li class="ing-item">
-            <span class="ing-qty">
-              {%- if ing.qty and ing.unit -%}{{ ing.qty }}&thinsp;{{ ing.unit }}&ensp;
-              {%- elif ing.qty -%}{{ ing.qty }}&ensp;
-              {%- elif ing.unit -%}{{ ing.unit }}&ensp;
-              {%- endif -%}
-            </span>{{ ing.name }}
+            {%- if ing.qty or ing.unit -%}
+              <span class="ing-qty">{{ ing.qty }}{% if ing.qty and ing.unit %}&thinsp;{% endif %}{{ ing.unit }}</span>&ensp;{{ ing.name }}
+            {%- else -%}
+              {{ ing.name }}
+            {%- endif -%}
           </li>
           {% endfor %}
         </ul>
