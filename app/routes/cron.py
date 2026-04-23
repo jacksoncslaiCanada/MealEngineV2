@@ -130,6 +130,51 @@ def generate_card_steps_backlog(
     return {"saved": saved, "limit": limit}
 
 
+@router.post("/generate-titles-backlog")
+def generate_titles_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 100,
+):
+    """
+    Generate clean dish-name titles for recipes that don't have one yet.
+
+    Uses Claude Haiku to produce a 3-6 word dish name stored in card_title.
+    Call repeatedly until {"saved": 0}.
+    """
+    from app.db.models import RawRecipe
+    from app.card_renderer import generate_card_title
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.card_title.is_(None),
+            RawRecipe.quick_steps.isnot(None),   # classified recipes only
+        )
+        .limit(limit)
+        .all()
+    )
+
+    saved = 0
+    for recipe in rows:
+        try:
+            title = generate_card_title(
+                raw_content=recipe.raw_content or "",
+                card_summary=recipe.card_summary or "",
+                cuisine=recipe.cuisine or "",
+            )
+            if title:
+                recipe.card_title = title
+                saved += 1
+        except Exception as exc:
+            logger.warning("generate_titles_backlog: recipe %s failed — %s", recipe.id, exc)
+
+    if saved:
+        db.commit()
+
+    return {"saved": saved, "limit": limit}
+
+
 @router.post("/resolve-card-images-backlog")
 def resolve_card_images_backlog(
     db: Session = Depends(get_db),
@@ -757,13 +802,13 @@ def preview_card(
     card_steps   = _json.loads(recipe.card_steps)   if recipe.card_steps   else []
     quick_steps  = _json.loads(recipe.quick_steps)  if recipe.quick_steps  else []
 
-    title = _extract_title(recipe.raw_content or "")
-    if not title and recipe.card_summary:
-        # Use first sentence of AI-generated summary as fallback title
-        first = recipe.card_summary.split(".")[0].strip()
-        if len(first) > 8:
-            title = first
-    title = title or recipe.cuisine or "Recipe"
+    title = (
+        recipe.card_title                                          # stored AI title (best)
+        or _extract_title(recipe.raw_content or "")               # extracted from raw content
+        or (recipe.card_summary or "").split(".")[0].strip()      # first sentence of summary
+        or recipe.cuisine                                          # last resort
+        or "Recipe"
+    )
 
     recipe_dict = {
         "title":        title,

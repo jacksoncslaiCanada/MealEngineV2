@@ -71,6 +71,7 @@ class RawRecipe(Base):
     card_tip: Mapped[str | None] = mapped_column(Text, nullable=True)           # chef's tip for recipe card
     card_summary: Mapped[str | None] = mapped_column(Text, nullable=True)       # 2-3 sentence enticing headnote for recipe card
     card_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # resolved image URL (thumbnail or Flux-generated)
+    card_title: Mapped[str | None] = mapped_column(Text, nullable=True)         # AI-generated clean dish name for recipe card
 
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
