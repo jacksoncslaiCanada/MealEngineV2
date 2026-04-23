@@ -201,7 +201,51 @@ def resolve_card_images_backlog(
     return {"saved": saved, "attempted": len(rows), "limit": limit, "retry_unavailable": retry_unavailable}
 
 
-@router.post("/scan-face-images")
+@router.post("/generate-card-image")
+def generate_card_image(
+    recipe_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Force-generate a Flux image for a specific recipe, skipping the YouTube thumbnail.
+
+    Use this when a thumbnail exists but looks bad (triptych, bad crop, wrong content).
+    Overwrites whatever is currently stored in card_image_url.
+    """
+    from app.db.models import RawRecipe
+    from app.card_renderer import _build_flux_prompt, _generate_with_flux, _extract_title
+    from app.storage import upload_image
+
+    recipe = db.query(RawRecipe).filter(RawRecipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(404, f"Recipe {recipe_id} not found")
+
+    if not settings.replicate_api_key:
+        raise HTTPException(500, "REPLICATE_API_KEY not configured")
+
+    ingredients = [
+        {"name": i.ingredient_name, "qty": i.quantity or "", "unit": i.unit or ""}
+        for i in recipe.ingredients
+    ]
+    title = _extract_title(recipe.raw_content or "") or recipe.cuisine or "Recipe"
+    prompt = _build_flux_prompt(title, recipe.cuisine or "", ingredients)
+
+    image_bytes = _generate_with_flux(prompt, settings.replicate_api_key)
+    if not image_bytes:
+        raise HTTPException(502, "Flux generation failed — check Replicate dashboard")
+
+    filename = f"cards/{recipe_id}.webp"
+    url = upload_image(image_bytes, filename=filename, content_type="image/webp")
+    if not url:
+        raise HTTPException(502, "Supabase upload failed")
+
+    recipe.card_image_url = url
+    db.commit()
+    return {"recipe_id": recipe_id, "card_image_url": url}
+
+
+
 def scan_face_images(
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
