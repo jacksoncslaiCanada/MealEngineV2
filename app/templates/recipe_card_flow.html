@@ -293,7 +293,7 @@ body {
 
   <!-- PHOTO -->
   <div class="card-photo">
-    {% if recipe.image_url %}
+    {% if recipe.image_url and recipe.image_url != "unavailable" %}
     <img src="{{ recipe.image_url }}" alt="{{ title }}">
     {% else %}
     <div class="photo-placeholder">
