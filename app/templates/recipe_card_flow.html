@@ -63,6 +63,9 @@ body {
   font-style: italic;
   letter-spacing: 0.03em;
   color: #6b5744;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-meta {
@@ -89,7 +92,7 @@ body {
 /* ── PHOTO ────────────────────────────────────────────── */
 .card-photo {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 21 / 9;
   border-radius: 8px;
   overflow: hidden;
   background: #eeeeee;
@@ -328,7 +331,7 @@ body {
 
     <!-- RIGHT: DIRECTIONS -->
     <div class="col-directions">
-      <div class="section-header">Directions</div>
+      <div class="section-header" style="text-align:left;">Directions</div>
       <ol class="steps-list">
         {% for step in steps %}
         <li class="step-item">

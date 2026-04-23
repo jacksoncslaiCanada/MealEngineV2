@@ -83,8 +83,8 @@ def _extract_title(raw_content: str) -> str:
             r'^(?:title|recipe\s+title|recipe\s+name|recipe|name)\s*[:–\-]\s*',
             '', line, flags=re.IGNORECASE,
         ).strip()
-        # Take the first segment when separated by " | " or " — " (YouTube-style)
-        for sep in (" | ", " – ", " — ", " // "):
+        # Take the first segment before common YouTube title separators
+        for sep in (" | ", " – ", " — ", " // ", " - "):
             if sep in clean:
                 clean = clean.split(sep)[0].strip()
                 break
