@@ -399,6 +399,30 @@ def weekly_run_dry(
     return {"week_label": week_label, "dry_run": True, "results": results}
 
 
+@router.post("/reset-card-image")
+def reset_card_image(
+    recipe_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Mark a recipe's card image for regeneration by clearing card_image_url.
+
+    After calling this, run resolve-card-images-backlog (with retry_unavailable=false)
+    to pick up a fresh Flux-generated image for the recipe.
+
+    Use this when a thumbnail contains a person's face or is otherwise unsuitable.
+    """
+    from app.db.models import RawRecipe
+    recipe = db.query(RawRecipe).filter(RawRecipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(404, f"Recipe {recipe_id} not found")
+    old_url = recipe.card_image_url
+    recipe.card_image_url = None
+    db.commit()
+    return {"recipe_id": recipe_id, "status": "reset", "old_url": old_url}
+
+
 @router.get("/preview-card")
 def preview_card(
     db: Session = Depends(get_db),
