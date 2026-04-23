@@ -55,6 +55,41 @@ def _youtube_video_id(url: str | None) -> str | None:
     return None
 
 
+def _jpeg_dimensions(image_bytes: bytes) -> tuple[int, int] | None:
+    """Return (width, height) from JPEG bytes by scanning SOF markers. Returns None on failure."""
+    import struct
+    i = 0
+    n = len(image_bytes)
+    while i < n - 9:
+        if image_bytes[i] != 0xFF:
+            i += 1
+            continue
+        marker = image_bytes[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7):
+            # SOF: FF Cx [len 2B] [precision 1B] [height 2B] [width 2B]
+            h = struct.unpack(">H", image_bytes[i + 5: i + 7])[0]
+            w = struct.unpack(">H", image_bytes[i + 7: i + 9])[0]
+            return (w, h)
+        if marker in (0xD8, 0xD9, 0x01) or (0xD0 <= marker <= 0xD7):
+            i += 2
+            continue
+        if i + 3 < n:
+            seg_len = struct.unpack(">H", image_bytes[i + 2: i + 4])[0]
+            i += 2 + seg_len
+        else:
+            break
+    return None
+
+
+def _is_portrait_thumbnail(image_bytes: bytes) -> bool:
+    """Return True if the JPEG is taller than wide (portrait / Shorts-style)."""
+    dims = _jpeg_dimensions(image_bytes)
+    if dims is None:
+        return False
+    w, h = dims
+    return h > w
+
+
 def _fetch_thumbnail(video_id: str) -> bytes | None:
     """Try to fetch a real YouTube thumbnail. Returns bytes or None if placeholder/missing."""
     # maxresdefault only exists for videos with custom thumbnails — best quality
@@ -217,12 +252,14 @@ def resolve_card_image(
     image_bytes: bytes | None = None
     content_type = "image/jpeg"
 
-    # --- Try YouTube thumbnail (reject if it contains a person) ---
+    # --- Try YouTube thumbnail (reject portraits and faces) ---
     video_id = _youtube_video_id(source_url)
     if video_id:
         thumb = _fetch_thumbnail(video_id)
         if thumb:
-            if _has_person_face(thumb, "image/jpeg"):
+            if _is_portrait_thumbnail(thumb):
+                logger.info("card_renderer: thumbnail is portrait, falling back to Flux for recipe %s", recipe_id)
+            elif _has_person_face(thumb, "image/jpeg"):
                 logger.info("card_renderer: thumbnail has person face, falling back to Flux for recipe %s", recipe_id)
             else:
                 image_bytes = thumb
