@@ -445,19 +445,20 @@ def preview_card(
     from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR, _extract_title
     from app.pdf_renderer import _render_with_playwright
 
-    q = db.query(RawRecipe).filter(
+    # Prefer fully-populated recipes; fall back to any classified recipe with steps
+    base = db.query(RawRecipe).filter(RawRecipe.card_steps.isnot(None))
+    full = base.filter(
         RawRecipe.card_image_url.isnot(None),
         RawRecipe.card_image_url != "unavailable",
-        RawRecipe.card_steps.isnot(None),
-        RawRecipe.quick_steps.isnot(None),
     )
     if recipe_id:
-        recipe = q.filter(RawRecipe.id == recipe_id).first()
+        recipe = full.filter(RawRecipe.id == recipe_id).first() \
+                 or base.filter(RawRecipe.id == recipe_id).first()
     else:
-        recipe = q.first()
+        recipe = full.first() or base.first()
 
     if not recipe:
-        raise HTTPException(404, "No fully-populated recipe found. Run the backlog endpoints first.")
+        raise HTTPException(404, "No classified recipe with card_steps found. Run generate-card-steps-backlog first.")
 
     ingredients = (
         db.query(Ingredient)
