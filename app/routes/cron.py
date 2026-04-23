@@ -201,7 +201,81 @@ def resolve_card_images_backlog(
     return {"saved": saved, "attempted": len(rows), "limit": limit, "retry_unavailable": retry_unavailable}
 
 
-@router.get("/gumroad-check")
+@router.get("/diagnose-image-pipeline")
+def diagnose_image_pipeline(
+    recipe_id: int | None = None,
+    _: None = Depends(_require_cron_secret),
+    db: Session = Depends(get_db),
+):
+    """
+    Test each step of the image resolution pipeline and report what's working.
+
+    Steps checked:
+      1. Replicate API key present
+      2. Supabase configured
+      3. Flux generation (one test image)
+      4. Supabase upload
+      5. Face check via Claude vision (if recipe_id given and it's YouTube)
+
+    Use this to diagnose why resolve-card-images-backlog is saving 0.
+    """
+    import httpx
+    from app.db.models import RawRecipe
+    from app.card_renderer import _generate_with_flux, _fetch_thumbnail, _youtube_video_id, _has_person_face
+    from app.storage import upload_image
+
+    result: dict = {}
+
+    # 1. Config check
+    result["replicate_key_set"] = bool(settings.replicate_api_key)
+    result["supabase_configured"] = bool(settings.supabase_url and settings.supabase_service_key)
+    result["anthropic_key_set"] = bool(settings.anthropic_api_key)
+
+    # 2. Optional: check YouTube thumbnail + face gate for a specific recipe
+    if recipe_id:
+        recipe = db.query(RawRecipe).filter(RawRecipe.id == recipe_id).first()
+        if recipe:
+            video_id = _youtube_video_id(recipe.url)
+            result["recipe_url"] = recipe.url
+            result["youtube_video_id"] = video_id
+            result["card_image_url"] = recipe.card_image_url
+            if video_id:
+                try:
+                    thumb = _fetch_thumbnail(video_id)
+                    result["thumbnail_fetched"] = thumb is not None
+                    if thumb:
+                        has_face = _has_person_face(thumb, "image/jpeg")
+                        result["thumbnail_has_face"] = has_face
+                except Exception as exc:
+                    result["thumbnail_error"] = str(exc)
+
+    # 3. Test Flux generation (tiny prompt)
+    if settings.replicate_api_key:
+        try:
+            test_bytes = _generate_with_flux(
+                "A simple bowl of tomato soup, food photography, white background",
+                settings.replicate_api_key,
+            )
+            result["flux_generation"] = "ok" if test_bytes else "returned None (check Replicate dashboard)"
+            result["flux_bytes"] = len(test_bytes) if test_bytes else 0
+
+            # 4. Test Supabase upload
+            if test_bytes and settings.supabase_url and settings.supabase_service_key:
+                try:
+                    url = upload_image(test_bytes, filename="diagnostics/test.webp", content_type="image/webp")
+                    result["supabase_upload"] = "ok" if url else "returned None"
+                    result["supabase_test_url"] = url
+                except Exception as exc:
+                    result["supabase_upload"] = f"error: {exc}"
+        except Exception as exc:
+            result["flux_generation"] = f"error: {exc}"
+    else:
+        result["flux_generation"] = "skipped — REPLICATE_API_KEY not set"
+
+    return result
+
+
+
 def gumroad_check(_: None = Depends(_require_cron_secret)):
     """Diagnose Gumroad API connectivity and product ID validity."""
     import httpx
