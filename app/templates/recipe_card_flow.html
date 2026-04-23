@@ -39,19 +39,21 @@ body {
   gap: 6mm;
 }
 
-.header-left { flex: 1; min-width: 0; }
+.header-left { flex: 1; min-width: 0; overflow: hidden; }
 
 .card-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 32pt; /* overridden by JS auto-fit */
+  font-size: 32pt; /* shrunk by JS auto-fit to fit one line */
   font-weight: 900;
   line-height: 1.0;
   color: #1a1208;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 2.5mm;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-tagline {
@@ -86,9 +88,8 @@ body {
 
 /* ── PHOTO ────────────────────────────────────────────── */
 .card-photo {
-  width: 75%;
+  width: 100%;
   aspect-ratio: 16 / 9;
-  margin: 0 auto;
   border-radius: 8px;
   overflow: hidden;
   background: #eeeeee;
@@ -309,8 +310,8 @@ body {
 
     <!-- LEFT: INGREDIENTS -->
     <div class="col-ingredients">
-      <div class="section-header">Ingredients</div>
       <div class="ing-box">
+        <div class="section-header" style="margin-bottom:3mm;">Ingredients</div>
         <ul class="ing-list">
           {% for ing in ings %}
           <li class="ing-item">
@@ -322,7 +323,7 @@ body {
           </li>
           {% endfor %}
         </ul>
-      </div>
+      </div><!-- /.ing-box -->
     </div>
 
     <!-- RIGHT: DIRECTIONS -->
