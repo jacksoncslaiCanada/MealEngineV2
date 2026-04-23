@@ -218,7 +218,7 @@ def scan_face_images(
     """
     import httpx as _httpx
     from app.db.models import RawRecipe
-    from app.card_renderer import _has_person_face, _youtube_video_id
+    from app.card_renderer import _has_person_face, _youtube_video_id, _is_portrait_thumbnail
 
     rows = (
         db.query(RawRecipe)
@@ -240,10 +240,17 @@ def scan_face_images(
                 continue
             content_type = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
             checked += 1
-            if _has_person_face(img_resp.content, content_type):
+            reject = False
+            if "jpeg" in content_type or "jpg" in content_type:
+                if _is_portrait_thumbnail(img_resp.content):
+                    reject = True
+                    logger.info("scan_face_images: reset recipe %s (portrait)", recipe.id)
+            if not reject and _has_person_face(img_resp.content, content_type):
+                reject = True
+                logger.info("scan_face_images: reset recipe %s (face detected)", recipe.id)
+            if reject:
                 recipe.card_image_url = None
                 reset += 1
-                logger.info("scan_face_images: reset recipe %s (face detected)", recipe.id)
         except Exception as exc:
             logger.warning("scan_face_images: recipe %s failed — %s", recipe.id, exc)
 
