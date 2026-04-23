@@ -245,6 +245,92 @@ def generate_card_image(
     return {"recipe_id": recipe_id, "card_image_url": url}
 
 
+@router.post("/scan-image-quality")
+def scan_image_quality(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 20,
+):
+    """
+    Review stored card images with Claude vision and reset unsuitable ones for Flux regeneration.
+
+    Flags images that have: human faces, prominent hands, text overlays, triptych/collage
+    layouts, portrait orientation, or don't clearly show food.
+    Resets card_image_url to NULL — then run resolve-card-images-backlog to replace with Flux.
+
+    Call repeatedly until {"reset": 0}. Each call of 20 images costs ~$0.002 in Claude API.
+    """
+    import base64
+    import httpx as _httpx
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+
+    if not settings.anthropic_api_key:
+        raise HTTPException(500, "ANTHROPIC_API_KEY not configured")
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.card_image_url.isnot(None),
+            RawRecipe.card_image_url != "unavailable",
+        )
+        .limit(limit)
+        .all()
+    )
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    checked = 0
+    reset = 0
+
+    for recipe in rows:
+        try:
+            img_resp = _httpx.get(recipe.card_image_url, timeout=15, follow_redirects=True)
+            if img_resp.status_code != 200:
+                continue
+            content_type = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
+            if content_type not in ("image/jpeg", "image/webp", "image/png"):
+                continue
+
+            b64 = base64.standard_b64encode(img_resp.content).decode()
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=10,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {"type": "base64", "media_type": content_type, "data": b64},
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "Is this image suitable for a premium recipe card? "
+                                "It must: show food clearly as the main subject, have no human faces, "
+                                "no prominent hands or fingers, no text overlays, no triptych/collage "
+                                "layout, and be landscape orientation. Reply only YES or NO."
+                            ),
+                        },
+                    ],
+                }],
+            )
+            suitable = "YES" in resp.content[0].text.upper()
+            checked += 1
+            if not suitable:
+                recipe.card_image_url = None
+                reset += 1
+                logger.info("scan_image_quality: reset recipe %s (failed quality check)", recipe.id)
+
+        except Exception as exc:
+            logger.warning("scan_image_quality: recipe %s failed — %s", recipe.id, exc)
+
+    if reset:
+        db.commit()
+
+    return {"checked": checked, "reset": reset, "limit": limit}
+
+
+
 
 def scan_face_images(
     db: Session = Depends(get_db),
