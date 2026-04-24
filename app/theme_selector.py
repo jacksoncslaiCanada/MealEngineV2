@@ -15,67 +15,106 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_MIN_CUISINE_POOL = 15  # minimum matches before using cuisine pre-filter
+
 
 def select_recipes_for_theme(
     theme: "ThemePack",
     db: "Session",
-    max_candidates: int = 150,
+    max_candidates: int = 100,
 ) -> list[int]:
     """Return exactly 3 recipe IDs that best match the theme.
 
-    Queries the DB for fully-enriched recipes, sends compact summaries to
-    Claude Haiku, and parses the returned IDs. Falls back to the top 3
-    candidates by engagement_score if Claude fails.
+    1. If the theme has cuisine_keywords, try a focused DB query first.
+       Uses the full pool only if that returns fewer than _MIN_CUISINE_POOL results.
+    2. Sends compact summaries to Claude Haiku with a strict prompt.
+    3. Falls back to top engagement-score recipes if Claude fails.
     """
     import anthropic
     from app.config import settings
     from app.db.models import RawRecipe
+    from sqlalchemy import or_, func
 
-    candidates = (
-        db.query(RawRecipe)
-        .filter(
-            RawRecipe.card_title.isnot(None),
-            RawRecipe.card_steps.isnot(None),
-            RawRecipe.card_image_url.isnot(None),
-            RawRecipe.card_image_url != "unavailable",
+    base_filter = [
+        RawRecipe.card_title.isnot(None),
+        RawRecipe.card_steps.isnot(None),
+        RawRecipe.card_image_url.isnot(None),
+        RawRecipe.card_image_url != "unavailable",
+    ]
+
+    candidates = []
+
+    # ── Cuisine-focused pre-filter ─────────────────────────────────────────────
+    if theme.cuisine_keywords:
+        cuisine_clauses = [
+            func.lower(RawRecipe.cuisine).contains(kw.lower())
+            for kw in theme.cuisine_keywords
+        ]
+        focused = (
+            db.query(RawRecipe)
+            .filter(*base_filter, or_(*cuisine_clauses))
+            .order_by(RawRecipe.engagement_score.desc().nullslast())
+            .limit(max_candidates)
+            .all()
         )
-        .order_by(RawRecipe.engagement_score.desc().nullslast())
-        .limit(max_candidates)
-        .all()
-    )
+        if len(focused) >= _MIN_CUISINE_POOL:
+            candidates = focused
+            logger.info(
+                "theme_selector: using focused pool of %d recipes for '%s'",
+                len(candidates), theme.slug,
+            )
+
+    # ── Fall back to full pool ─────────────────────────────────────────────────
+    if not candidates:
+        candidates = (
+            db.query(RawRecipe)
+            .filter(*base_filter)
+            .order_by(RawRecipe.engagement_score.desc().nullslast())
+            .limit(max_candidates)
+            .all()
+        )
+        logger.info(
+            "theme_selector: using full pool of %d recipes for '%s'",
+            len(candidates), theme.slug,
+        )
 
     if len(candidates) < 3:
-        raise ValueError(f"Not enough enriched recipes to select from (found {len(candidates)}, need 3)")
+        raise ValueError(
+            f"Not enough enriched recipes to select from (found {len(candidates)}, need 3)"
+        )
 
-    # Build compact candidate list for the prompt
-    lines = []
     id_set = {r.id for r in candidates}
+
+    # ── Build compact candidate list ───────────────────────────────────────────
+    lines = []
     for r in candidates:
-        summary_excerpt = (r.card_summary or "")[:120].replace("\n", " ")
-        cuisine = r.cuisine or "unknown cuisine"
+        summary_excerpt = (r.card_summary or "")[:100].replace("\n", " ")
+        cuisine = r.cuisine or "unknown"
         lines.append(f"{r.id}: {r.card_title} | {cuisine} | {summary_excerpt}")
 
     candidate_text = "\n".join(lines)
 
     prompt = (
-        f"You are curating a themed recipe pack called \"{theme.name}\".\n\n"
-        f"Theme description: {theme.tagline}\n\n"
-        f"Selection criteria:\n{theme.selection_hint}\n\n"
-        f"Available recipes (format: id: title | cuisine | summary):\n"
+        f"You are selecting recipes for a themed meal pack called \"{theme.name}\".\n\n"
+        f"THEME: {theme.tagline}\n\n"
+        f"SELECTION CRITERIA (read carefully):\n{theme.selection_hint}\n\n"
+        f"CANDIDATES (format — id: title | cuisine | summary):\n"
         f"{candidate_text}\n\n"
-        f"Choose exactly 3 recipes that best match this theme. Aim for variety — "
-        f"avoid picking 3 very similar dishes (e.g. 3 chicken stir-fries). "
-        f"Prefer recipes where the theme is the primary character of the dish, "
-        f"not just a minor influence.\n\n"
+        f"RULES:\n"
+        f"- Choose EXACTLY 3 recipes.\n"
+        f"- A recipe MUST clearly match the theme to be selected. Do NOT pick a recipe "
+        f"just because it sounds good — theme fit is the only criterion.\n"
+        f"- If a recipe does not match the theme, skip it entirely.\n"
+        f"- Aim for variety: different proteins, cooking styles, or sub-cuisines.\n\n"
         f"Reply ONLY with valid JSON:\n"
-        f'{{\"ids\": [id1, id2, id3], \"reasoning\": \"one sentence why each was chosen\"}}'
+        f'{{\"ids\": [id1, id2, id3], \"reasoning\": \"brief note on why each fits\"}}'
     )
 
     try:
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         resp = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=120,
+            max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
         text = resp.content[0].text.strip()
@@ -83,34 +122,33 @@ def select_recipes_for_theme(
         data = json.loads(text[start:end])
         ids = [int(i) for i in data["ids"]]
 
-        # Validate all returned IDs exist in our candidate set
         valid = [i for i in ids if i in id_set]
         if len(valid) < 3:
             logger.warning(
-                "theme_selector: Claude returned %d valid IDs for %s, falling back",
-                len(valid), theme.slug,
+                "theme_selector: Claude returned %d valid IDs for '%s', falling back. Response: %s",
+                len(valid), theme.slug, text,
             )
-            return _fallback_ids(candidates, exclude=valid)[:3]
+            return _fallback_ids(candidates, exclude=valid, total=3)
 
         logger.info(
             "theme_selector: selected %s for theme '%s' — %s",
-            valid, theme.slug, data.get("reasoning", ""),
+            valid[:3], theme.slug, data.get("reasoning", ""),
         )
         return valid[:3]
 
     except Exception as exc:
-        logger.warning("theme_selector: Claude selection failed for %s — %s", theme.slug, exc)
-        return _fallback_ids(candidates, exclude=[])[:3]
+        logger.warning("theme_selector: Claude selection failed for '%s' — %s", theme.slug, exc)
+        return _fallback_ids(candidates, exclude=[], total=3)
 
 
-def _fallback_ids(candidates: list, exclude: list[int]) -> list[int]:
-    """Return top IDs by engagement score, skipping any already chosen."""
+def _fallback_ids(candidates: list, exclude: list[int], total: int) -> list[int]:
+    """Return top IDs by engagement score, skipping already-chosen ones."""
     seen = set(exclude)
     result = []
     for r in candidates:
         if r.id not in seen:
             result.append(r.id)
             seen.add(r.id)
-        if len(result) == 3:
+        if len(result) == total:
             break
     return result

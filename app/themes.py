@@ -11,7 +11,7 @@ To activate a placeholder:
      GUMROAD_THEME_<SLUG_UPPER>  (e.g. GUMROAD_THEME_ASIAN_KITCHEN)
   5. Run POST /internal/generate-theme-packs to pre-generate its PDF
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,10 @@ class ThemePack:
     description: str     # 2-3 sentences for cover page body text
     selection_hint: str  # tells Claude what to look for when picking 3 recipes
     accent_color: str    # hex color for cover page accents
+    cuisine_keywords: tuple[str, ...] = field(default_factory=tuple)
+    # Soft pre-filter: if ≥15 DB recipes match any of these cuisine values,
+    # Claude receives only that smaller pool (more focused, fewer irrelevant candidates).
+    # Falls back to full pool if not enough matches. Leave empty for broad themes.
     active: bool = True  # False = placeholder, excluded from generation
 
 
@@ -45,6 +49,7 @@ THEME_PACKS: list[ThemePack] = [
             "the Asian influence is superficial."
         ),
         accent_color="#c2522a",
+        cuisine_keywords=("Asian", "Chinese", "Japanese", "Korean", "Thai", "Vietnamese", "Filipino", "Indian"),
     ),
 
     ThemePack(
@@ -62,6 +67,7 @@ THEME_PACKS: list[ThemePack] = [
             "like carnitas or barbacoa. Prioritise flavourful and shareable dishes."
         ),
         accent_color="#2a8a3a",
+        cuisine_keywords=("Mexican", "Tex-Mex", "Latin"),
     ),
 
     ThemePack(
@@ -80,6 +86,7 @@ THEME_PACKS: list[ThemePack] = [
             "or 'vegetarian' are a good signal but not required."
         ),
         accent_color="#4a8a5a",
+        cuisine_keywords=(),  # broad theme — no cuisine pre-filter, rely on Claude
     ),
 
     ThemePack(
@@ -98,6 +105,7 @@ THEME_PACKS: list[ThemePack] = [
             "braising, or long oven time."
         ),
         accent_color="#d4762a",
+        cuisine_keywords=(),  # broad theme — no cuisine pre-filter
     ),
 
     ThemePack(
@@ -115,6 +123,7 @@ THEME_PACKS: list[ThemePack] = [
             "substantial and emotionally satisfying. Avoid anything light, salad-like, or diet-oriented."
         ),
         accent_color="#8b4a2a",
+        cuisine_keywords=(),  # broad theme — no cuisine pre-filter
     ),
 
     # ── Placeholders — set active=True and fill in details when ready ──────────
