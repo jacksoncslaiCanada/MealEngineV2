@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #fffdf8;
+}
+
+/* ── COVER WRAPPER — matches recipe card dimensions exactly ── */
+.cover {
+  width: 178mm;
+  height: 267mm;
+  max-height: 267mm;
+  overflow: hidden;
+  background: #fffdf8;
+  display: flex;
+  flex-direction: column;
+  border-top: 7px solid {{ theme.accent_color }};
+}
+
+.inner {
+  padding: 6mm 12mm 6mm;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── BRANDING LABEL ─────────────────────────────────────── */
+.pack-label {
+  font-family: 'Lora', serif;
+  font-size: 7.5pt;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: {{ theme.accent_color }};
+  text-align: center;
+  margin-bottom: 3mm;
+}
+
+/* ── THEME NAME ─────────────────────────────────────────── */
+.theme-name {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 36pt;
+  text-transform: uppercase;
+  color: #2c2c2c;
+  text-align: center;
+  line-height: 1.0;
+  letter-spacing: 0.02em;
+  margin-bottom: 3mm;
+}
+
+/* ── TAGLINE ────────────────────────────────────────────── */
+.tagline {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 11.5pt;
+  color: #555;
+  text-align: center;
+  margin-bottom: 4mm;
+}
+
+/* ── ACCENT DIVIDER ─────────────────────────────────────── */
+.divider {
+  width: 45mm;
+  height: 1px;
+  background: {{ theme.accent_color }};
+  opacity: 0.5;
+  margin: 0 auto 4mm;
+}
+
+/* ── DESCRIPTION ────────────────────────────────────────── */
+.description {
+  font-family: 'Lora', serif;
+  font-size: 9pt;
+  color: #4a4a4a;
+  line-height: 1.65;
+  text-align: center;
+  max-width: 145mm;
+  margin: 0 auto 5mm;
+}
+
+/* ── WHAT'S INSIDE ──────────────────────────────────────── */
+.section-header {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7.5pt;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #2c2c2c;
+  text-align: center;
+  padding-bottom: 3mm;
+  border-bottom: 1px solid #d8d0c8;
+  margin-bottom: 4mm;
+}
+
+/* ── RECIPE PREVIEW ROW ─────────────────────────────────── */
+.recipes-row {
+  display: flex;
+  gap: 4mm;
+  flex: 1;
+  min-height: 0;
+}
+
+.recipe-preview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+  min-width: 0;
+}
+
+.recipe-image {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
+.recipe-image-placeholder {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #e8e2d8;
+  border-radius: 6px;
+}
+
+.recipe-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 9pt;
+  color: #2c2c2c;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.recipe-cuisine {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 7.5pt;
+  color: {{ theme.accent_color }};
+}
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+.footer {
+  margin-top: 4mm;
+  padding-top: 3mm;
+  border-top: 1px solid #d8d0c8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-brand {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7pt;
+  color: #b0a898;
+  letter-spacing: 0.15em;
+}
+
+.footer-detail {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  color: #b0a898;
+}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="inner">
+
+    <div class="pack-label">&#10022; &nbsp; Themed Meal Pack &nbsp; &#10022;</div>
+
+    <div class="theme-name">{{ theme.name }}</div>
+
+    <div class="tagline">{{ theme.tagline }}</div>
+
+    <div class="divider"></div>
+
+    <div class="description">{{ theme.description }}</div>
+
+    <div class="section-header">What&rsquo;s Inside</div>
+
+    <div class="recipes-row">
+      {% for recipe in recipes %}
+      <div class="recipe-preview">
+        {% if recipe.image_url and recipe.image_url != "unavailable" %}
+        <img class="recipe-image" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
+        {% else %}
+        <div class="recipe-image-placeholder"></div>
+        {% endif %}
+        <div class="recipe-title">{{ recipe.title }}</div>
+        <div class="recipe-cuisine">{{ recipe.cuisine }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="footer">
+      <span class="footer-brand">MEALENGINE</span>
+      <span class="footer-detail">3 curated recipes &middot; $4.99</span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
