@@ -898,6 +898,58 @@ def weekly_run_dry(
     return {"week_label": week_label, "dry_run": True, "results": results}
 
 
+@router.get("/preview-theme-cover")
+def preview_theme_cover(
+    slug: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Render the cover page for a theme pack as a PDF and return it for download.
+
+    Use this to review the cover design before generating the full 4-page pack.
+
+    Query params:
+        slug    Theme slug, e.g. asian-kitchen, quick-cook
+    """
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+    from app.themes import THEME_BY_SLUG
+    from app.theme_selector import select_recipes_for_theme
+    from app.db.models import RawRecipe
+    from app.pdf_renderer import _render_with_playwright
+
+    theme = THEME_BY_SLUG.get(slug)
+    if not theme:
+        raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+    if not theme.active:
+        raise HTTPException(400, f"Theme '{slug}' is not yet active.")
+
+    ids = select_recipes_for_theme(theme, db)
+    recipes_db = db.query(RawRecipe).filter(RawRecipe.id.in_(ids)).all()
+    by_id = {r.id: r for r in recipes_db}
+
+    recipes = [
+        {
+            "title":    by_id[i].card_title or "",
+            "cuisine":  by_id[i].cuisine or "",
+            "image_url": by_id[i].card_image_url,
+        }
+        for i in ids if i in by_id
+    ]
+
+    template_dir = Path(__file__).parent.parent / "templates"
+    env = Environment(loader=FileSystemLoader(str(template_dir)), autoescape=True)
+    html = env.get_template("theme_cover.html").render(theme=theme, recipes=recipes)
+
+    pdf_bytes = _render_with_playwright(html, week_label="Theme Cover")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cover-{slug}.pdf"},
+    )
+
+
 @router.get("/preview-theme-selection")
 def preview_theme_selection(
     slug: str,
