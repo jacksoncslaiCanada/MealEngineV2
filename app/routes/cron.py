@@ -177,136 +177,135 @@ def generate_titles_backlog(
 
 def _run_process_new_recipes() -> None:
     """Background worker — runs all enrichment steps and logs results."""
-    import json as _json
-    import anthropic as _anthropic
-    from app.db.session import SessionLocal
-    from app.db.models import RawRecipe
-    from app.card_renderer import (
-        generate_card_steps, generate_card_title, resolve_card_image, _extract_title,
-    )
-    from app.classifier import classify_unclassified, classify_unclassified_components
-
     logger.info("process_new_recipes: background task started")
-    db = SessionLocal()
     try:
+        import json as _json
+        import anthropic as _anthropic
+        from app.db.session import SessionLocal
+        from app.db.models import RawRecipe
+        from app.card_renderer import (
+            generate_card_steps, generate_card_title, resolve_card_image, _extract_title,
+        )
+        from app.classifier import classify_unclassified, classify_unclassified_components
+
         client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
-
-        # ── 1. Classify ────────────────────────────────────────────────────────
+        db = SessionLocal()
         try:
-            classified = classify_unclassified(db, client=client, limit=50)
-            logger.info("process_new_recipes: classify done — classified=%d", classified)
-        except Exception as exc:
-            logger.warning("process_new_recipes: classify failed — %s", exc)
+            # ── 1. Classify ────────────────────────────────────────────────────
+            try:
+                classified = classify_unclassified(db, client=client, limit=50)
+                logger.info("process_new_recipes: classify done — classified=%d", classified)
+            except Exception as exc:
+                logger.warning("process_new_recipes: classify failed — %s", exc)
 
-        # ── 2. Card steps ──────────────────────────────────────────────────────
-        try:
-            rows = (
-                db.query(RawRecipe)
-                .filter(
-                    RawRecipe.card_steps.is_(None),
-                    RawRecipe.raw_content.isnot(None),
-                    RawRecipe.quick_steps.isnot(None),
-                )
-                .limit(20)
-                .all()
-            )
-            saved = 0
-            for recipe in rows:
-                try:
-                    title = _extract_title(recipe.raw_content or "")
-                    steps, tip, summary = generate_card_steps(recipe.raw_content, title)
-                    if steps:
-                        recipe.card_steps = _json.dumps(steps)
-                        recipe.card_tip = tip
-                        recipe.card_summary = summary
-                        saved += 1
-                except Exception as exc:
-                    logger.warning("process_new_recipes: card_steps recipe %s — %s", recipe.id, exc)
-            if saved:
-                db.commit()
-            logger.info("process_new_recipes: card_steps done — saved=%d attempted=%d", saved, len(rows))
-        except Exception as exc:
-            logger.warning("process_new_recipes: card_steps step failed — %s", exc)
-
-        # ── 3. Card titles ─────────────────────────────────────────────────────
-        try:
-            rows = (
-                db.query(RawRecipe)
-                .filter(
-                    RawRecipe.card_title.is_(None),
-                    RawRecipe.quick_steps.isnot(None),
-                )
-                .limit(50)
-                .all()
-            )
-            saved = 0
-            for recipe in rows:
-                try:
-                    title = generate_card_title(
-                        raw_content=recipe.raw_content or "",
-                        card_summary=recipe.card_summary or "",
-                        cuisine=recipe.cuisine or "",
+            # ── 2. Card steps ──────────────────────────────────────────────────
+            try:
+                rows = (
+                    db.query(RawRecipe)
+                    .filter(
+                        RawRecipe.card_steps.is_(None),
+                        RawRecipe.raw_content.isnot(None),
+                        RawRecipe.quick_steps.isnot(None),
                     )
-                    if title:
-                        recipe.card_title = title
-                        saved += 1
-                except Exception as exc:
-                    logger.warning("process_new_recipes: card_title recipe %s — %s", recipe.id, exc)
-            if saved:
-                db.commit()
-            logger.info("process_new_recipes: card_titles done — saved=%d attempted=%d", saved, len(rows))
-        except Exception as exc:
-            logger.warning("process_new_recipes: card_titles step failed — %s", exc)
+                    .limit(20)
+                    .all()
+                )
+                saved = 0
+                for recipe in rows:
+                    try:
+                        title = _extract_title(recipe.raw_content or "")
+                        steps, tip, summary = generate_card_steps(recipe.raw_content, title)
+                        if steps:
+                            recipe.card_steps = _json.dumps(steps)
+                            recipe.card_tip = tip
+                            recipe.card_summary = summary
+                            saved += 1
+                    except Exception as exc:
+                        logger.warning("process_new_recipes: card_steps recipe %s — %s", recipe.id, exc)
+                if saved:
+                    db.commit()
+                logger.info("process_new_recipes: card_steps done — saved=%d attempted=%d", saved, len(rows))
+            except Exception as exc:
+                logger.warning("process_new_recipes: card_steps step failed — %s", exc)
 
-        # ── 4. Card images ─────────────────────────────────────────────────────
-        try:
-            rows = (
-                db.query(RawRecipe)
-                .filter(RawRecipe.card_image_url.is_(None))
-                .limit(10)
-                .all()
-            )
-            saved = 0
-            for recipe in rows:
-                try:
-                    ingredients = [
-                        {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
-                        for ing in recipe.ingredients
-                    ]
-                    title = recipe.card_title or _extract_title(recipe.raw_content or "")
-                    url = resolve_card_image(
-                        recipe_id=recipe.id,
-                        title=title,
-                        cuisine=recipe.cuisine or "",
-                        ingredients=ingredients,
-                        source_url=recipe.url,
+            # ── 3. Card titles ─────────────────────────────────────────────────
+            try:
+                rows = (
+                    db.query(RawRecipe)
+                    .filter(
+                        RawRecipe.card_title.is_(None),
+                        RawRecipe.quick_steps.isnot(None),
                     )
-                    if url:
-                        recipe.card_image_url = url
-                        saved += 1
-                    else:
-                        recipe.card_image_url = "unavailable"
-                except Exception as exc:
-                    logger.warning("process_new_recipes: card_image recipe %s — %s", recipe.id, exc)
-            if rows:
-                db.commit()
-            logger.info("process_new_recipes: card_images done — saved=%d attempted=%d", saved, len(rows))
-        except Exception as exc:
-            logger.warning("process_new_recipes: card_images step failed — %s", exc)
+                    .limit(50)
+                    .all()
+                )
+                saved = 0
+                for recipe in rows:
+                    try:
+                        title = generate_card_title(
+                            raw_content=recipe.raw_content or "",
+                            card_summary=recipe.card_summary or "",
+                            cuisine=recipe.cuisine or "",
+                        )
+                        if title:
+                            recipe.card_title = title
+                            saved += 1
+                    except Exception as exc:
+                        logger.warning("process_new_recipes: card_title recipe %s — %s", recipe.id, exc)
+                if saved:
+                    db.commit()
+                logger.info("process_new_recipes: card_titles done — saved=%d attempted=%d", saved, len(rows))
+            except Exception as exc:
+                logger.warning("process_new_recipes: card_titles step failed — %s", exc)
 
-        # ── 5. Components ──────────────────────────────────────────────────────
-        try:
-            saved = classify_unclassified_components(db, client=client, limit=20)
-            logger.info("process_new_recipes: components done — saved=%d", saved)
-        except Exception as exc:
-            logger.warning("process_new_recipes: components step failed — %s", exc)
+            # ── 4. Card images ─────────────────────────────────────────────────
+            try:
+                rows = (
+                    db.query(RawRecipe)
+                    .filter(RawRecipe.card_image_url.is_(None))
+                    .limit(10)
+                    .all()
+                )
+                saved = 0
+                for recipe in rows:
+                    try:
+                        ingredients = [
+                            {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
+                            for ing in recipe.ingredients
+                        ]
+                        title = recipe.card_title or _extract_title(recipe.raw_content or "")
+                        url = resolve_card_image(
+                            recipe_id=recipe.id,
+                            title=title,
+                            cuisine=recipe.cuisine or "",
+                            ingredients=ingredients,
+                            source_url=recipe.url,
+                        )
+                        if url:
+                            recipe.card_image_url = url
+                            saved += 1
+                        else:
+                            recipe.card_image_url = "unavailable"
+                    except Exception as exc:
+                        logger.warning("process_new_recipes: card_image recipe %s — %s", recipe.id, exc)
+                if rows:
+                    db.commit()
+                logger.info("process_new_recipes: card_images done — saved=%d attempted=%d", saved, len(rows))
+            except Exception as exc:
+                logger.warning("process_new_recipes: card_images step failed — %s", exc)
 
-        logger.info("process_new_recipes: background task complete")
+            # ── 5. Components ──────────────────────────────────────────────────
+            try:
+                saved = classify_unclassified_components(db, client=client, limit=20)
+                logger.info("process_new_recipes: components done — saved=%d", saved)
+            except Exception as exc:
+                logger.warning("process_new_recipes: components step failed — %s", exc)
 
+            logger.info("process_new_recipes: background task complete")
+        finally:
+            db.close()
     except Exception as exc:
         logger.error("process_new_recipes: background task crashed — %s", exc, exc_info=True)
-    finally:
-        db.close()
 
 
 @router.post("/process-new-recipes", status_code=202)
