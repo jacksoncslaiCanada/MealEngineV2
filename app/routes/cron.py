@@ -931,9 +931,10 @@ def preview_theme_cover(
 
     recipes = [
         {
-            "title":    by_id[i].card_title or "",
-            "cuisine":  by_id[i].cuisine or "",
+            "title":     by_id[i].card_title or "",
+            "cuisine":   by_id[i].cuisine or "",
             "image_url": by_id[i].card_image_url,
+            "prep_time": by_id[i].prep_time,
         }
         for i in ids if i in by_id
     ]
