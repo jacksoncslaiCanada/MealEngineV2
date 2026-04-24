@@ -204,6 +204,38 @@ def _generate_with_flux(prompt: str, api_key: str) -> bytes | None:
         return None
 
 
+def _thumbnail_quality_ok(image_bytes: bytes, content_type: str = "image/jpeg") -> bool:
+    """Return True if the thumbnail passes recipe-card quality (Claude vision). Fails open."""
+    import base64
+    import anthropic
+    try:
+        from app.config import settings
+        if not settings.anthropic_api_key:
+            return True
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        b64 = base64.standard_b64encode(image_bytes).decode()
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=10,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": content_type, "data": b64}},
+                    {"type": "text", "text": (
+                        "Is this image suitable for a premium recipe card? "
+                        "It must show food clearly as the main subject, with no human faces, "
+                        "no prominent hands, no text overlays, no triptych/collage layout, "
+                        "and be landscape orientation. Reply only YES or NO."
+                    )},
+                ],
+            }],
+        )
+        return "YES" in resp.content[0].text.upper()
+    except Exception as exc:
+        logger.warning("card_renderer: thumbnail quality check failed — %s", exc)
+        return True
+
+
 def _has_person_face(image_bytes: bytes, content_type: str = "image/jpeg") -> bool:
     """Return True if the image contains a human face or person using Claude vision."""
     import base64
@@ -261,6 +293,8 @@ def resolve_card_image(
                 logger.info("card_renderer: thumbnail is portrait, falling back to Flux for recipe %s", recipe_id)
             elif _has_person_face(thumb, "image/jpeg"):
                 logger.info("card_renderer: thumbnail has person face, falling back to Flux for recipe %s", recipe_id)
+            elif not _thumbnail_quality_ok(thumb, "image/jpeg"):
+                logger.info("card_renderer: thumbnail failed quality check, falling back to Flux for recipe %s", recipe_id)
             else:
                 image_bytes = thumb
                 logger.info("card_renderer: using YouTube thumbnail for recipe %s", recipe_id)
