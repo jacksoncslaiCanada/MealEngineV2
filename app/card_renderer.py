@@ -149,27 +149,32 @@ def _build_flux_prompt(title: str, cuisine: str, ingredients: list[dict]) -> str
 def _generate_with_flux(prompt: str, api_key: str) -> bytes | None:
     """Generate an image via Flux Schnell on Replicate. Returns raw image bytes or None."""
     try:
-        # Use Prefer: wait so Replicate blocks until done (avoids polling in most cases)
-        resp = httpx.post(
-            "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "Prefer": "wait",
-            },
-            json={
-                "input": {
-                    "prompt": prompt,
-                    "aspect_ratio": "1:1",
-                    "output_format": "webp",
-                    "output_quality": 85,
-                    "num_outputs": 1,
-                    "num_inference_steps": 4,
-                }
-            },
-            timeout=90,
-        )
-        resp.raise_for_status()
+        for attempt in range(2):
+            resp = httpx.post(
+                "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "wait",
+                },
+                json={
+                    "input": {
+                        "prompt": prompt,
+                        "aspect_ratio": "1:1",
+                        "output_format": "webp",
+                        "output_quality": 85,
+                        "num_outputs": 1,
+                        "num_inference_steps": 4,
+                    }
+                },
+                timeout=90,
+            )
+            if resp.status_code == 429 and attempt == 0:
+                logger.info("card_renderer: Flux rate-limited (429), waiting 15s before retry")
+                time.sleep(15)
+                continue
+            resp.raise_for_status()
+            break
         data = resp.json()
 
         output = data.get("output") or []
