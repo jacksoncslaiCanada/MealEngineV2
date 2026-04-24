@@ -186,6 +186,7 @@ def _run_process_new_recipes() -> None:
     )
     from app.classifier import classify_unclassified, classify_unclassified_components
 
+    logger.info("process_new_recipes: background task started")
     db = SessionLocal()
     try:
         client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
@@ -300,6 +301,10 @@ def _run_process_new_recipes() -> None:
         except Exception as exc:
             logger.warning("process_new_recipes: components step failed — %s", exc)
 
+        logger.info("process_new_recipes: background task complete")
+
+    except Exception as exc:
+        logger.error("process_new_recipes: background task crashed — %s", exc, exc_info=True)
     finally:
         db.close()
 
