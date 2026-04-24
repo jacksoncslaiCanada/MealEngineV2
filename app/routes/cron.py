@@ -260,14 +260,26 @@ def _run_process_new_recipes() -> None:
 
             # ── 4. Card images ─────────────────────────────────────────────────
             try:
-                rows = (
+                import time as _time
+                # New recipes (NULL) get priority; also retry a small batch of
+                # previously-failed recipes so they self-heal over daily runs.
+                new_rows = (
                     db.query(RawRecipe)
                     .filter(RawRecipe.card_image_url.is_(None))
                     .limit(10)
                     .all()
                 )
+                retry_rows = (
+                    db.query(RawRecipe)
+                    .filter(RawRecipe.card_image_url == "unavailable")
+                    .limit(3)
+                    .all()
+                )
+                rows = new_rows + retry_rows
                 saved = 0
-                for recipe in rows:
+                for i, recipe in enumerate(rows):
+                    if i > 0:
+                        _time.sleep(5)  # avoid Replicate burst rate limit
                     try:
                         ingredients = [
                             {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
@@ -290,7 +302,10 @@ def _run_process_new_recipes() -> None:
                         logger.warning("process_new_recipes: card_image recipe %s — %s", recipe.id, exc)
                 if rows:
                     db.commit()
-                logger.info("process_new_recipes: card_images done — saved=%d attempted=%d", saved, len(rows))
+                logger.info(
+                    "process_new_recipes: card_images done — saved=%d new=%d retried=%d",
+                    saved, len(new_rows), len(retry_rows),
+                )
             except Exception as exc:
                 logger.warning("process_new_recipes: card_images step failed — %s", exc)
 
