@@ -898,6 +898,50 @@ def weekly_run_dry(
     return {"week_label": week_label, "dry_run": True, "results": results}
 
 
+@router.get("/preview-theme-selection")
+def preview_theme_selection(
+    slug: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Preview which 3 recipes Claude would pick for a given theme.
+
+    Use this to sanity-check recipe selection before generating the full PDF.
+    Returns the selected recipe IDs, titles, and Claude's reasoning.
+
+    Query params:
+        slug    Theme slug, e.g. asian-kitchen, quick-cook, comfort-food
+    """
+    from app.themes import THEME_BY_SLUG
+    from app.theme_selector import select_recipes_for_theme
+    from app.db.models import RawRecipe
+
+    theme = THEME_BY_SLUG.get(slug)
+    if not theme:
+        raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+    if not theme.active:
+        raise HTTPException(400, f"Theme '{slug}' is not yet active (placeholder).")
+
+    ids = select_recipes_for_theme(theme, db)
+
+    recipes = db.query(RawRecipe).filter(RawRecipe.id.in_(ids)).all()
+    by_id = {r.id: r for r in recipes}
+
+    return {
+        "theme": slug,
+        "selected": [
+            {
+                "id": i,
+                "card_title": by_id[i].card_title if i in by_id else None,
+                "cuisine": by_id[i].cuisine if i in by_id else None,
+                "card_summary": (by_id[i].card_summary or "")[:150] if i in by_id else None,
+            }
+            for i in ids
+        ],
+    }
+
+
 @router.post("/reset-card-image")
 def reset_card_image(
     recipe_id: int,
