@@ -117,26 +117,25 @@ body {
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  padding: 6mm 0 4mm;
+  padding: 4mm 8mm 3mm;
 }
 
 /* ── POLAROID CARDS ─────────────────────────────────────── */
 .recipe-card {
-  flex-shrink: 0;
-  width: 52mm;
+  flex: 0 0 auto;
+  width: 54mm;
   background: #ffffff;
   padding: 3mm 3mm 10mm;
   box-shadow: 0 6px 22px rgba(0,0,0,0.18);
   border-radius: 2px;
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .recipe-card:nth-child(1) {
-  transform: rotate(-7deg) translateY(6mm);
+  transform: rotate(-7deg);
   z-index: 1;
   margin-right: -13mm;
 }
@@ -147,21 +146,27 @@ body {
 }
 
 .recipe-card:nth-child(3) {
-  transform: rotate(6deg) translateY(4mm);
+  transform: rotate(6deg);
   z-index: 2;
   margin-left: -13mm;
 }
 
+.card-image-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .card-image {
   width: 100%;
-  aspect-ratio: 4/3;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
 .card-image-placeholder {
   width: 100%;
-  aspect-ratio: 4/3;
+  height: 100%;
   background: #e8e2d8;
 }
 
@@ -232,11 +237,13 @@ body {
     <div class="fan-wrap">
       {% for recipe in recipes %}
       <div class="recipe-card">
-        {% if recipe.image_url and recipe.image_url != "unavailable" %}
-        <img class="card-image" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
-        {% else %}
-        <div class="card-image-placeholder"></div>
-        {% endif %}
+        <div class="card-image-wrap">
+          {% if recipe.image_url and recipe.image_url != "unavailable" %}
+          <img class="card-image" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
+          {% else %}
+          <div class="card-image-placeholder"></div>
+          {% endif %}
+        </div>
         <div class="card-label">
           <div class="card-title">{{ recipe.title }}</div>
           <div class="card-cuisine">{{ recipe.cuisine }}{% if recipe.prep_time %} &middot; {{ recipe.prep_time }} min{% endif %}</div>
