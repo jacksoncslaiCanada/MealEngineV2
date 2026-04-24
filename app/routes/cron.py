@@ -959,6 +959,29 @@ def preview_card(
     if not recipe:
         raise HTTPException(404, "No classified recipe with card_steps found. Run generate-card-steps-backlog first.")
 
+    # Resolve image inline if missing or previously failed
+    if not recipe.card_image_url or recipe.card_image_url == "unavailable":
+        from app.card_renderer import resolve_card_image, _extract_title as _et
+        from app.db.models import Ingredient as _Ing
+        _ings = db.query(_Ing).filter(_Ing.recipe_id == recipe.id).all()
+        _title = recipe.card_title or _et(recipe.raw_content or "")
+        logger.info("preview_card: resolving missing image for recipe %s", recipe.id)
+        url = resolve_card_image(
+            recipe_id=recipe.id,
+            title=_title,
+            cuisine=recipe.cuisine or "",
+            ingredients=[{"name": i.ingredient_name, "qty": i.quantity or "", "unit": i.unit or ""} for i in _ings],
+            source_url=recipe.url,
+        )
+        if url:
+            recipe.card_image_url = url
+            db.commit()
+            logger.info("preview_card: image resolved for recipe %s", recipe.id)
+        else:
+            recipe.card_image_url = "unavailable"
+            db.commit()
+            logger.warning("preview_card: image resolution failed for recipe %s", recipe.id)
+
     ingredients = (
         db.query(Ingredient)
         .filter(Ingredient.recipe_id == recipe.id)
