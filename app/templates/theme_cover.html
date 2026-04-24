@@ -35,7 +35,7 @@ body {
   min-height: 0;
 }
 
-/* ── BRANDING LABEL ─────────────────────────────────────── */
+/* ── TOP BRANDING ───────────────────────────────────────── */
 .pack-label {
   font-family: 'Lora', serif;
   font-size: 7pt;
@@ -46,7 +46,6 @@ body {
   margin-bottom: 2mm;
 }
 
-/* ── THEME NAME ─────────────────────────────────────────── */
 .theme-name {
   font-family: 'Playfair Display', serif;
   font-weight: 900;
@@ -59,7 +58,6 @@ body {
   margin-bottom: 2mm;
 }
 
-/* ── TAGLINE ────────────────────────────────────────────── */
 .tagline {
   font-family: 'Lora', serif;
   font-style: italic;
@@ -69,7 +67,6 @@ body {
   margin-bottom: 3mm;
 }
 
-/* ── ACCENT DIVIDER ─────────────────────────────────────── */
 .divider {
   width: 40mm;
   height: 1px;
@@ -78,7 +75,6 @@ body {
   margin: 0 auto 3mm;
 }
 
-/* ── DESCRIPTION ────────────────────────────────────────── */
 .description {
   font-family: 'Lora', serif;
   font-size: 8.5pt;
@@ -89,12 +85,13 @@ body {
   margin: 0 auto 4mm;
 }
 
-/* ── SECTION DIVIDER ────────────────────────────────────── */
+/* ── SECTION RULE ───────────────────────────────────────── */
 .section-rule {
   display: flex;
   align-items: center;
   gap: 3mm;
-  margin-bottom: 4mm;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .section-rule::before,
@@ -115,85 +112,86 @@ body {
   white-space: nowrap;
 }
 
-/* ── RECIPE PREVIEW ROW ─────────────────────────────────── */
-.recipes-row {
-  display: flex;
-  gap: 4mm;
+/* ── FAN CONTAINER ──────────────────────────────────────── */
+.fan-wrap {
   flex: 1;
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6mm 0 4mm;
 }
 
-.recipe-preview {
-  flex: 1;
+/* ── POLAROID CARDS ─────────────────────────────────────── */
+.recipe-card {
+  flex-shrink: 0;
+  width: 52mm;
+  background: #ffffff;
+  padding: 3mm 3mm 10mm;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.18);
+  border-radius: 2px;
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  gap: 0;
 }
 
-.recipe-image-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+.recipe-card:nth-child(1) {
+  transform: rotate(-7deg) translateY(6mm);
+  z-index: 1;
+  margin-right: -13mm;
 }
 
-.recipe-image {
+.recipe-card:nth-child(2) {
+  transform: rotate(2deg);
+  z-index: 3;
+}
+
+.recipe-card:nth-child(3) {
+  transform: rotate(6deg) translateY(4mm);
+  z-index: 2;
+  margin-left: -13mm;
+}
+
+.card-image {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4/3;
   object-fit: cover;
   display: block;
 }
 
-.recipe-image-placeholder {
+.card-image-placeholder {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4/3;
   background: #e8e2d8;
 }
 
-.recipe-info {
-  padding: 3mm 3mm 3mm;
-  border-top: 2px solid {{ theme.accent_color }};
-  flex-shrink: 0;
+.card-label {
+  padding-top: 3mm;
+  text-align: center;
 }
 
-.recipe-title {
+.card-title {
   font-family: 'Playfair Display', serif;
   font-weight: 700;
-  font-size: 8.5pt;
+  font-size: 7.5pt;
   color: #2c2c2c;
   line-height: 1.3;
-  margin-bottom: 1.5mm;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
-.recipe-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.recipe-cuisine {
+.card-cuisine {
   font-family: 'Lora', serif;
   font-style: italic;
   font-size: 7pt;
   color: {{ theme.accent_color }};
-}
-
-.recipe-time {
-  font-family: 'Lora', serif;
-  font-size: 7pt;
-  color: #888;
+  margin-top: 1mm;
 }
 
 /* ── FOOTER ─────────────────────────────────────────────── */
 .footer {
-  margin-top: 4mm;
   padding-top: 3mm;
   border-top: 1px solid #d8d0c8;
   display: flex;
@@ -222,35 +220,26 @@ body {
   <div class="inner">
 
     <div class="pack-label">&#10022; &nbsp; Themed Meal Pack &nbsp; &#10022;</div>
-
     <div class="theme-name">{{ theme.name }}</div>
-
     <div class="tagline">{{ theme.tagline }}</div>
-
     <div class="divider"></div>
-
     <div class="description">{{ theme.description }}</div>
 
     <div class="section-rule">
       <span class="section-header">What&rsquo;s Inside</span>
     </div>
 
-    <div class="recipes-row">
+    <div class="fan-wrap">
       {% for recipe in recipes %}
-      <div class="recipe-preview">
-        <div class="recipe-image-wrap">
-          {% if recipe.image_url and recipe.image_url != "unavailable" %}
-          <img class="recipe-image" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
-          {% else %}
-          <div class="recipe-image-placeholder"></div>
-          {% endif %}
-        </div>
-        <div class="recipe-info">
-          <div class="recipe-title">{{ recipe.title }}</div>
-          <div class="recipe-meta">
-            <span class="recipe-cuisine">{{ recipe.cuisine }}</span>
-            {% if recipe.prep_time %}<span class="recipe-time">{{ recipe.prep_time }} min</span>{% endif %}
-          </div>
+      <div class="recipe-card">
+        {% if recipe.image_url and recipe.image_url != "unavailable" %}
+        <img class="card-image" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
+        {% else %}
+        <div class="card-image-placeholder"></div>
+        {% endif %}
+        <div class="card-label">
+          <div class="card-title">{{ recipe.title }}</div>
+          <div class="card-cuisine">{{ recipe.cuisine }}{% if recipe.prep_time %} &middot; {{ recipe.prep_time }} min{% endif %}</div>
         </div>
       </div>
       {% endfor %}
