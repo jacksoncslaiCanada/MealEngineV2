@@ -29,10 +29,74 @@ DIETARY_ABBR = {
     "nut-free":    "NF",
 }
 
+# ---------------------------------------------------------------------------
+# Ingredient quantity display helpers
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Image resolution: thumbnail → Flux fallback → Supabase upload
-# ---------------------------------------------------------------------------
+_TO_TASTE: frozenset[str] = frozenset({
+    "salt", "sea salt", "kosher salt", "flaky salt", "table salt",
+    "pepper", "black pepper", "white pepper", "cracked pepper",
+    "chili flakes", "chilli flakes", "red pepper flakes", "red chili flakes",
+    "cayenne", "cayenne pepper",
+    "paprika", "smoked paprika", "sweet paprika",
+    "cumin", "ground cumin", "coriander", "ground coriander",
+    "turmeric", "cinnamon", "nutmeg", "cardamom", "cloves", "allspice",
+    "oregano", "thyme", "rosemary", "basil", "parsley", "cilantro",
+    "dill", "tarragon", "sage", "chives",
+    "chili powder", "curry powder", "garam masala", "five spice",
+    "garlic powder", "onion powder",
+    "seasoning", "mixed spice", "mixed herbs", "dried herbs",
+    "salt and pepper", "salt & pepper",
+})
+
+_AS_NEEDED: frozenset[str] = frozenset({
+    "oil", "olive oil", "extra virgin olive oil", "light olive oil",
+    "vegetable oil", "canola oil", "sunflower oil", "coconut oil",
+    "sesame oil", "avocado oil", "peanut oil", "grapeseed oil",
+    "cooking oil", "cooking spray", "non-stick spray",
+    "water", "ice water", "cold water", "hot water",
+    "butter", "unsalted butter", "salted butter",
+})
+
+_TO_TASTE_KEYWORDS = (
+    "salt", "pepper", "seasoning", "spice", "spices", "herb", "herbs",
+    "paprika", "cumin", "oregano", "thyme", "basil", "coriander",
+    "powder", "flakes", "masala",
+)
+
+_AS_NEEDED_KEYWORDS = ("oil", "butter", "water", "spray")
+
+
+def _qty_display_fallback(name: str) -> tuple[str, str]:
+    """Return (qty, unit) display for ingredients with no recorded quantity.
+
+    Returns ("", "to taste") for seasonings, ("", "as needed") for oils/water,
+    and ("", "") when no pattern matches (ingredient shown name-only).
+    """
+    lower = name.lower().strip()
+    if lower in _TO_TASTE:
+        return "", "to taste"
+    if lower in _AS_NEEDED:
+        return "", "as needed"
+    if any(kw in lower for kw in _TO_TASTE_KEYWORDS):
+        return "", "to taste"
+    if any(kw in lower for kw in _AS_NEEDED_KEYWORDS):
+        return "", "as needed"
+    return "", ""
+
+
+def ingredient_to_dict(ing: object) -> dict:
+    """Convert an Ingredient ORM row to a template-ready dict.
+
+    Applies _qty_display_fallback when both quantity and unit are absent,
+    so every ingredient has at least a helpful display hint.
+    """
+    qty  = (getattr(ing, "quantity", None) or "").strip()
+    unit = (getattr(ing, "unit", None) or "").strip()
+    name = getattr(ing, "ingredient_name", "") or ""
+    if not qty and not unit:
+        qty, unit = _qty_display_fallback(name)
+    return {"name": name, "qty": qty, "unit": unit}
 
 # YouTube grey placeholder is always < 5 KB; real thumbnails are 20 KB+
 _THUMBNAIL_MIN_BYTES = 5_000

@@ -89,7 +89,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
     from jinja2 import Environment, FileSystemLoader
     from app.theme_selector import select_recipes_for_theme
     from app.db.models import RawRecipe, Ingredient, RecipeComponent
-    from app.card_renderer import _macro_pct, _extract_title
+    from app.card_renderer import _macro_pct, _extract_title, ingredient_to_dict
     from app.pdf_renderer import _render_with_playwright
 
     env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
@@ -153,7 +153,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
             "card_tip":     r.card_tip or "",
             "card_summary": r.card_summary or "",
             "ingredients": [
-                {"name": ing.ingredient_name, "qty": ing.quantity or "", "unit": ing.unit or ""}
+                ingredient_to_dict(ing)
                 for ing in ings
             ],
             "components": [
