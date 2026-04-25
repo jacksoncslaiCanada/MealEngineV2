@@ -1,14 +1,15 @@
 """Generate 4-page theme pack PDFs: cover page + 3 recipe cards.
 
-Combines theme_cover.html and recipe_card_flow.html into a single
-Playwright render. A small CSS override block resolves the two
-class-name conflicts (.card-title, .section-header) between templates.
+Renders the cover and the recipe cards as two completely independent
+Playwright PDFs (no shared CSS), then merges them with pypdf.
+This eliminates all stylesheet interaction between the two templates.
 """
 from __future__ import annotations
 
+import io
 import json
 import logging
-import re
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,80 +35,51 @@ DIETARY_ABBR = {
     "nut-free":    "NF",
 }
 
-# Restores cover-specific styles that the recipe-card stylesheet would override.
-# Specificity: .recipe-card .card-title (0-2-0) beats .card-title (0-1-0).
-# page-break-after ensures the cover fills exactly one page; without it the
-# recipe-card CSS (.card-photo background: #eeeeee) can bleed onto the cover.
-_CSS_OVERRIDES = """
-.cover {
-  page-break-after: always;
-  break-after: page;
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-.recipe-card .card-title {
-  font-size: 7.5pt;
-  color: #2c2c2c;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  font-weight: 700;
-  white-space: normal;
-  text-transform: none;
-  letter-spacing: normal;
-  width: auto;
-  text-overflow: clip;
-  margin-bottom: 0;
-}
-.section-rule .section-header {
-  font-size: 7pt;
-  letter-spacing: 0.22em;
-  color: #2c2c2c;
-  font-family: 'Playfair Display', serif;
-  font-weight: 700;
-}
-"""
+
+# ---------------------------------------------------------------------------
+# PDF helpers
+# ---------------------------------------------------------------------------
+
+def _render_single_page(html_str: str) -> bytes:
+    """Render HTML to a single-page PDF with no header/footer chrome."""
+    from playwright.sync_api import sync_playwright
+
+    launch_kwargs: dict = {}
+    if ep := os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
+        launch_kwargs["executable_path"] = ep
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page()
+        page.set_content(html_str, wait_until="networkidle")
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "14mm", "right": "16mm", "bottom": "16mm", "left": "16mm"},
+            display_header_footer=False,
+        )
+        browser.close()
+
+    return pdf_bytes
 
 
-def _extract_styles(html: str) -> str:
-    return "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, re.DOTALL))
+def _merge_pdfs(pdfs: list[bytes]) -> bytes:
+    """Concatenate a list of PDF byte strings into one PDF."""
+    from pdfrw import PdfReader, PdfWriter
+
+    writer = PdfWriter()
+    for blob in pdfs:
+        reader = PdfReader(io.BytesIO(blob))
+        writer.addpages(reader.pages)
+
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
 
 
-def _extract_body(html: str) -> str:
-    m = re.search(r"<body[^>]*>(.*?)</body>", html, re.DOTALL)
-    return m.group(1).strip() if m else html
-
-
-def _combine_html(cover_html: str, cards_html: str) -> str:
-    cover_css = _extract_styles(cover_html)
-    cards_css = _extract_styles(cards_html)
-    cover_body = _extract_body(cover_html)
-    cards_body = _extract_body(cards_html)
-
-    return (
-        "<!doctype html>\n"
-        "<html lang=\"en\">\n"
-        "<head>\n"
-        "<meta charset=\"utf-8\">\n"
-        "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
-        "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n"
-        "<link href=\"https://fonts.googleapis.com/css2?family=Playfair+Display"
-        ":wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap\" rel=\"stylesheet\">\n"
-        "<style>\n"
-        + cover_css + "\n"
-        + cards_css + "\n"
-        + _CSS_OVERRIDES
-        + "</style>\n"
-        "</head>\n"
-        "<body>\n"
-        + cover_body + "\n"
-        + cards_body + "\n"
-        "</body>\n"
-        "</html>"
-    )
-
+# ---------------------------------------------------------------------------
+# Main generator
+# ---------------------------------------------------------------------------
 
 def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
     """Return PDF bytes for a 4-page theme pack (cover + 3 recipe cards).
@@ -129,7 +101,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
     recipes_db = db.query(RawRecipe).filter(RawRecipe.id.in_(ids)).all()
     by_id = {r.id: r for r in recipes_db}
 
-    # ── 3. Cover thumbnail cards (compact) ────────────────────────────────────
+    # ── 3. Cover thumbnail data (compact) ─────────────────────────────────────
     cover_recipes = [
         {
             "title":     by_id[i].card_title or "",
@@ -140,7 +112,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
         for i in ids if i in by_id
     ]
 
-    # ── 4. Full recipe dicts for recipe card pages ────────────────────────────
+    # ── 4. Full recipe dicts for card pages ───────────────────────────────────
     card_recipes = []
     for i in ids:
         if i not in by_id:
@@ -192,22 +164,27 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
             "macro_pct": _macro_pct({}),
         })
 
-    # ── 5. Render templates ───────────────────────────────────────────────────
+    # ── 5. Render cover as standalone PDF (no footer chrome) ──────────────────
     cover_html = env.get_template("theme_cover.html").render(
         theme=theme,
         recipes=cover_recipes,
     )
+    cover_pdf = _render_single_page(cover_html)
+    logger.info("theme_pack_generator: cover page rendered (%d bytes)", len(cover_pdf))
+
+    # ── 6. Render recipe cards as standalone PDF ──────────────────────────────
     cards_html = env.get_template("recipe_card_flow.html").render(
         recipes=card_recipes,
         difficulty_colors=DIFFICULTY_COLORS,
         dietary_abbr=DIETARY_ABBR,
     )
+    cards_pdf = _render_with_playwright(cards_html, week_label=theme.name)
+    logger.info("theme_pack_generator: recipe cards rendered (%d bytes)", len(cards_pdf))
 
-    # ── 6. Combine + render ───────────────────────────────────────────────────
-    combined_html = _combine_html(cover_html, cards_html)
-
+    # ── 7. Merge cover + cards ────────────────────────────────────────────────
+    merged = _merge_pdfs([cover_pdf, cards_pdf])
     logger.info(
-        "theme_pack_generator: rendering '%s' — %d recipes",
-        theme.slug, len(card_recipes),
+        "theme_pack_generator: merged PDF for '%s' — %d pages, %d bytes",
+        theme.slug, 4, len(merged),
     )
-    return _render_with_playwright(combined_html, week_label=theme.name)
+    return merged

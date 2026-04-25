@@ -15,6 +15,7 @@ openai==1.59.2
 feedparser==6.0.11
 slowapi==0.1.9
 playwright==1.52.0
+pdfrw>=0.4
 
 # testing
 pytest==8.3.3
