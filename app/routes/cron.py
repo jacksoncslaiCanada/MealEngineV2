@@ -130,6 +130,134 @@ def generate_card_steps_backlog(
     return {"saved": saved, "limit": limit}
 
 
+@router.post("/generate-ingredient-quantities-backlog")
+def generate_ingredient_quantities_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 20,
+):
+    """
+    Extract missing ingredient quantities from raw recipe content using Claude Haiku.
+
+    Finds recipes where ≥1 ingredient has no quantity recorded, sends the
+    recipe's card steps + raw content to Claude, and writes extracted quantities
+    back to the ingredients table. Only fills in NULL/empty fields — never
+    overwrites existing data.
+
+    Call repeatedly until {"saved": 0} to clear the backlog.
+    Each call processes up to `limit` recipes (default 20).
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from sqlalchemy import or_
+    from app.db.models import RawRecipe, Ingredient
+
+    # Recipes with at least one ingredient missing a quantity
+    recipe_ids = [
+        row.recipe_id
+        for row in (
+            db.query(Ingredient.recipe_id)
+            .filter(or_(Ingredient.quantity.is_(None), Ingredient.quantity == ""))
+            .distinct()
+            .limit(limit)
+            .all()
+        )
+    ]
+
+    if not recipe_ids:
+        return {"saved": 0, "recipes_processed": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    recipes = db.query(RawRecipe).filter(RawRecipe.id.in_(recipe_ids)).all()
+
+    total_saved = 0
+    recipes_updated = 0
+
+    for recipe in recipes:
+        missing = (
+            db.query(Ingredient)
+            .filter(
+                Ingredient.recipe_id == recipe.id,
+                or_(Ingredient.quantity.is_(None), Ingredient.quantity == ""),
+            )
+            .all()
+        )
+        if not missing:
+            continue
+
+        # Build context: card_steps (concise) + raw_content excerpt
+        context_parts = []
+        if recipe.card_steps:
+            try:
+                steps = _json.loads(recipe.card_steps)
+                context_parts.append(
+                    "COOKING STEPS:\n" + "\n".join(f"- {s}" for s in steps)
+                )
+            except Exception:
+                pass
+        if recipe.raw_content:
+            context_parts.append(f"SOURCE CONTENT (excerpt):\n{recipe.raw_content[:2500]}")
+
+        if not context_parts:
+            continue  # nothing to extract from
+
+        title = recipe.card_title or recipe.cuisine or "Recipe"
+        ing_list = "\n".join(f'- "{ing.ingredient_name}"' for ing in missing)
+
+        prompt = (
+            f"Recipe: {title} (serves {recipe.servings or 4})\n\n"
+            + "\n\n".join(context_parts)
+            + f"\n\nFind the quantity and unit for each ingredient listed below.\n"
+            f"Rules:\n"
+            f"- Only use quantities found in the recipe content above.\n"
+            f"- For salt, pepper, and spices with no stated amount: "
+            f'  return {{"qty": "", "unit": "to taste"}}.\n'
+            f"- For oil, butter, and water with no stated amount: "
+            f'  return {{"qty": "", "unit": "as needed"}}.\n'
+            f"- If a quantity genuinely cannot be determined, return null.\n"
+            f"- Prefer standard units: cup, tbsp, tsp, g, kg, ml, l, oz, lb.\n\n"
+            f"Ingredients:\n{ing_list}\n\n"
+            f"Reply ONLY with valid JSON — no other text:\n"
+            f'{{\"ingredient name\": {{\"qty\": \"2\", \"unit\": \"cups\"}} or null}}'
+        )
+
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = resp.content[0].text.strip()
+            start, end = text.find("{"), text.rfind("}") + 1
+            data = _json.loads(text[start:end])
+
+            saved = 0
+            for ing in missing:
+                result = data.get(ing.ingredient_name)
+                if not result:
+                    continue
+                qty  = (result.get("qty")  or "").strip()
+                unit = (result.get("unit") or "").strip()
+                if qty or unit:
+                    ing.quantity = qty  or None
+                    ing.unit     = unit or None
+                    saved += 1
+
+            if saved:
+                db.commit()
+                total_saved += saved
+                recipes_updated += 1
+                logger.info(
+                    "ingredient_quantities: recipe %s — filled %d/%d ingredients",
+                    recipe.id, saved, len(missing),
+                )
+
+        except Exception as exc:
+            logger.warning("ingredient_quantities: recipe %s failed — %s", recipe.id, exc)
+
+    return {"saved": total_saved, "recipes_processed": recipes_updated, "limit": limit}
+
+
 @router.post("/generate-titles-backlog")
 def generate_titles_backlog(
     db: Session = Depends(get_db),
@@ -1119,7 +1247,7 @@ def preview_card(
     from pathlib import Path
     from jinja2 import Environment, FileSystemLoader
     from app.db.models import RawRecipe, Ingredient, RecipeComponent
-    from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR, _extract_title
+    from app.card_renderer import _macro_pct, DIFFICULTY_COLORS, DIETARY_ABBR, _extract_title, ingredient_to_dict
     from app.pdf_renderer import _render_with_playwright
 
     # Prefer fully-populated recipes; fall back to any classified recipe with steps
@@ -1197,10 +1325,7 @@ def preview_card(
         "quick_steps":  quick_steps,
         "card_tip":     recipe.card_tip or "",
         "card_summary": recipe.card_summary or "",
-        "ingredients":  [
-            {"name": i.ingredient_name, "qty": i.quantity or "", "unit": i.unit or ""}
-            for i in ingredients
-        ],
+        "ingredients":  [ingredient_to_dict(i) for i in ingredients],
         "components":   [
             {"role": c.role, "label": c.label}
             for c in components
