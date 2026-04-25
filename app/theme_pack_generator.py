@@ -36,7 +36,15 @@ DIETARY_ABBR = {
 
 # Restores cover-specific styles that the recipe-card stylesheet would override.
 # Specificity: .recipe-card .card-title (0-2-0) beats .card-title (0-1-0).
+# page-break-after ensures the cover fills exactly one page; without it the
+# recipe-card CSS (.card-photo background: #eeeeee) can bleed onto the cover.
 _CSS_OVERRIDES = """
+.cover {
+  page-break-after: always;
+  break-after: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
 .recipe-card .card-title {
   font-size: 7.5pt;
   color: #2c2c2c;
@@ -91,12 +99,10 @@ def _combine_html(cover_html: str, cards_html: str) -> str:
         + cover_css + "\n"
         + cards_css + "\n"
         + _CSS_OVERRIDES
-        + ".page-break { page-break-before: always; }\n"
-        "</style>\n"
+        + "</style>\n"
         "</head>\n"
         "<body>\n"
         + cover_body + "\n"
-        "<div class=\"page-break\"></div>\n"
         + cards_body + "\n"
         "</body>\n"
         "</html>"
