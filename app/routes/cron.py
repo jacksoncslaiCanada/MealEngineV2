@@ -951,6 +951,87 @@ def preview_theme_cover(
     )
 
 
+@router.post("/generate-theme-packs")
+def generate_theme_packs(
+    slug: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Pre-generate theme pack PDFs and upload them to Supabase Storage.
+
+    Iterates all active themes (or a single theme if slug is given), generates
+    the 4-page PDF (cover + 3 recipe cards), uploads to Supabase under
+    theme-packs/{slug}.pdf, and returns a summary of results.
+
+    Query params:
+        slug    (optional) Only generate one theme, e.g. asian-kitchen
+    """
+    from app.themes import ACTIVE_THEMES, THEME_BY_SLUG
+    from app.theme_pack_generator import generate_theme_pack_pdf
+    from app.storage import upload_theme_pdf
+
+    if slug:
+        theme = THEME_BY_SLUG.get(slug)
+        if not theme:
+            raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+        if not theme.active:
+            raise HTTPException(400, f"Theme '{slug}' is not active (placeholder).")
+        themes_to_generate = [theme]
+    else:
+        themes_to_generate = ACTIVE_THEMES
+
+    results = {}
+    for theme in themes_to_generate:
+        logger.info("generate_theme_packs: starting '%s'", theme.slug)
+        try:
+            pdf_bytes = generate_theme_pack_pdf(theme, db)
+            url = upload_theme_pdf(pdf_bytes, slug=theme.slug)
+            results[theme.slug] = {
+                "status": "ok",
+                "pdf_bytes": len(pdf_bytes),
+                "storage_url": url,
+            }
+            logger.info("generate_theme_packs: '%s' done — %d bytes → %s", theme.slug, len(pdf_bytes), url)
+        except Exception as exc:
+            logger.error("generate_theme_packs: '%s' failed — %s", theme.slug, exc, exc_info=True)
+            results[theme.slug] = {"status": "error", "detail": str(exc)}
+
+    return {"generated": len([v for v in results.values() if v["status"] == "ok"]), "results": results}
+
+
+@router.get("/preview-theme-pack")
+def preview_theme_pack(
+    slug: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate and download the full 4-page theme pack PDF (cover + 3 recipe cards).
+
+    Use this to review the complete pack before publishing. Each call runs
+    Claude recipe selection and Playwright rendering, so it takes ~10 seconds.
+
+    Query params:
+        slug    Theme slug, e.g. asian-kitchen, quick-cook
+    """
+    from app.themes import THEME_BY_SLUG
+    from app.theme_pack_generator import generate_theme_pack_pdf
+
+    theme = THEME_BY_SLUG.get(slug)
+    if not theme:
+        raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+    if not theme.active:
+        raise HTTPException(400, f"Theme '{slug}' is not active (placeholder).")
+
+    pdf_bytes = generate_theme_pack_pdf(theme, db)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=theme-pack-{slug}.pdf"},
+    )
+
+
 @router.get("/preview-theme-selection")
 def preview_theme_selection(
     slug: str,
