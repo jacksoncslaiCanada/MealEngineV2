@@ -139,12 +139,15 @@ def generate_ingredient_quantities_backlog(
     """
     Extract missing ingredient quantities from raw recipe content using Claude Haiku.
 
-    Finds recipes where ≥1 ingredient has no quantity recorded, sends the
-    recipe's card steps + raw content to Claude, and writes extracted quantities
-    back to the ingredients table. Only fills in NULL/empty fields — never
-    overwrites existing data.
+    Finds recipes where ≥1 ingredient has a NULL quantity AND the recipe has
+    extractable content (card_steps or raw_content). Sends context to Claude
+    and writes results back to the ingredients table.
 
-    Call repeatedly until {"saved": 0} to clear the backlog.
+    Ingredients Claude cannot determine are marked quantity="" so they are
+    excluded from future runs (preventing infinite re-processing loops).
+    Only NULL quantities are picked up; "" means "attempted, not found".
+
+    Call repeatedly until {"saved": 0, "marked_attempted": 0}.
     Each call processes up to `limit` recipes (default 20).
     """
     import json as _json
@@ -152,12 +155,20 @@ def generate_ingredient_quantities_backlog(
     from sqlalchemy import or_
     from app.db.models import RawRecipe, Ingredient
 
-    # Recipes with at least one ingredient missing a quantity
+    # Only recipes with NULL quantities AND content to extract from.
+    # Excludes quantity="" (already attempted) and recipes with no content.
     recipe_ids = [
         row.recipe_id
         for row in (
             db.query(Ingredient.recipe_id)
-            .filter(or_(Ingredient.quantity.is_(None), Ingredient.quantity == ""))
+            .join(RawRecipe, RawRecipe.id == Ingredient.recipe_id)
+            .filter(
+                Ingredient.quantity.is_(None),
+                or_(
+                    RawRecipe.card_steps.isnot(None),
+                    RawRecipe.raw_content.isnot(None),
+                ),
+            )
             .distinct()
             .limit(limit)
             .all()
@@ -165,12 +176,13 @@ def generate_ingredient_quantities_backlog(
     ]
 
     if not recipe_ids:
-        return {"saved": 0, "recipes_processed": 0, "limit": limit}
+        return {"saved": 0, "marked_attempted": 0, "recipes_processed": 0, "limit": limit}
 
     client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
     recipes = db.query(RawRecipe).filter(RawRecipe.id.in_(recipe_ids)).all()
 
     total_saved = 0
+    total_marked = 0
     recipes_updated = 0
 
     for recipe in recipes:
@@ -178,7 +190,7 @@ def generate_ingredient_quantities_backlog(
             db.query(Ingredient)
             .filter(
                 Ingredient.recipe_id == recipe.id,
-                or_(Ingredient.quantity.is_(None), Ingredient.quantity == ""),
+                Ingredient.quantity.is_(None),
             )
             .all()
         )
@@ -199,7 +211,12 @@ def generate_ingredient_quantities_backlog(
             context_parts.append(f"SOURCE CONTENT (excerpt):\n{recipe.raw_content[:2500]}")
 
         if not context_parts:
-            continue  # nothing to extract from
+            # No content — mark all as attempted so they never re-appear
+            for ing in missing:
+                ing.quantity = ""
+            db.commit()
+            total_marked += len(missing)
+            continue
 
         title = recipe.card_title or recipe.cuisine or "Recipe"
         ing_list = "\n".join(f'- "{ing.ingredient_name}"' for ing in missing)
@@ -232,30 +249,42 @@ def generate_ingredient_quantities_backlog(
             data = _json.loads(text[start:end])
 
             saved = 0
+            marked = 0
             for ing in missing:
                 result = data.get(ing.ingredient_name)
-                if not result:
-                    continue
-                qty  = (result.get("qty")  or "").strip()
-                unit = (result.get("unit") or "").strip()
-                if qty or unit:
+                if result:
+                    qty  = (result.get("qty")  or "").strip()
+                    unit = (result.get("unit") or "").strip()
                     ing.quantity = qty  or None
                     ing.unit     = unit or None
-                    saved += 1
+                    if qty or unit:
+                        saved += 1
+                    else:
+                        marked += 1  # "to taste" / "as needed" with empty qty
+                else:
+                    # Claude returned null — mark as attempted so it won't loop
+                    ing.quantity = ""
+                    marked += 1
 
-            if saved:
-                db.commit()
-                total_saved += saved
+            db.commit()
+            total_saved  += saved
+            total_marked += marked
+            if saved or marked:
                 recipes_updated += 1
-                logger.info(
-                    "ingredient_quantities: recipe %s — filled %d/%d ingredients",
-                    recipe.id, saved, len(missing),
-                )
+            logger.info(
+                "ingredient_quantities: recipe %s — filled=%d marked=%d/%d",
+                recipe.id, saved, marked, len(missing),
+            )
 
         except Exception as exc:
             logger.warning("ingredient_quantities: recipe %s failed — %s", recipe.id, exc)
 
-    return {"saved": total_saved, "recipes_processed": recipes_updated, "limit": limit}
+    return {
+        "saved": total_saved,
+        "marked_attempted": total_marked,
+        "recipes_processed": recipes_updated,
+        "limit": limit,
+    }
 
 
 @router.post("/generate-titles-backlog")
