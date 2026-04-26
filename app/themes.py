@@ -126,56 +126,101 @@ THEME_PACKS: list[ThemePack] = [
         cuisine_keywords=(),  # broad theme — no cuisine pre-filter
     ),
 
-    # ── Placeholders — set active=True and fill in details when ready ──────────
-
     ThemePack(
         slug="mediterranean",
         name="Mediterranean",
-        tagline="Sun-drenched flavours from the Mediterranean coast.",
-        description="",
-        selection_hint="",
+        tagline="Sun-drenched flavours from the shores of the Mediterranean.",
+        description=(
+            "Olive oil, fresh herbs, grilled fish, and vibrant vegetables — Mediterranean cooking is built "
+            "on simplicity and the finest ingredients. From Greek salads and Turkish kebabs to Moroccan-spiced "
+            "lamb, these three recipes capture the relaxed, flavour-forward spirit of coastal Mediterranean cuisine."
+        ),
+        selection_hint=(
+            "Select recipes inspired by Mediterranean coastal cuisines — Greek, Italian, Spanish, Turkish, "
+            "Moroccan, Lebanese, or similar. Look for dishes featuring olive oil, lemon, garlic, tomatoes, "
+            "fresh herbs (basil, oregano, parsley, mint), legumes, grilled seafood or lamb, feta, or aubergine. "
+            "Avoid heavy cream-based or north-European dishes."
+        ),
         accent_color="#2a6b9c",
-        active=False,
+        cuisine_keywords=("Mediterranean", "Greek", "Spanish", "Turkish", "Moroccan", "Lebanese"),
     ),
 
     ThemePack(
         slug="italian-classics",
         name="Italian Classics",
         tagline="Timeless Italian recipes done properly.",
-        description="",
-        selection_hint="",
+        description=(
+            "From slow-simmered ragù to golden risotto and hand-stretched pizza, Italian cooking rewards "
+            "patience and simplicity in equal measure. These three recipes are the kind of dishes Italian "
+            "nonnas have been making for generations — honest ingredients, classic technique, and flavours "
+            "that never go out of style."
+        ),
+        selection_hint=(
+            "Select recipes with clear Italian character — pasta dishes (carbonara, cacio e pepe, puttanesca, "
+            "arrabbiata, bolognese, amatriciana), risotto, pizza, osso buco, saltimbocca, or similar. "
+            "Look for recipes where the Italian technique or ingredient combination is central, not superficial. "
+            "Avoid dishes where 'Italian' is just a seasoning tweak on a non-Italian base."
+        ),
         accent_color="#8b2a2a",
-        active=False,
+        cuisine_keywords=("Italian",),
     ),
 
     ThemePack(
-        slug="breakfast-brunch",
-        name="Breakfast & Brunch",
-        tagline="Weekend mornings, elevated.",
-        description="",
-        selection_hint="",
-        accent_color="#d4a02a",
-        active=False,
+        slug="middle-eastern",
+        name="Middle Eastern",
+        tagline="Ancient spices, vibrant flavours, generous tables.",
+        description=(
+            "Za'atar, sumac, tahini, pomegranate — Middle Eastern cooking layers spice and texture in ways "
+            "that feel both ancient and excitingly fresh. From smoky baba ganoush to slow-cooked lamb and "
+            "silky hummus, these recipes bring the warmth and generosity of the region's table to your kitchen."
+        ),
+        selection_hint=(
+            "Select recipes from Middle Eastern cuisines — Lebanese, Israeli, Persian, Turkish, Egyptian, "
+            "Jordanian, or similar. Look for dishes featuring tahini, za'atar, sumac, pomegranate molasses, "
+            "harissa, preserved lemon, chickpeas, lamb, flatbreads, or heavily spiced rice. Shakshuka, "
+            "falafel, kibbeh, kofta, and mezze-style dishes are strong choices. Avoid generic 'spiced' dishes "
+            "with no clear regional identity."
+        ),
+        accent_color="#c4823a",
+        cuisine_keywords=("Middle Eastern", "Lebanese", "Persian", "Turkish", "Israeli", "Moroccan", "Egyptian"),
     ),
 
     ThemePack(
-        slug="budget-friendly",
-        name="Budget Friendly",
-        tagline="Maximum flavour, minimum spend.",
-        description="",
-        selection_hint="",
-        accent_color="#5a7a5a",
-        active=False,
+        slug="high-protein",
+        name="High Protein",
+        tagline="Fuel your body without compromising on flavour.",
+        description=(
+            "Built around lean meats, eggs, legumes, and dairy, these recipes deliver 30g or more of protein "
+            "per serving without relying on supplements or sacrificing taste. Whether you're training hard or "
+            "just trying to eat smarter, each dish is satisfying, nutritionally dense, and genuinely delicious."
+        ),
+        selection_hint=(
+            "Select recipes that are genuinely high in protein — 25g or more per serving. Prioritise lean "
+            "chicken breast or thighs, turkey, salmon or tuna, eggs, Greek yoghurt, cottage cheese, lentils, "
+            "chickpeas, tofu, or tempeh as the primary protein source. The dish should feel substantial and "
+            "satisfying, not diet food. Avoid recipes where protein is incidental or the serving is small."
+        ),
+        accent_color="#4a6b8a",
+        cuisine_keywords=(),  # broad theme — no cuisine pre-filter
     ),
 
     ThemePack(
-        slug="date-night",
-        name="Date Night",
-        tagline="Impressive recipes worth pulling out the good plates for.",
-        description="",
-        selection_hint="",
-        accent_color="#4a2a6b",
-        active=False,
+        slug="one-pan",
+        name="One Pan",
+        tagline="Maximum flavour, minimal washing up.",
+        description=(
+            "One pan, one tray, or one pot — these recipes are designed so everything cooks together, "
+            "letting the flavours meld while you get on with your evening. Less mess, less stress, and "
+            "results that taste like you worked much harder than you did."
+        ),
+        selection_hint=(
+            "Select recipes that genuinely cook entirely in a single pan, skillet, sheet tray, or pot — "
+            "no separate sides requiring their own cookware. Look for sheet pan dinners, one-pot pastas, "
+            "skillet meals, traybakes, or one-pot braises where proteins and vegetables cook together. "
+            "The single-vessel constraint should be real and central to the recipe, not incidental."
+        ),
+        accent_color="#7a5a3a",
+        cuisine_keywords=(),  # broad theme — no cuisine pre-filter
     ),
 ]
 
