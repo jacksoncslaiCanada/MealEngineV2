@@ -255,7 +255,8 @@ def generate_ingredient_quantities_backlog(
                 if result:
                     qty  = (result.get("qty")  or "").strip()
                     unit = (result.get("unit") or "").strip()
-                    ing.quantity = qty  or None
+                    # Use "" (not None) as sentinel — None would be re-processed next run
+                    ing.quantity = qty if qty else ""
                     ing.unit     = unit or None
                     if qty or unit:
                         saved += 1
