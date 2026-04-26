@@ -1210,28 +1210,33 @@ def download_theme_packs_zip(
     from app.themes import ACTIVE_THEMES
     from app.config import settings
 
-    if not settings.supabase_url:
+    if not settings.supabase_url or not settings.supabase_service_key:
         raise HTTPException(500, "Supabase not configured — cannot fetch stored PDFs.")
 
     bucket = settings.supabase_storage_bucket
+    # Use authenticated download URL (works for both public and private buckets)
+    auth_headers = {"Authorization": f"Bearer {settings.supabase_service_key}"}
     missing = []
     zip_buf = io.BytesIO()
 
     with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         for i, theme in enumerate(ACTIVE_THEMES, start=1):
             pdf_url = (
-                f"{settings.supabase_url}/storage/v1/object/public"
+                f"{settings.supabase_url}/storage/v1/object"
                 f"/{bucket}/theme-packs/{theme.slug}.pdf"
             )
             try:
-                resp = httpx.get(pdf_url, timeout=30)
+                resp = httpx.get(pdf_url, headers=auth_headers, timeout=30)
                 if resp.status_code == 200:
                     filename = f"{i:02d}-{theme.slug}.pdf"
                     zf.writestr(filename, resp.content)
                     logger.info("download_theme_packs_zip: added %s (%d bytes)", filename, len(resp.content))
                 else:
                     missing.append(theme.slug)
-                    logger.warning("download_theme_packs_zip: %s not found (HTTP %s)", theme.slug, resp.status_code)
+                    logger.warning(
+                        "download_theme_packs_zip: %s not found (HTTP %s) — run generate-theme-packs first",
+                        theme.slug, resp.status_code,
+                    )
             except Exception as exc:
                 missing.append(theme.slug)
                 logger.warning("download_theme_packs_zip: %s fetch failed — %s", theme.slug, exc)
