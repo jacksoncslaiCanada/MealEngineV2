@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import Subscriber
 from app.db.session import get_db
+from app.themes import ThemeSlug
 from app.classifier import classify_unclassified
 from app.email_sender import send_conversion_email, send_plan_email
 from app.gumroad import update_product_url
@@ -1058,7 +1059,7 @@ def weekly_run_dry(
 
 @router.get("/preview-theme-cover")
 def preview_theme_cover(
-    slug: str,
+    slug: ThemeSlug,
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
@@ -1111,7 +1112,7 @@ def preview_theme_cover(
 
 @router.post("/generate-theme-packs")
 def generate_theme_packs(
-    slug: str | None = None,
+    slug: ThemeSlug | None = None,
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
@@ -1160,7 +1161,7 @@ def generate_theme_packs(
 
 @router.get("/preview-theme-pack")
 def preview_theme_pack(
-    slug: str,
+    slug: ThemeSlug,
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
@@ -1255,7 +1256,7 @@ def download_theme_packs_zip(
 
 @router.get("/preview-theme-selection")
 def preview_theme_selection(
-    slug: str,
+    slug: ThemeSlug,
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
