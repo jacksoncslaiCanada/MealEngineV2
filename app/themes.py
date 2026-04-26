@@ -12,6 +12,7 @@ To activate a placeholder:
   5. Run POST /internal/generate-theme-packs to pre-generate its PDF
 """
 from dataclasses import dataclass, field
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -227,3 +228,10 @@ THEME_PACKS: list[ThemePack] = [
 # Lookup helpers
 THEME_BY_SLUG: dict[str, ThemePack] = {t.slug: t for t in THEME_PACKS}
 ACTIVE_THEMES: list[ThemePack] = [t for t in THEME_PACKS if t.active]
+
+# Swagger UI dropdown — one entry per active theme, value is the slug string
+ThemeSlug = Enum(  # type: ignore[misc]
+    "ThemeSlug",
+    {t.slug.replace("-", "_"): t.slug for t in ACTIVE_THEMES},
+    type=str,
+)
