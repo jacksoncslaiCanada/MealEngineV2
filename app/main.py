@@ -1,6 +1,8 @@
 """FastAPI application entry point."""
 from __future__ import annotations
 
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -17,12 +19,36 @@ from app.routes.recipes import router as recipes_router
 from app.routes.subscribe import router as subscribe_router
 from app.routes.ui import router as ui_router
 
+logger = logging.getLogger(__name__)
+
+
+def _run_migrations() -> None:
+    """Run any pending Alembic migrations on startup."""
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        cfg = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+        command.upgrade(cfg, "head")
+        logger.info("startup: Alembic migrations applied")
+    except Exception as exc:
+        logger.error("startup: Alembic migration failed — %s", exc)
+        raise
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _run_migrations()
+    yield
+
+
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="MealEngine API",
     description="Recipe ingestion and ingredient extraction API.",
     version="2.0.0",
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
