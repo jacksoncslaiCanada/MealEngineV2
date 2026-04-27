@@ -444,6 +444,95 @@ def classify_course_backlog(
     return {"classified": classified, "recipes_processed": len(recipes), "limit": limit}
 
 
+@router.post("/classify-blueprint-role-backlog")
+def classify_blueprint_role_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 50,
+):
+    """
+    Classify recipes by blueprint role: complete, base, protein, sauce, or veggie.
+
+    Batches all unclassified recipes into a single Claude Haiku call per run.
+    Defaults to 'complete' when uncertain — the safe majority class.
+
+    Call repeatedly until {"classified": 0}.
+    Each call processes up to `limit` recipes (default 50).
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+
+    recipes = (
+        db.query(RawRecipe)
+        .filter(RawRecipe.blueprint_role.is_(None))
+        .limit(limit)
+        .all()
+    )
+
+    if not recipes:
+        return {"classified": 0, "recipes_processed": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    lines = []
+    for r in recipes:
+        summary = (r.card_summary or "")[:80].replace("\n", " ")
+        lines.append(f"{r.id}: {r.card_title or '?'} | {r.cuisine or '?'} | {summary}")
+
+    prompt = (
+        "Classify each recipe below by its blueprint role.\n\n"
+        "Roles:\n"
+        "- 'complete': a full standalone dish meant to be eaten on its own "
+        "(curry, pasta, burger, stew, stir-fry with protein and veg). "
+        "Most recipes fall here — use this as the default.\n"
+        "- 'base': a plain grain or starch component with no significant protein "
+        "(steamed rice, plain noodles, flatbread, quinoa, mashed potato).\n"
+        "- 'protein': a pure protein component with minimal other ingredients "
+        "(grilled chicken thighs, pan-seared salmon, soft-boiled eggs, marinated tofu).\n"
+        "- 'sauce': a sauce, glaze, marinade, or dressing that accompanies other dishes "
+        "(teriyaki sauce, chimichurri, tahini dressing, pesto).\n"
+        "- 'veggie': a vegetable-forward side or component with no significant protein "
+        "(roasted broccoli, stir-fried greens, cucumber salad, sautéed mushrooms).\n\n"
+        "When in doubt, use 'complete'.\n\n"
+        "Recipes (format — id: title | cuisine | summary):\n"
+        f"{chr(10).join(lines)}\n\n"
+        'Reply ONLY with valid JSON: {"id": "complete"|"base"|"protein"|"sauce"|"veggie", ...}'
+    )
+
+    valid_roles = {"complete", "base", "protein", "sauce", "veggie"}
+    classified = 0
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = resp.content[0].text.strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        data = _json.loads(text[start:end])
+
+        for r in recipes:
+            role = data.get(str(r.id)) or data.get(r.id)
+            r.blueprint_role = role if role in valid_roles else "complete"
+            classified += 1
+
+        db.commit()
+        logger.info(
+            "classify_blueprint_role_backlog: classified %d/%d recipes",
+            classified, len(recipes),
+        )
+    except Exception as exc:
+        logger.warning("classify_blueprint_role_backlog: failed — %s", exc)
+        for r in recipes:
+            if r.blueprint_role is None:
+                r.blueprint_role = "complete"
+        db.commit()
+        classified = len(recipes)
+
+    return {"classified": classified, "recipes_processed": len(recipes), "limit": limit}
+
+
 @router.post("/generate-titles-backlog")
 def generate_titles_backlog(
     db: Session = Depends(get_db),
