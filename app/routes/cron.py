@@ -294,6 +294,7 @@ def extract_ingredients_backlog(
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
     limit: int = 30,
+    recipe_id: int | None = None,
 ):
     """
     Extract ingredients for recipes that have no ingredient rows yet.
@@ -302,17 +303,55 @@ def extract_ingredients_backlog(
     full Claude-based extraction. This is the root step — without it,
     generate-ingredient-quantities-backlog has nothing to update.
 
-    Call repeatedly until {"extracted": 0}.
-    Each call processes up to `limit` recipes (default 30).
+    Query params:
+        limit       Recipes per call (default 30)
+        recipe_id   Force-extract a specific recipe, bypassing the
+                    "already processed" guard. Returns raw Claude output.
+
+    Call repeatedly until {"extracted": 0, "recipes_attempted": 0}.
     """
     import anthropic as _anthropic
+    from app.db.models import RawRecipe, Ingredient
     from app.extractor import extract_all_unprocessed
 
     client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    # ── Force mode: target one recipe, bypass deduplication guard ────────────
+    if recipe_id:
+        recipe = db.query(RawRecipe).filter(RawRecipe.id == recipe_id).first()
+        if not recipe:
+            raise HTTPException(404, f"Recipe {recipe_id} not found.")
+        if not recipe.raw_content:
+            raise HTTPException(400, f"Recipe {recipe_id} has no raw_content to extract from.")
+
+        # Delete any existing (possibly empty) ingredient rows so the
+        # deduplication guard inside extract_ingredients doesn't skip it
+        deleted = db.query(Ingredient).filter(Ingredient.recipe_id == recipe_id).delete()
+        db.commit()
+
+        from app.extractor import extract_ingredients
+        rows = extract_ingredients(db, recipe, client=client)
+        return {
+            "recipe_id":    recipe_id,
+            "deleted_first": deleted,
+            "extracted":    len(rows),
+            "ingredients":  [{"name": r.ingredient_name, "qty": r.quantity, "unit": r.unit} for r in rows],
+        }
+
+    # ── Normal backlog mode ───────────────────────────────────────────────────
+    # Count how many unprocessed recipes exist before running
+    processed_ids = {
+        row[0] for row in db.query(Ingredient.recipe_id).distinct().all()
+    }
+    unprocessed_count = db.query(RawRecipe).filter(
+        RawRecipe.id.notin_(processed_ids) if processed_ids else True,
+    ).count()
+
     new_ings = extract_all_unprocessed(db, client=client, limit=limit)
 
     return {
-        "extracted": len(new_ings),
+        "extracted":          len(new_ings),
+        "recipes_with_no_ingredients_total": unprocessed_count,
         "limit": limit,
     }
 
