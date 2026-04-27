@@ -40,6 +40,8 @@ def select_recipes_for_theme(
         RawRecipe.card_steps.isnot(None),
         RawRecipe.card_image_url.isnot(None),
         RawRecipe.card_image_url != "unavailable",
+        # Exclude classified sides and desserts; NULL = unclassified, still eligible
+        or_(RawRecipe.course == "main", RawRecipe.course.is_(None)),
     ]
 
     candidates = []

@@ -62,6 +62,7 @@ class RawRecipe(Base):
     difficulty: Mapped[str | None] = mapped_column(String(16), nullable=True)   # easy|medium|complex
     cuisine: Mapped[str | None] = mapped_column(String(64), nullable=True)      # e.g. Asian, Italian
     meal_type: Mapped[str | None] = mapped_column(String(16), nullable=True)    # breakfast|lunch|dinner|any
+    course: Mapped[str | None] = mapped_column(String(16), nullable=True)       # main|side|dessert; NULL=unclassified
     quick_steps: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON: 3-step method
     prep_time: Mapped[int | None] = mapped_column(Integer, nullable=True)       # total minutes
     dietary_tags: Mapped[str | None] = mapped_column(Text, nullable=True)       # JSON: list of tags
