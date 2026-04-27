@@ -1574,6 +1574,116 @@ def reset_card_image(
     return {"recipe_id": recipe_id, "status": "reset", "old_url": old_url}
 
 
+@router.post("/screen-card-images-backlog")
+def screen_card_images_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 50,
+):
+    """
+    Screen stored recipe card images for quality using Claude Haiku Vision.
+
+    Fetches each image and asks Claude whether it is a clean food photo.
+    Rejects images that have text overlays, social media watermarks, tiled
+    or repeated layouts, or non-food content — resetting card_image_url to
+    NULL so the next pipeline run resolves a better image.
+
+    Run repeatedly until {"rejected": 0} to clean up the full library.
+    Each call screens up to `limit` images (default 50).
+    """
+    import base64
+    import httpx
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+
+    recipes = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.card_image_url.isnot(None),
+            RawRecipe.card_image_url != "unavailable",
+        )
+        .limit(limit)
+        .all()
+    )
+
+    if not recipes:
+        return {"screened": 0, "rejected": 0, "recipes_checked": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    screened = 0
+    rejected = 0
+
+    for recipe in recipes:
+        try:
+            resp = httpx.get(recipe.card_image_url, timeout=15, follow_redirects=True)
+            if resp.status_code != 200:
+                logger.warning(
+                    "screen_card_images: recipe %s — image fetch returned HTTP %s",
+                    recipe.id, resp.status_code,
+                )
+                continue
+
+            content_type = resp.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+            if content_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+                content_type = "image/jpeg"
+
+            img_b64 = base64.standard_b64encode(resp.content).decode("utf-8")
+
+            vision_resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=10,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": content_type,
+                                "data": img_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "Is this a clean food photo suitable for a printed recipe card? "
+                                "Reply only 'yes' or 'no'. "
+                                "Reply 'no' if the image has any of: text overlays or captions, "
+                                "social media watermarks or logos, tiled or repeated frames, "
+                                "non-food content, or is a screenshot of a phone or app."
+                            ),
+                        },
+                    ],
+                }],
+            )
+
+            answer = vision_resp.content[0].text.strip().lower()
+            screened += 1
+
+            if answer.startswith("no"):
+                recipe.card_image_url = None
+                rejected += 1
+                logger.info(
+                    "screen_card_images: rejected image for recipe %s (%s)",
+                    recipe.id, recipe.card_title,
+                )
+            else:
+                logger.debug("screen_card_images: passed recipe %s", recipe.id)
+
+        except Exception as exc:
+            logger.warning("screen_card_images: recipe %s failed — %s", recipe.id, exc)
+
+    if rejected:
+        db.commit()
+
+    return {
+        "screened":      screened,
+        "rejected":      rejected,
+        "recipes_checked": len(recipes),
+        "limit":         limit,
+    }
+
+
 @router.get("/inspect-recipe")
 def inspect_recipe(
     _: None = Depends(_require_cron_secret),
