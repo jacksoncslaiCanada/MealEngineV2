@@ -42,6 +42,12 @@ def select_recipes_for_theme(
         RawRecipe.card_image_url != "unavailable",
         # Exclude classified sides and desserts; NULL = unclassified, still eligible
         or_(RawRecipe.course == "main", RawRecipe.course.is_(None)),
+        # Exclude pure components (base, protein, sauce, veggie) — theme packs
+        # want complete dishes. NULL = unclassified, still eligible.
+        or_(
+            RawRecipe.blueprint_role == "complete",
+            RawRecipe.blueprint_role.is_(None),
+        ),
     ]
 
     candidates = []
@@ -92,7 +98,8 @@ def select_recipes_for_theme(
     for r in candidates:
         summary_excerpt = (r.card_summary or "")[:100].replace("\n", " ")
         cuisine = r.cuisine or "unknown"
-        lines.append(f"{r.id}: {r.card_title} | {cuisine} | {summary_excerpt}")
+        role = r.blueprint_role or "complete"
+        lines.append(f"{r.id}: {r.card_title} | {cuisine} | [{role}] | {summary_excerpt}")
 
     candidate_text = "\n".join(lines)
 
@@ -100,12 +107,13 @@ def select_recipes_for_theme(
         f"You are selecting recipes for a themed meal pack called \"{theme.name}\".\n\n"
         f"THEME: {theme.tagline}\n\n"
         f"SELECTION CRITERIA (read carefully):\n{theme.selection_hint}\n\n"
-        f"CANDIDATES (format — id: title | cuisine | summary):\n"
+        f"CANDIDATES (format — id: title | cuisine | [blueprint_role] | summary):\n"
         f"{candidate_text}\n\n"
         f"RULES:\n"
         f"- Choose EXACTLY 3 recipes.\n"
         f"- A recipe MUST clearly match the theme to be selected. Do NOT pick a recipe "
         f"just because it sounds good — theme fit is the only criterion.\n"
+        f"- Prefer recipes with blueprint_role 'complete' — they are full standalone dishes.\n"
         f"- If a recipe does not match the theme, skip it entirely.\n"
         f"- Aim for variety: different proteins, cooking styles, or sub-cuisines.\n\n"
         f"Reply ONLY with valid JSON:\n"
