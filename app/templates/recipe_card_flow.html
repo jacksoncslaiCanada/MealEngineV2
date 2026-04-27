@@ -173,6 +173,25 @@ body {
   color: #6b5744;
 }
 
+.ing-divider {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 7pt;
+  font-style: italic;
+  color: #9a8878;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-top: 1px solid #d8d0c8;
+  padding-top: 2mm;
+  margin-top: 1mm;
+  list-style: none;
+}
+
+.ing-unit-note {
+  font-size: 7.5pt;
+  color: #9a8878;
+  font-style: italic;
+}
+
 /* ── DIRECTIONS ───────────────────────────────────────── */
 .steps-list {
   list-style: none;
@@ -315,16 +334,20 @@ body {
     <div class="col-ingredients">
       <div class="ing-box">
         <div class="section-header" style="margin-bottom:3mm;">Ingredients</div>
+        {%- set measured = ings | selectattr('qty') | list %}
+        {%- set unmeasured = ings | rejectattr('qty') | list %}
         <ul class="ing-list">
-          {% for ing in ings %}
+          {% for ing in measured %}
           <li class="ing-item">
-            {%- if ing.qty or ing.unit -%}
-              <span class="ing-qty">{{ ing.qty }}{% if ing.qty and ing.unit %}&thinsp;{% endif %}{{ ing.unit }}</span>&ensp;{{ ing.name }}
-            {%- else -%}
-              {{ ing.name }}
-            {%- endif -%}
+            <span class="ing-qty">{{ ing.qty }}{% if ing.qty and ing.unit %}&thinsp;{% endif %}{{ ing.unit }}</span>&ensp;{{ ing.name }}
           </li>
           {% endfor %}
+          {% if unmeasured %}
+          <li class="ing-divider">To Taste</li>
+          {% for ing in unmeasured %}
+          <li class="ing-item">{{ ing.name }}{% if ing.unit %} <span class="ing-unit-note">({{ ing.unit }})</span>{% endif %}</li>
+          {% endfor %}
+          {% endif %}
         </ul>
       </div><!-- /.ing-box -->
     </div>
