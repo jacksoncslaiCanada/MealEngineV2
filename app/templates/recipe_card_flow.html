@@ -250,16 +250,22 @@ body {
   margin-top: 2mm;
 }
 
+.card-tags--right {
+  justify-content: flex-end;
+  margin-top: 3mm;
+}
+
 .diet-pill {
   font-size: 6pt;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #555;
   background: #f0f0f0;
   border: 0.5px solid #d0d0d0;
   padding: 0.4mm 2mm;
   border-radius: 8px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 </style>
 </head>
@@ -293,11 +299,6 @@ body {
       {% elif recipe.cuisine %}
       <div class="card-tagline">{{ recipe.cuisine }} Recipe</div>
       {% endif %}
-      {% if tags %}
-      <div class="card-tags">
-        {% for tag in tags %}<span class="diet-pill">{{ dietary_abbr.get(tag, tag) }}</span>{% endfor %}
-      </div>
-      {% endif %}
     </div>
 
     <div class="header-meta">
@@ -316,6 +317,11 @@ body {
           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
         </svg>
         {{ recipe.prep_time }} minutes
+      </div>
+      {% endif %}
+      {% if tags %}
+      <div class="card-tags card-tags--right">
+        {% for tag in tags %}<span class="diet-pill">{{ dietary_abbr.get(tag, tag) }}</span>{% endfor %}
       </div>
       {% endif %}
     </div>
