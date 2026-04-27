@@ -22,11 +22,11 @@ DIFFICULTY_COLORS = {
 }
 
 DIETARY_ABBR = {
-    "gluten-free": "GF",
-    "dairy-free":  "DF",
-    "vegetarian":  "V",
-    "vegan":       "VG",
-    "nut-free":    "NF",
+    "gluten-free": "Gluten-Free",
+    "dairy-free":  "Dairy-Free",
+    "vegetarian":  "Vegetarian",
+    "vegan":       "Vegan",
+    "nut-free":    "Nut-Free",
 }
 
 # ---------------------------------------------------------------------------
