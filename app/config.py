@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Internal cron secret — set this in Railway, pass in X-Cron-Secret header
     cron_secret: str = ""
 
+    # Pre-launch site gate — Basic Auth. Set SITE_PASSWORD in Railway to lock down;
+    # leave empty to disable the gate (open access).
+    site_username: str = "admin"
+    site_password: str = ""   # empty = gate disabled
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

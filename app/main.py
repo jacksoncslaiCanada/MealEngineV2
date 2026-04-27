@@ -1,16 +1,19 @@
 """FastAPI application entry point."""
 from __future__ import annotations
 
+import base64
 import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.routes.cron import router as cron_router
 from app.routes.ingredients import router as ingredients_router
@@ -42,6 +45,44 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_UNGATED_PATHS = {"/health", "/health/pdf"}
+
+
+class SiteGateMiddleware(BaseHTTPMiddleware):
+    """Require HTTP Basic Auth when SITE_PASSWORD is set.
+
+    Exempt paths (health checks) bypass the gate so Railway's
+    health probes always succeed.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        from app.config import settings  # late import — avoids circular at module load
+
+        if not settings.site_password:
+            return await call_next(request)
+
+        if request.url.path in _UNGATED_PATHS:
+            return await call_next(request)
+
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(auth_header[6:]).decode("utf-8", errors="replace")
+                username, _, password = decoded.partition(":")
+                user_ok = secrets.compare_digest(username, settings.site_username)
+                pass_ok = secrets.compare_digest(password, settings.site_password)
+                if user_ok and pass_ok:
+                    return await call_next(request)
+            except Exception:
+                pass
+
+        return Response(
+            content="Access restricted — site is in pre-launch mode.",
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="MealEngine"'},
+        )
+
+
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
@@ -52,6 +93,7 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SiteGateMiddleware)
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
