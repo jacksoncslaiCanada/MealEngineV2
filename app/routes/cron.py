@@ -1410,6 +1410,65 @@ def reset_card_image(
     return {"recipe_id": recipe_id, "status": "reset", "old_url": old_url}
 
 
+@router.get("/inspect-recipe")
+def inspect_recipe(
+    _: None = Depends(_require_cron_secret),
+    db: Session = Depends(get_db),
+    recipe_id: int | None = None,
+    title: str | None = None,
+):
+    """
+    Inspect raw DB state for a recipe — useful for diagnosing missing ingredients,
+    empty cards, or classification issues.
+
+    Query params:
+        recipe_id=123       Look up by ID
+        title=crispy+taco   Case-insensitive title search (partial match)
+    """
+    from app.db.models import RawRecipe, Ingredient
+    from sqlalchemy import func
+
+    if recipe_id:
+        recipe = db.query(RawRecipe).filter(RawRecipe.id == recipe_id).first()
+    elif title:
+        recipe = (
+            db.query(RawRecipe)
+            .filter(func.lower(RawRecipe.card_title).contains(title.lower()))
+            .first()
+        )
+    else:
+        raise HTTPException(400, "Provide recipe_id or title query param.")
+
+    if not recipe:
+        raise HTTPException(404, "Recipe not found.")
+
+    ingredients = db.query(Ingredient).filter(Ingredient.recipe_id == recipe.id).all()
+
+    return {
+        "id":           recipe.id,
+        "card_title":   recipe.card_title,
+        "cuisine":      recipe.cuisine,
+        "course":       recipe.course,
+        "difficulty":   recipe.difficulty,
+        "prep_time":    recipe.prep_time,
+        "servings":     recipe.servings,
+        "card_summary": recipe.card_summary,
+        "card_image_url": recipe.card_image_url,
+        "has_card_steps":  bool(recipe.card_steps),
+        "has_quick_steps": bool(recipe.quick_steps),
+        "has_raw_content": bool(recipe.raw_content),
+        "ingredient_count": len(ingredients),
+        "ingredients": [
+            {
+                "name": i.ingredient_name,
+                "qty":  i.quantity,   # raw DB value (None vs "" matters)
+                "unit": i.unit,
+            }
+            for i in ingredients
+        ],
+    }
+
+
 @router.get("/preview-card")
 def preview_card(
     db: Session = Depends(get_db),
