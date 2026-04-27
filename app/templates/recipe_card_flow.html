@@ -43,7 +43,6 @@ body {
 
 .card-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: 32pt;
   font-weight: 900;
   line-height: 1.05;
   color: #1a1208;
@@ -281,9 +280,16 @@ body {
   <!-- HEADER -->
   <div class="card-header">
     <div class="header-left">
-      <div class="card-title">{{ title }}</div>
+      {%- set tlen = title | length -%}
+      {%- if tlen <= 12 %}{% set tfsize = "32pt" %}
+      {%- elif tlen <= 18 %}{% set tfsize = "27pt" %}
+      {%- elif tlen <= 26 %}{% set tfsize = "22pt" %}
+      {%- elif tlen <= 34 %}{% set tfsize = "18pt" %}
+      {%- else %}{% set tfsize = "15pt" %}
+      {%- endif %}
+      <div class="card-title" style="font-size:{{ tfsize }};">{{ title }}</div>
       {% if summary %}
-      <div class="card-tagline">{{ summary | truncate(120, true, '…') }}</div>
+      <div class="card-tagline">{{ summary }}</div>
       {% elif recipe.cuisine %}
       <div class="card-tagline">{{ recipe.cuisine }} Recipe</div>
       {% endif %}
@@ -379,25 +385,5 @@ body {
 </div><!-- /.card -->
 {% endfor %}
 
-<script>
-// Scale down title font until it fits within 2 lines (scrollHeight ≤ 2 × lineHeight)
-document.fonts.ready.then(function () {
-  document.querySelectorAll('.card-title').forEach(function (el) {
-    var lo = 16, hi = 32, best = hi;
-    while (lo <= hi) {
-      var mid = Math.round((lo + hi) / 2 * 2) / 2;
-      el.style.fontSize = mid + 'pt';
-      var lineH = parseFloat(getComputedStyle(el).lineHeight);
-      if (el.scrollHeight <= lineH * 2 + 2) {
-        best = mid;
-        lo = mid + 0.5;
-      } else {
-        hi = mid - 0.5;
-      }
-    }
-    el.style.fontSize = best + 'pt';
-  });
-});
-</script>
 </body>
 </html>
