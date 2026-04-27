@@ -289,6 +289,34 @@ def generate_ingredient_quantities_backlog(
     }
 
 
+@router.post("/extract-ingredients-backlog")
+def extract_ingredients_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 30,
+):
+    """
+    Extract ingredients for recipes that have no ingredient rows yet.
+
+    Finds recipes with no entries in the ingredients table and runs the
+    full Claude-based extraction. This is the root step — without it,
+    generate-ingredient-quantities-backlog has nothing to update.
+
+    Call repeatedly until {"extracted": 0}.
+    Each call processes up to `limit` recipes (default 30).
+    """
+    import anthropic as _anthropic
+    from app.extractor import extract_all_unprocessed
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    new_ings = extract_all_unprocessed(db, client=client, limit=limit)
+
+    return {
+        "extracted": len(new_ings),
+        "limit": limit,
+    }
+
+
 @router.post("/classify-course-backlog")
 def classify_course_backlog(
     db: Session = Depends(get_db),
@@ -438,14 +466,22 @@ def _run_process_new_recipes() -> None:
         client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
         db = SessionLocal()
         try:
-            # ── 1. Classify ────────────────────────────────────────────────────
+            # ── 1. Extract ingredients ─────────────────────────────────────────
+            try:
+                from app.extractor import extract_all_unprocessed
+                new_ings = extract_all_unprocessed(db, client=client, limit=30)
+                logger.info("process_new_recipes: ingredient extraction done — %d new ingredients", len(new_ings))
+            except Exception as exc:
+                logger.warning("process_new_recipes: ingredient extraction failed — %s", exc)
+
+            # ── 2. Classify ────────────────────────────────────────────────────
             try:
                 classified = classify_unclassified(db, client=client, limit=50)
                 logger.info("process_new_recipes: classify done — classified=%d", classified)
             except Exception as exc:
                 logger.warning("process_new_recipes: classify failed — %s", exc)
 
-            # ── 2. Card steps ──────────────────────────────────────────────────
+            # ── 3. Card steps ──────────────────────────────────────────────────
             try:
                 rows = (
                     db.query(RawRecipe)
@@ -475,7 +511,7 @@ def _run_process_new_recipes() -> None:
             except Exception as exc:
                 logger.warning("process_new_recipes: card_steps step failed — %s", exc)
 
-            # ── 3. Card titles ─────────────────────────────────────────────────
+            # ── 4. Card titles ─────────────────────────────────────────────────
             try:
                 rows = (
                     db.query(RawRecipe)
@@ -505,7 +541,7 @@ def _run_process_new_recipes() -> None:
             except Exception as exc:
                 logger.warning("process_new_recipes: card_titles step failed — %s", exc)
 
-            # ── 4. Card images ─────────────────────────────────────────────────
+            # ── 5. Card images ─────────────────────────────────────────────────
             try:
                 import time as _time
                 # New recipes (NULL) get priority; also retry a small batch of
@@ -556,7 +592,7 @@ def _run_process_new_recipes() -> None:
             except Exception as exc:
                 logger.warning("process_new_recipes: card_images step failed — %s", exc)
 
-            # ── 5. Components ──────────────────────────────────────────────────
+            # ── 6. Components ──────────────────────────────────────────────────
             try:
                 saved = classify_unclassified_components(db, client=client, limit=20)
                 logger.info("process_new_recipes: components done — saved=%d", saved)
