@@ -289,6 +289,94 @@ def generate_ingredient_quantities_backlog(
     }
 
 
+@router.post("/classify-course-backlog")
+def classify_course_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 50,
+):
+    """
+    Classify recipes as main, side, or dessert using Claude Haiku.
+
+    Finds recipes where course IS NULL and classifies them based on
+    title, cuisine, and card_summary. Defaults to 'main' when Claude
+    cannot determine the course (most recipes are mains).
+
+    Call repeatedly until {"classified": 0}.
+    Each call processes up to `limit` recipes (default 50).
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+
+    recipes = (
+        db.query(RawRecipe)
+        .filter(RawRecipe.course.is_(None))
+        .limit(limit)
+        .all()
+    )
+
+    if not recipes:
+        return {"classified": 0, "recipes_processed": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+    # Batch all recipes into a single Claude call for efficiency
+    lines = []
+    for r in recipes:
+        summary = (r.card_summary or "")[:80].replace("\n", " ")
+        lines.append(f'{r.id}: {r.card_title or "?"} | {r.cuisine or "?"} | {summary}')
+
+    candidate_text = "\n".join(lines)
+
+    prompt = (
+        "Classify each recipe below as 'main', 'side', or 'dessert'.\n\n"
+        "Rules:\n"
+        "- 'main': a complete dish that can serve as the centrepiece of a meal "
+        "(pasta, curry, roast, burger, stew, etc.)\n"
+        "- 'side': an accompaniment that supports a main — salads served as sides, "
+        "pickles, slaws, roasted veg, condiments, dips, kimchi, etc.\n"
+        "- 'dessert': sweet dishes, cakes, cookies, puddings, ice cream, etc.\n"
+        "- When genuinely uncertain, default to 'main'.\n\n"
+        "Recipes (format — id: title | cuisine | summary):\n"
+        f"{candidate_text}\n\n"
+        'Reply ONLY with valid JSON: {"id": "main"|"side"|"dessert", ...}'
+    )
+
+    classified = 0
+    try:
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = resp.content[0].text.strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        data = _json.loads(text[start:end])
+
+        for r in recipes:
+            course = data.get(str(r.id)) or data.get(r.id)
+            if course in ("main", "side", "dessert"):
+                r.course = course
+                classified += 1
+            else:
+                r.course = "main"  # safe default, won't loop
+                classified += 1
+
+        db.commit()
+        logger.info("classify_course_backlog: classified %d/%d recipes", classified, len(recipes))
+
+    except Exception as exc:
+        logger.warning("classify_course_backlog: failed — %s", exc)
+        # Mark all as 'main' so they don't loop on next run
+        for r in recipes:
+            if r.course is None:
+                r.course = "main"
+        db.commit()
+
+    return {"classified": classified, "recipes_processed": len(recipes), "limit": limit}
+
+
 @router.post("/generate-titles-backlog")
 def generate_titles_backlog(
     db: Session = Depends(get_db),
