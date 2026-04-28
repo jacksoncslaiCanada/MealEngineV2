@@ -356,6 +356,90 @@ def extract_ingredients_backlog(
     }
 
 
+@router.post("/classify-ingredient-categories-backlog")
+def classify_ingredient_categories_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 150,
+):
+    """
+    Classify grocery aisle categories for ingredients that don't have one yet.
+
+    Sends batches of 30 ingredient names to Claude Haiku. Each ingredient is
+    assigned one of: produce | meat & seafood | dairy & eggs | bakery | pantry
+    | spices | frozen
+
+    Call repeatedly until {"classified": 0} to process the full backlog.
+    Each batch of 30 costs ~$0.0003.
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import Ingredient as _Ing
+
+    VALID = {
+        "produce", "meat & seafood", "dairy & eggs",
+        "bakery", "pantry", "spices", "frozen",
+    }
+    BATCH = 30
+
+    rows = (
+        db.query(_Ing)
+        .filter(_Ing.category.is_(None))
+        .limit(limit)
+        .all()
+    )
+    if not rows:
+        return {"classified": 0, "total_checked": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    classified = 0
+
+    for start in range(0, len(rows), BATCH):
+        batch = rows[start : start + BATCH]
+        names = [r.ingredient_name for r in batch]
+        prompt = (
+            "Classify each ingredient into the most appropriate grocery store aisle.\n"
+            "Allowed categories (use exactly as written):\n"
+            "  produce, meat & seafood, dairy & eggs, bakery, pantry, spices, frozen\n\n"
+            "Rules:\n"
+            "  produce   — fresh vegetables, fresh fruit, fresh herbs, mushrooms\n"
+            "  meat & seafood — raw meat, poultry, fish, shellfish\n"
+            "  dairy & eggs — milk, cheese, butter, cream, yogurt, eggs, sour cream\n"
+            "  bakery    — bread, buns, tortillas, pita, wraps\n"
+            "  pantry    — canned goods, dry goods (flour, rice, pasta), oils,\n"
+            "              condiments, broth, tofu, nuts, baking ingredients\n"
+            "  spices    — dried spices, dried herbs, salt, pepper, spice blends\n"
+            "  frozen    — frozen vegetables, frozen fruit, frozen proteins\n\n"
+            'Respond with ONLY a JSON object: {"ingredient name": "category", ...}\n\n'
+            "Ingredients:\n" + "\n".join(f"- {n}" for n in names)
+        )
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=600,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = resp.content[0].text
+            start_b = text.find("{")
+            end_b   = text.rfind("}") + 1
+            if start_b == -1 or end_b == 0:
+                logger.warning("classify_ingredient_categories: no JSON in response")
+                continue
+            result = _json.loads(text[start_b:end_b])
+            for row in batch:
+                cat = result.get(row.ingredient_name, "").strip().lower()
+                if cat in VALID:
+                    row.category = cat
+                    classified += 1
+        except Exception as exc:
+            logger.warning("classify_ingredient_categories: batch failed — %s", exc)
+
+    if classified:
+        db.commit()
+
+    return {"classified": classified, "total_checked": len(rows), "limit": limit}
+
+
 @router.post("/classify-course-backlog")
 def classify_course_backlog(
     db: Session = Depends(get_db),
@@ -601,6 +685,53 @@ def _run_process_new_recipes() -> None:
                 logger.info("process_new_recipes: ingredient extraction done — %d new ingredients", len(new_ings))
             except Exception as exc:
                 logger.warning("process_new_recipes: ingredient extraction failed — %s", exc)
+
+            # ── 1b. Classify ingredient aisle categories ───────────────────────
+            try:
+                import json as _json2
+                from app.db.models import Ingredient as _Ing2
+                VALID_CATS = {
+                    "produce", "meat & seafood", "dairy & eggs",
+                    "bakery", "pantry", "spices", "frozen",
+                }
+                _cat_rows = (
+                    db.query(_Ing2)
+                    .filter(_Ing2.category.is_(None))
+                    .limit(90)
+                    .all()
+                )
+                _cat_classified = 0
+                for _i in range(0, len(_cat_rows), 30):
+                    _batch = _cat_rows[_i:_i + 30]
+                    _names = [r.ingredient_name for r in _batch]
+                    _prompt = (
+                        "Classify each into a grocery store aisle. "
+                        "Allowed (exact): produce, meat & seafood, dairy & eggs, bakery, pantry, spices, frozen\n"
+                        'Reply ONLY with JSON: {"ingredient": "category", ...}\n\n'
+                        "Ingredients:\n" + "\n".join(f"- {n}" for n in _names)
+                    )
+                    try:
+                        _resp = client.messages.create(
+                            model="claude-haiku-4-5-20251001",
+                            max_tokens=600,
+                            messages=[{"role": "user", "content": _prompt}],
+                        )
+                        _text = _resp.content[0].text
+                        _s = _text.find("{"); _e = _text.rfind("}") + 1
+                        if _s != -1 and _e:
+                            _result = _json2.loads(_text[_s:_e])
+                            for _row in _batch:
+                                _cat = _result.get(_row.ingredient_name, "").strip().lower()
+                                if _cat in VALID_CATS:
+                                    _row.category = _cat
+                                    _cat_classified += 1
+                    except Exception as _exc:
+                        logger.warning("process_new_recipes: category batch failed — %s", _exc)
+                if _cat_classified:
+                    db.commit()
+                logger.info("process_new_recipes: ingredient categories done — classified=%d", _cat_classified)
+            except Exception as exc:
+                logger.warning("process_new_recipes: ingredient categories step failed — %s", exc)
 
             # ── 2. Classify ────────────────────────────────────────────────────
             try:
