@@ -319,21 +319,30 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
     logger.info("theme_pack_generator: recipe cards rendered (%d bytes)", len(cards_pdf))
 
     # ── 7. Build and render shopping list page ────────────────────────────────
-    aisles = _build_shopping_list(all_shopping_ings)
-    shopping_html = env.get_template("shopping_list.html").render(
-        theme=theme,
-        aisles=aisles,
-        recipe_titles=recipe_titles,
-        total_recipes=len(recipe_titles),
-        total_servings=total_servings,
-    )
-    shopping_pdf = _render_single_page(shopping_html)
-    logger.info("theme_pack_generator: shopping list rendered (%d bytes)", len(shopping_pdf))
+    shopping_pdf: bytes | None = None
+    try:
+        aisles = _build_shopping_list(all_shopping_ings)
+        shopping_html = env.get_template("shopping_list.html").render(
+            theme=theme,
+            aisles=aisles,
+            recipe_titles=recipe_titles,
+            total_recipes=len(recipe_titles),
+            total_servings=total_servings,
+        )
+        shopping_pdf = _render_single_page(shopping_html)
+        logger.info("theme_pack_generator: shopping list rendered (%d bytes)", len(shopping_pdf))
+    except Exception as exc:
+        logger.error("theme_pack_generator: shopping list failed — %s", exc, exc_info=True)
 
-    # ── 8. Merge cover + cards + shopping list ────────────────────────────────
-    merged = _merge_pdfs([cover_pdf, cards_pdf, shopping_pdf])
+    # ── 8. Merge cover + cards + (optional) shopping list ─────────────────────
+    pdf_parts = [cover_pdf, cards_pdf]
+    if shopping_pdf:
+        pdf_parts.append(shopping_pdf)
+
+    merged = _merge_pdfs(pdf_parts)
+    page_count = 1 + (len(card_recipes)) + (1 if shopping_pdf else 0)
     logger.info(
         "theme_pack_generator: merged PDF for '%s' — %d pages, %d bytes",
-        theme.slug, 5, len(merged),
+        theme.slug, page_count, len(merged),
     )
     return merged
