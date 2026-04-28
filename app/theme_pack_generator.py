@@ -152,11 +152,11 @@ def _build_shopping_list(ingredients: list[dict]) -> list[dict]:
     result = []
     for aisle_key, aisle_label in _AISLE_ORDER:
         if items_by_aisle.get(aisle_key):
-            result.append({"aisle": aisle_label, "items": items_by_aisle[aisle_key]})
+            result.append({"aisle": aisle_label, "rows": items_by_aisle[aisle_key]})
 
     # Uncategorized fallback (NULL category) — rendered last as "Other"
     if items_by_aisle.get(None):
-        result.append({"aisle": "Other", "items": items_by_aisle[None]})
+        result.append({"aisle": "Other", "rows": items_by_aisle[None]})
 
     return result
 
