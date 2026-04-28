@@ -177,11 +177,11 @@ body {
   <!-- AISLE SECTIONS -->
   <div class="aisles-grid">
     {% for section in aisles %}
-    {% if section.items %}
+    {% if section.rows %}
     <div class="aisle-section">
       <div class="aisle-header">{{ section.aisle }}</div>
       <ul class="ing-list">
-        {% for item in section.items %}
+        {% for item in section.rows %}
         <li class="ing-row{% if item.to_taste %} ing-row--taste{% endif %}">
           <!-- checkbox square -->
           <svg class="ing-check" width="9" height="9" viewBox="0 0 9 9" fill="none">
