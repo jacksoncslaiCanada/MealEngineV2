@@ -99,6 +99,10 @@ class Ingredient(Base):
         Integer, ForeignKey("sources.id"), nullable=True
     )
 
+    # Aisle category — set by classify_ingredient_categories(); NULL = unclassified
+    # Values: produce | meat & seafood | dairy & eggs | bakery | pantry | spices | frozen
+    category: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     extracted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

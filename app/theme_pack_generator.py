@@ -1,8 +1,7 @@
-"""Generate 4-page theme pack PDFs: cover page + 3 recipe cards.
+"""Generate 5-page theme pack PDFs: cover page + 3 recipe cards + shopping list.
 
-Renders the cover and the recipe cards as two completely independent
-Playwright PDFs (no shared CSS), then merges them with pypdf.
-This eliminates all stylesheet interaction between the two templates.
+Renders cover, recipe cards, and shopping list as three independent
+Playwright PDFs (no shared CSS), then merges them with pdfrw.
 """
 from __future__ import annotations
 
@@ -10,6 +9,8 @@ import io
 import json
 import logging
 import os
+from collections import defaultdict
+from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,6 +36,130 @@ DIETARY_ABBR = {
     "nut-free":    "Nut-Free",
 }
 
+# Grocery store aisle order for the shopping list page
+_AISLE_ORDER: list[tuple[str | None, str]] = [
+    ("produce",       "Produce"),
+    ("meat & seafood","Meat & Seafood"),
+    ("dairy & eggs",  "Dairy & Eggs"),
+    ("bakery",        "Bakery"),
+    ("pantry",        "Pantry & Dry Goods"),
+    ("spices",        "Spices & Seasonings"),
+    ("frozen",        "Frozen"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Quantity helpers
+# ---------------------------------------------------------------------------
+
+def _parse_qty(s: str) -> "Fraction | None":
+    """Parse '1/2', '1 1/2', '2', '3.5' → Fraction; None if unparseable."""
+    if not s:
+        return None
+    s = s.strip()
+    try:
+        parts = s.split()
+        if len(parts) == 2:          # mixed number e.g. "1 1/2"
+            return Fraction(parts[0]) + Fraction(parts[1])
+        return Fraction(s)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _fmt_qty(f: "Fraction") -> str:
+    """Format Fraction as readable string: 7/4 → '1 3/4', 2 → '2'."""
+    if f.denominator == 1:
+        return str(f.numerator)
+    whole = int(f)
+    rem = f - whole
+    if whole:
+        return f"{whole} {rem}"
+    return str(f)
+
+
+# ---------------------------------------------------------------------------
+# Shopping list aggregation
+# ---------------------------------------------------------------------------
+
+def _build_shopping_list(ingredients: list[dict]) -> list[dict]:
+    """Aggregate + deduplicate ingredients and group by grocery store aisle.
+
+    Input dicts need keys: name, canonical_name (optional), qty, unit, category.
+    Returns a list of {"aisle": str, "items": [...]} in store-walk order.
+    """
+    # Group by (canonical_name_lower, unit_lower) — same name+unit → sum qtys
+    groups: dict[tuple, dict] = {}
+
+    for ing in ingredients:
+        canon = (ing.get("canonical_name") or ing.get("name") or "").strip().lower()
+        if not canon:
+            continue
+        unit     = (ing.get("unit") or "").strip().lower()
+        qty_str  = (ing.get("qty") or "").strip()
+        category = (ing.get("category") or "").strip().lower() or None
+
+        key = (canon, unit)
+        if key not in groups:
+            groups[key] = {
+                "display_name": ing.get("name") or canon,
+                "unit":         ing.get("unit") or "",
+                "category":     category,
+                "qty_fracs":    [],
+                "qty_raw":      [],
+                "has_unparseable": False,
+            }
+
+        g = groups[key]
+        # Adopt a category if we see one and don't already have it
+        if category and not g["category"]:
+            g["category"] = category
+
+        if qty_str:
+            frac = _parse_qty(qty_str)
+            if frac is not None:
+                g["qty_fracs"].append(frac)
+            else:
+                g["has_unparseable"] = True
+                if qty_str not in g["qty_raw"]:
+                    g["qty_raw"].append(qty_str)
+
+    # Build display items, grouped by aisle key
+    items_by_aisle: dict[str | None, list[dict]] = defaultdict(list)
+
+    for g in groups.values():
+        if g["qty_fracs"]:
+            total = sum(g["qty_fracs"], Fraction(0))
+            qty_display = _fmt_qty(total)
+            if g["has_unparseable"]:
+                qty_display += " + " + " + ".join(g["qty_raw"])
+        elif g["qty_raw"]:
+            qty_display = " + ".join(g["qty_raw"])
+        else:
+            qty_display = ""  # to taste / unquantified
+
+        items_by_aisle[g["category"]].append({
+            "name":        g["display_name"],
+            "qty_display": qty_display,
+            "unit":        g["unit"],
+            "to_taste":    not qty_display,
+        })
+
+    # Sort each aisle: measured items first (alphabetical), then to-taste (alphabetical)
+    for lst in items_by_aisle.values():
+        lst.sort(key=lambda x: (x["to_taste"], x["name"].lower()))
+
+    # Assemble in aisle order
+    result = []
+    for aisle_key, aisle_label in _AISLE_ORDER:
+        if items_by_aisle.get(aisle_key):
+            result.append({"aisle": aisle_label, "items": items_by_aisle[aisle_key]})
+
+    # Uncategorized fallback (NULL category) — rendered last as "Other"
+    if items_by_aisle.get(None):
+        result.append({"aisle": "Other", "items": items_by_aisle[None]})
+
+    return result
+
 
 # ---------------------------------------------------------------------------
 # PDF helpers
@@ -55,7 +180,7 @@ def _render_single_page(html_str: str) -> bytes:
         pdf_bytes = page.pdf(
             format="A4",
             print_background=True,
-            margin={"top": "14mm", "right": "16mm", "bottom": "16mm", "left": "16mm"},
+            margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
             display_header_footer=False,
         )
         browser.close()
@@ -82,7 +207,7 @@ def _merge_pdfs(pdfs: list[bytes]) -> bytes:
 # ---------------------------------------------------------------------------
 
 def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
-    """Return PDF bytes for a 4-page theme pack (cover + 3 recipe cards).
+    """Return PDF bytes for a 5-page theme pack (cover + 3 recipe cards + shopping list).
 
     Raises ValueError if fewer than 3 suitable recipes are found.
     """
@@ -112,8 +237,12 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
         for i in ids if i in by_id
     ]
 
-    # ── 4. Full recipe dicts for card pages ───────────────────────────────────
+    # ── 4. Full recipe dicts for card pages + shopping list data ──────────────
     card_recipes = []
+    all_shopping_ings: list[dict] = []   # aggregated across all 3 recipes
+    recipe_titles: list[str] = []
+    total_servings = 0
+
     for i in ids:
         if i not in by_id:
             continue
@@ -138,6 +267,8 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
             or r.cuisine
             or "Recipe"
         )
+        recipe_titles.append(title)
+        total_servings += r.servings or 4
 
         card_recipes.append({
             "title":        title,
@@ -152,19 +283,25 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
             "quick_steps":  quick_steps,
             "card_tip":     r.card_tip or "",
             "card_summary": r.card_summary or "",
-            "ingredients": [
-                ingredient_to_dict(ing)
-                for ing in ings
-            ],
-            "components": [
-                {"role": c.role, "label": c.label}
-                for c in comps
-            ],
+            "ingredients": [ingredient_to_dict(ing) for ing in ings],
+            "components":  [{"role": c.role, "label": c.label} for c in comps],
             "macros":    {},
             "macro_pct": _macro_pct({}),
         })
 
-    # ── 5. Render cover as standalone PDF (no footer chrome) ──────────────────
+        # Collect full ingredient data (with category) for the shopping list
+        for ing in ings:
+            qty  = (ing.quantity or "").strip()
+            unit = (ing.unit or "").strip()
+            all_shopping_ings.append({
+                "name":           ing.ingredient_name,
+                "canonical_name": ing.canonical_name,
+                "qty":            qty,
+                "unit":           unit,
+                "category":       ing.category,
+            })
+
+    # ── 5. Render cover as standalone PDF ─────────────────────────────────────
     cover_html = env.get_template("theme_cover.html").render(
         theme=theme,
         recipes=cover_recipes,
@@ -181,10 +318,22 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
     cards_pdf = _render_with_playwright(cards_html, week_label=theme.name)
     logger.info("theme_pack_generator: recipe cards rendered (%d bytes)", len(cards_pdf))
 
-    # ── 7. Merge cover + cards ────────────────────────────────────────────────
-    merged = _merge_pdfs([cover_pdf, cards_pdf])
+    # ── 7. Build and render shopping list page ────────────────────────────────
+    aisles = _build_shopping_list(all_shopping_ings)
+    shopping_html = env.get_template("shopping_list.html").render(
+        theme=theme,
+        aisles=aisles,
+        recipe_titles=recipe_titles,
+        total_recipes=len(recipe_titles),
+        total_servings=total_servings,
+    )
+    shopping_pdf = _render_single_page(shopping_html)
+    logger.info("theme_pack_generator: shopping list rendered (%d bytes)", len(shopping_pdf))
+
+    # ── 8. Merge cover + cards + shopping list ────────────────────────────────
+    merged = _merge_pdfs([cover_pdf, cards_pdf, shopping_pdf])
     logger.info(
         "theme_pack_generator: merged PDF for '%s' — %d pages, %d bytes",
-        theme.slug, 4, len(merged),
+        theme.slug, 5, len(merged),
     )
     return merged
