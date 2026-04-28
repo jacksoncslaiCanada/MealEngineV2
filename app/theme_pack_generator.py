@@ -166,7 +166,30 @@ def _build_shopping_list(ingredients: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _render_single_page(html_str: str) -> bytes:
-    """Render HTML to a single-page PDF with no header/footer chrome."""
+    """Render HTML to a single-page PDF — standard 14/16mm margins (for cover page)."""
+    from playwright.sync_api import sync_playwright
+
+    launch_kwargs: dict = {}
+    if ep := os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
+        launch_kwargs["executable_path"] = ep
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page()
+        page.set_content(html_str, wait_until="networkidle")
+        pdf_bytes = page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "14mm", "right": "16mm", "bottom": "16mm", "left": "16mm"},
+            display_header_footer=False,
+        )
+        browser.close()
+
+    return pdf_bytes
+
+
+def _render_full_bleed(html_str: str) -> bytes:
+    """Render HTML to a single-page PDF — zero PDF margins (template manages its own padding)."""
     from playwright.sync_api import sync_playwright
 
     launch_kwargs: dict = {}
@@ -329,7 +352,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
             total_recipes=len(recipe_titles),
             total_servings=total_servings,
         )
-        shopping_pdf = _render_single_page(shopping_html)
+        shopping_pdf = _render_full_bleed(shopping_html)
         logger.info("theme_pack_generator: shopping list rendered (%d bytes)", len(shopping_pdf))
     except Exception as exc:
         logger.error("theme_pack_generator: shopping list failed — %s", exc, exc_info=True)
