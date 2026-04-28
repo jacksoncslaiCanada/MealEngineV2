@@ -15,9 +15,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        'ingredients',
-        sa.Column('category', sa.String(32), nullable=True),
+    # IF NOT EXISTS guards against the column already being present
+    # (e.g. added manually before this migration ran).
+    op.execute(
+        "ALTER TABLE ingredients ADD COLUMN IF NOT EXISTS category VARCHAR(32)"
     )
 
 
