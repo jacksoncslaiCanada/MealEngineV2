@@ -47,12 +47,17 @@ async def lifespan(app: FastAPI):
 
 _UNGATED_PATHS = {"/health", "/health/pdf"}
 
+# Path prefixes that bypass Basic Auth — these have their own auth layer
+# (X-Cron-Secret for /internal, FastAPI internals for /docs and /openapi.json)
+_UNGATED_PREFIXES = ("/internal/", "/docs", "/openapi.json", "/redoc")
+
 
 class SiteGateMiddleware(BaseHTTPMiddleware):
-    """Require HTTP Basic Auth when SITE_PASSWORD is set.
+    """Require HTTP Basic Auth on public routes when SITE_PASSWORD is set.
 
-    Exempt paths (health checks) bypass the gate so Railway's
-    health probes always succeed.
+    /internal/* endpoints are already protected by X-Cron-Secret and are
+    exempt here so Swagger UI PDF downloads don't trigger re-auth loops.
+    Health check paths are always open so Railway probes keep passing.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -61,7 +66,8 @@ class SiteGateMiddleware(BaseHTTPMiddleware):
         if not settings.site_password:
             return await call_next(request)
 
-        if request.url.path in _UNGATED_PATHS:
+        path = request.url.path
+        if path in _UNGATED_PATHS or any(path.startswith(p) for p in _UNGATED_PREFIXES):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization", "")
