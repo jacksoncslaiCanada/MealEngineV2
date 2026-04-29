@@ -22,8 +22,9 @@ def select_recipes_for_theme(
     theme: "ThemePack",
     db: "Session",
     max_candidates: int = 100,
+    limit: int = 3,
 ) -> list[int]:
-    """Return exactly 3 recipe IDs that best match the theme.
+    """Return exactly `limit` recipe IDs that best match the theme (default 3).
 
     1. If the theme has cuisine_keywords, try a focused DB query first.
        Uses the full pool only if that returns fewer than _MIN_CUISINE_POOL results.
@@ -86,9 +87,9 @@ def select_recipes_for_theme(
             len(candidates), theme.slug,
         )
 
-    if len(candidates) < 3:
+    if len(candidates) < limit:
         raise ValueError(
-            f"Not enough enriched recipes to select from (found {len(candidates)}, need 3)"
+            f"Not enough enriched recipes to select from (found {len(candidates)}, need {limit})"
         )
 
     id_set = {r.id for r in candidates}
@@ -110,14 +111,14 @@ def select_recipes_for_theme(
         f"CANDIDATES (format — id: title | cuisine | [blueprint_role] | summary):\n"
         f"{candidate_text}\n\n"
         f"RULES:\n"
-        f"- Choose EXACTLY 3 recipes.\n"
+        f"- Choose EXACTLY {limit} recipes.\n"
         f"- A recipe MUST clearly match the theme to be selected. Do NOT pick a recipe "
         f"just because it sounds good — theme fit is the only criterion.\n"
         f"- Prefer recipes with blueprint_role 'complete' — they are full standalone dishes.\n"
         f"- If a recipe does not match the theme, skip it entirely.\n"
         f"- Aim for variety: different proteins, cooking styles, or sub-cuisines.\n\n"
         f"Reply ONLY with valid JSON:\n"
-        f'{{\"ids\": [id1, id2, id3], \"reasoning\": \"brief note on why each fits\"}}'
+        f'{{\"ids\": [id1, ..., id{limit}], \"reasoning\": \"brief note on why each fits\"}}'
     )
 
     try:
@@ -133,22 +134,22 @@ def select_recipes_for_theme(
         ids = [int(i) for i in data["ids"]]
 
         valid = [i for i in ids if i in id_set]
-        if len(valid) < 3:
+        if len(valid) < limit:
             logger.warning(
                 "theme_selector: Claude returned %d valid IDs for '%s', falling back. Response: %s",
                 len(valid), theme.slug, text,
             )
-            return _fallback_ids(candidates, exclude=valid, total=3)
+            return _fallback_ids(candidates, exclude=valid, total=limit)
 
         logger.info(
             "theme_selector: selected %s for theme '%s' — %s",
-            valid[:3], theme.slug, data.get("reasoning", ""),
+            valid[:limit], theme.slug, data.get("reasoning", ""),
         )
-        return valid[:3]
+        return valid[:limit]
 
     except Exception as exc:
         logger.warning("theme_selector: Claude selection failed for '%s' — %s", theme.slug, exc)
-        return _fallback_ids(candidates, exclude=[], total=3)
+        return _fallback_ids(candidates, exclude=[], total=limit)
 
 
 def _fallback_ids(candidates: list, exclude: list[int], total: int) -> list[int]:

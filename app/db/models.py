@@ -75,6 +75,15 @@ class RawRecipe(Base):
     card_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)     # resolved image URL (thumbnail or Flux-generated)
     card_title: Mapped[str | None] = mapped_column(Text, nullable=True)         # AI-generated clean dish name for recipe card
 
+    # Per-serving macro estimates (Claude Haiku; NULL = not yet estimated)
+    calories:   Mapped[int | None] = mapped_column(Integer, nullable=True)
+    protein_g:  Mapped[int | None] = mapped_column(Integer, nullable=True)
+    carbs_g:    Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fat_g:      Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # One-sentence side dish pairing suggestion (Claude Haiku; NULL = not yet generated)
+    side_suggestion: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     ingredients: Mapped[list["Ingredient"]] = relationship("Ingredient", back_populates="recipe")
 
 

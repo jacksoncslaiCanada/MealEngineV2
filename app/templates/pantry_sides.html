@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #fffdf8;
+  line-height: 1.45;
+}
+
+.page { padding: 10mm 14mm 10mm; }
+
+/* ── HEADER ───────────────────────────────────────────────── */
+.page-header { margin-bottom: 4mm; }
+
+.theme-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  font-size: 24pt;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1a1208;
+  line-height: 1;
+}
+
+.page-label {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c9943a;
+  margin-top: 2mm;
+}
+
+.page-sub {
+  font-size: 8.5pt;
+  font-style: italic;
+  color: #6b5744;
+  margin-top: 1.5mm;
+}
+
+.divider {
+  border: none;
+  border-top: 1.5px solid #d8d0c8;
+  margin: 4mm 0;
+}
+
+/* ── SIDES GRID ───────────────────────────────────────────── */
+.sides-grid {
+  columns: 2;
+  column-gap: 8mm;
+  column-fill: balance;
+}
+
+.side-card {
+  break-inside: avoid;
+  margin-bottom: 5mm;
+  display: flex;
+  gap: 3mm;
+  align-items: flex-start;
+}
+
+.side-num {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 16pt;
+  font-weight: 900;
+  color: #e8ddd0;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 7mm;
+  text-align: right;
+  padding-top: 0.5mm;
+}
+
+.side-body { flex: 1; }
+
+.side-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 10pt;
+  font-weight: 700;
+  color: #1a1208;
+  margin-bottom: 1mm;
+}
+
+.side-time {
+  display: inline-block;
+  font-size: 6.5pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9a8878;
+  background: #f0ece5;
+  border-radius: 6px;
+  padding: 0.4mm 2mm;
+  margin-bottom: 1.5mm;
+}
+
+.side-desc {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 8pt;
+  color: #4a3828;
+  line-height: 1.4;
+}
+
+.side-tip {
+  font-size: 7.5pt;
+  font-style: italic;
+  color: #9a8878;
+  margin-top: 1mm;
+}
+
+/* ── FOOTER ───────────────────────────────────────────────── */
+.page-footer {
+  margin-top: 6mm;
+  padding-top: 3mm;
+  border-top: 1px solid #e8e0d8;
+  font-size: 7pt;
+  color: #b0a090;
+  font-style: italic;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <div class="theme-name">{{ theme.name }}</div>
+    <div class="page-label">Pantry Sides Guide</div>
+    <div class="page-sub">8 go-to sides ready in 25 minutes or less — no extra planning needed.</div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="sides-grid">
+
+    <div class="side-card">
+      <div class="side-num">1</div>
+      <div class="side-body">
+        <div class="side-name">Steamed Rice</div>
+        <span class="side-time">15–20 min</span>
+        <div class="side-desc">White, brown, or jasmine — rinse, add to a pot with a 1:2 rice-to-water ratio, bring to a boil, then simmer covered for 15 min. Pairs with almost any main.</div>
+        <div class="side-tip">Rice cooker? Even easier. Set and forget.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">2</div>
+      <div class="side-body">
+        <div class="side-name">Roasted Broccoli</div>
+        <span class="side-time">22 min</span>
+        <div class="side-desc">Cut into florets, toss with olive oil, salt, and pepper. Roast at 425°F (220°C) for 20–22 min until edges are crisp and golden. Works with any protein.</div>
+        <div class="side-tip">Add a squeeze of lemon and parmesan at the end.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">3</div>
+      <div class="side-body">
+        <div class="side-name">Simple Green Salad</div>
+        <span class="side-time">5 min</span>
+        <div class="side-desc">Mixed greens, halved cherry tomatoes, sliced cucumber, and a drizzle of olive oil with lemon or your favourite dressing. No cook. Fresh contrast to any rich main.</div>
+        <div class="side-tip">Keep greens pre-washed in the fridge — weeknight ready.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">4</div>
+      <div class="side-body">
+        <div class="side-name">Garlic Butter Noodles</div>
+        <span class="side-time">12 min</span>
+        <div class="side-desc">Cook egg noodles or spaghetti, drain, then toss with butter, minced garlic, a splash of pasta water, and fresh parsley. Simple, satisfying, kid-approved.</div>
+        <div class="side-tip">Toast the garlic in butter for 60 seconds before tossing.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">5</div>
+      <div class="side-body">
+        <div class="side-name">Sautéed Spinach</div>
+        <span class="side-time">5 min</span>
+        <div class="side-desc">Heat olive oil in a wide pan over medium-high. Add garlic, cook 30 seconds, then add spinach. Toss for 3–4 min until just wilted. Season with salt and a pinch of nutmeg.</div>
+        <div class="side-tip">One large bag of spinach cooks down to 2 servings.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">6</div>
+      <div class="side-body">
+        <div class="side-name">Roasted Baby Potatoes</div>
+        <span class="side-time">30 min</span>
+        <div class="side-desc">Halve baby potatoes, toss with olive oil, rosemary (fresh or dried), salt, and pepper. Roast at 400°F (200°C) for 25–30 min until golden and tender inside.</div>
+        <div class="side-tip">Cut them smaller for faster cooking on a weeknight.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">7</div>
+      <div class="side-body">
+        <div class="side-name">Steamed Bok Choy</div>
+        <span class="side-time">6 min</span>
+        <div class="side-desc">Halve baby bok choy lengthwise. Steam or blanch for 4–5 min until tender-crisp. Drizzle with sesame oil, soy sauce, and a pinch of chili flakes. Especially great with Asian mains.</div>
+        <div class="side-tip">Substitute broccolini or gai lan when bok choy isn't available.</div>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-num">8</div>
+      <div class="side-body">
+        <div class="side-name">Pearl Couscous</div>
+        <span class="side-time">10 min</span>
+        <div class="side-desc">Toast couscous in a dry pan for 2 min, then add boiling water (1:1.5 ratio), cover, and cook for 8 min. Fluff with a fork, drizzle with olive oil. Neutral and fluffy — pairs beautifully with stews and braises.</div>
+        <div class="side-tip">Regular couscous works too — just pour boiling water and cover for 5 min.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page-footer">
+    All sides use pantry and produce staples — no additional shopping required on most weeks.
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #fffdf8;
+  line-height: 1.45;
+}
+
+.page { padding: 10mm 14mm 10mm; }
+
+/* ── HEADER ───────────────────────────────────────────────── */
+.page-header { margin-bottom: 4mm; }
+
+.theme-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  font-size: 24pt;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1a1208;
+  line-height: 1;
+}
+
+.page-label {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c9943a;
+  margin-top: 2mm;
+}
+
+.page-meta {
+  font-size: 8pt;
+  font-style: italic;
+  color: #6b5744;
+  margin-top: 1.5mm;
+}
+
+.divider {
+  border: none;
+  border-top: 1.5px solid #d8d0c8;
+  margin: 4mm 0;
+}
+
+/* ── MACRO TABLE ──────────────────────────────────────────── */
+.macro-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.macro-table th {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b5744;
+  text-align: right;
+  padding: 0 3mm 3mm 3mm;
+  border-bottom: 1.5px solid #d8d0c8;
+}
+
+.macro-table th:first-child { text-align: left; }
+
+.macro-table td {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 9pt;
+  color: #2a1f14;
+  text-align: right;
+  padding: 3mm 3mm;
+  border-bottom: 1px solid #ede8e0;
+  vertical-align: middle;
+}
+
+.macro-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: #1a1208;
+  max-width: 70mm;
+}
+
+.macro-table tr:last-child td { border-bottom: none; }
+
+/* Day label chip */
+.day-chip {
+  display: inline-block;
+  font-size: 6.5pt;
+  font-weight: 400;
+  color: #9a8878;
+  background: #f0ece5;
+  border-radius: 6px;
+  padding: 0.5mm 2mm;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+/* Totals row */
+.row-total td {
+  border-top: 1.5px solid #d8d0c8;
+  border-bottom: none;
+  padding-top: 4mm;
+  font-weight: 600;
+  color: #1a1208;
+}
+
+.row-total td:first-child { color: #6b5744; }
+
+/* Average row */
+.row-avg td {
+  font-size: 8pt;
+  color: #9a8878;
+  padding-top: 1.5mm;
+  font-style: italic;
+}
+
+/* Macro value highlight colours */
+.cal-val  { color: #b5614a; font-weight: 600; }
+.prot-val { color: #687f6a; font-weight: 600; }
+.carb-val { color: #c9943a; font-weight: 600; }
+.fat-val  { color: #6b5744; font-weight: 600; }
+
+/* ── CALLOUT BOXES ────────────────────────────────────────── */
+.callouts {
+  display: flex;
+  gap: 4mm;
+  margin-top: 6mm;
+}
+
+.callout {
+  flex: 1;
+  background: #f2ede6;
+  border-radius: 8px;
+  padding: 4mm 5mm;
+  text-align: center;
+}
+
+.callout-value {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 22pt;
+  font-weight: 900;
+  color: #1a1208;
+  line-height: 1;
+}
+
+.callout-unit {
+  font-size: 8pt;
+  color: #6b5744;
+  font-style: italic;
+}
+
+.callout-label {
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a8878;
+  margin-top: 1.5mm;
+}
+
+/* ── DISCLAIMER ───────────────────────────────────────────── */
+.disclaimer {
+  margin-top: 6mm;
+  font-size: 7pt;
+  color: #b0a090;
+  font-style: italic;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <div class="theme-name">{{ theme.name }}</div>
+    <div class="page-label">Nutrition Guide</div>
+    <div class="page-meta">Per-serving estimates &nbsp;&bull;&nbsp; {{ total_recipes }} recipes &nbsp;&bull;&nbsp; serves ~{{ avg_servings }} each</div>
+  </div>
+
+  <hr class="divider">
+
+  <table class="macro-table">
+    <thead>
+      <tr>
+        <th>Recipe</th>
+        <th>Calories</th>
+        <th>Protein</th>
+        <th>Carbs</th>
+        <th>Fat</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in nutrition_rows %}
+      <tr>
+        <td>
+          <span class="day-chip">{{ row.day }}</span>{{ row.title }}
+        </td>
+        <td class="cal-val">{{ row.calories or '—' }}</td>
+        <td class="prot-val">{{ row.protein_g ~ 'g' if row.protein_g else '—' }}</td>
+        <td class="carb-val">{{ row.carbs_g ~ 'g' if row.carbs_g else '—' }}</td>
+        <td class="fat-val">{{ row.fat_g ~ 'g' if row.fat_g else '—' }}</td>
+      </tr>
+      {% endfor %}
+
+      <tr class="row-total">
+        <td>5-Day Total</td>
+        <td class="cal-val">{{ totals.calories or '—' }}</td>
+        <td class="prot-val">{{ totals.protein_g ~ 'g' if totals.protein_g else '—' }}</td>
+        <td class="carb-val">{{ totals.carbs_g ~ 'g' if totals.carbs_g else '—' }}</td>
+        <td class="fat-val">{{ totals.fat_g ~ 'g' if totals.fat_g else '—' }}</td>
+      </tr>
+      <tr class="row-avg">
+        <td>Per-serving average</td>
+        <td>{{ averages.calories or '—' }}</td>
+        <td>{{ averages.protein_g ~ 'g' if averages.protein_g else '—' }}</td>
+        <td>{{ averages.carbs_g ~ 'g' if averages.carbs_g else '—' }}</td>
+        <td>{{ averages.fat_g ~ 'g' if averages.fat_g else '—' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SUMMARY CALLOUT BOXES -->
+  <div class="callouts">
+    <div class="callout">
+      <div class="callout-value">{{ averages.calories or '—' }}</div>
+      <div class="callout-unit">kcal</div>
+      <div class="callout-label">Avg Calories</div>
+    </div>
+    <div class="callout">
+      <div class="callout-value">{{ averages.protein_g or '—' }}</div>
+      <div class="callout-unit">grams</div>
+      <div class="callout-label">Avg Protein</div>
+    </div>
+    <div class="callout">
+      <div class="callout-value">{{ averages.carbs_g or '—' }}</div>
+      <div class="callout-unit">grams</div>
+      <div class="callout-label">Avg Carbs</div>
+    </div>
+    <div class="callout">
+      <div class="callout-value">{{ averages.fat_g or '—' }}</div>
+      <div class="callout-unit">grams</div>
+      <div class="callout-label">Avg Fat</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Nutritional values are AI estimates based on standard ingredient portions and may vary with substitutions or serving sizes.
+  </div>
+
+</div>
+</body>
+</html>
