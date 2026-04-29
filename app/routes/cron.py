@@ -662,6 +662,182 @@ def generate_titles_backlog(
     return {"saved": saved, "limit": limit}
 
 
+@router.post("/estimate-macros-backlog")
+def estimate_macros_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 100,
+):
+    """
+    Estimate per-serving macros (calories, protein, carbs, fat) for recipes
+    that have ingredients but no macro data yet.
+
+    Sends batches of 10 recipes to Claude Haiku. Each recipe gets a compact
+    ingredient list and Claude returns integer estimates per serving.
+
+    Call repeatedly until {"estimated": 0}. Each batch of 10 costs ~$0.001.
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe, Ingredient as _Ing
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.calories.is_(None),
+            RawRecipe.card_title.isnot(None),   # only enriched recipes
+        )
+        .limit(limit)
+        .all()
+    )
+    if not rows:
+        return {"estimated": 0, "total_checked": 0, "limit": limit}
+
+    # Pre-fetch ingredients for all recipes in one query
+    recipe_ids = [r.id for r in rows]
+    all_ings = db.query(_Ing).filter(_Ing.recipe_id.in_(recipe_ids)).all()
+    ings_by_recipe: dict[int, list] = {}
+    for ing in all_ings:
+        ings_by_recipe.setdefault(ing.recipe_id, []).append(ing)
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    BATCH = 10
+    estimated = 0
+
+    for start in range(0, len(rows), BATCH):
+        batch = rows[start : start + BATCH]
+        recipe_blocks = []
+        for r in batch:
+            ings = ings_by_recipe.get(r.id, [])
+            if not ings:
+                continue
+            ing_lines = ", ".join(
+                f"{i.quantity or ''} {i.unit or ''} {i.ingredient_name}".strip()
+                for i in ings[:20]   # cap at 20 to keep prompt tight
+            )
+            recipe_blocks.append(
+                f"ID {r.id} | {r.card_title} | {r.cuisine or 'unknown'} | "
+                f"serves {r.servings or 4}\n  Ingredients: {ing_lines}"
+            )
+
+        if not recipe_blocks:
+            continue
+
+        prompt = (
+            "Estimate realistic per-serving nutritional values for each recipe.\n"
+            "Base estimates on typical home-cooked portions, not restaurant sizes.\n"
+            "All values must be integers.\n\n"
+            "Reply ONLY with valid JSON — no other text:\n"
+            '{"<id>": {"calories": N, "protein_g": N, "carbs_g": N, "fat_g": N}, ...}\n\n'
+            "Recipes:\n" + "\n".join(recipe_blocks)
+        )
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=800,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = resp.content[0].text
+            s, e = text.find("{"), text.rfind("}") + 1
+            if s == -1 or e == 0:
+                continue
+            result = _json.loads(text[s:e])
+            for r in batch:
+                data = result.get(str(r.id)) or result.get(r.id)
+                if data and all(k in data for k in ("calories", "protein_g", "carbs_g", "fat_g")):
+                    try:
+                        r.calories  = int(data["calories"])
+                        r.protein_g = int(data["protein_g"])
+                        r.carbs_g   = int(data["carbs_g"])
+                        r.fat_g     = int(data["fat_g"])
+                        estimated += 1
+                    except (ValueError, TypeError):
+                        pass
+        except Exception as exc:
+            logger.warning("estimate_macros_backlog: batch failed — %s", exc)
+
+    if estimated:
+        db.commit()
+
+    return {"estimated": estimated, "total_checked": len(rows), "limit": limit}
+
+
+@router.post("/generate-side-suggestions-backlog")
+def generate_side_suggestions_backlog(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+    limit: int = 150,
+):
+    """
+    Generate a one-sentence side dish pairing suggestion for each recipe
+    that doesn't have one yet.
+
+    Example output: "Serve with steamed jasmine rice and quick-pickled
+    cucumbers for a complete weeknight plate."
+
+    Batches 30 recipes per Claude Haiku call. Call repeatedly until
+    {"saved": 0}. Each batch of 30 costs ~$0.0003.
+    """
+    import json as _json
+    import anthropic as _anthropic
+    from app.db.models import RawRecipe
+
+    rows = (
+        db.query(RawRecipe)
+        .filter(
+            RawRecipe.side_suggestion.is_(None),
+            RawRecipe.card_title.isnot(None),
+        )
+        .limit(limit)
+        .all()
+    )
+    if not rows:
+        return {"saved": 0, "total_checked": 0, "limit": limit}
+
+    client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    BATCH = 30
+    saved = 0
+
+    for start in range(0, len(rows), BATCH):
+        batch = rows[start : start + BATCH]
+        lines = [
+            f"ID {r.id}: {r.card_title} ({r.cuisine or 'unknown'})"
+            for r in batch
+        ]
+        prompt = (
+            "For each recipe below, write a single short sentence suggesting a "
+            "practical side dish pairing (under 18 words).\n"
+            "Format: \"Serve with [side] for [brief benefit].\"\n"
+            "Match the side to the cuisine style where possible.\n\n"
+            "Reply ONLY with valid JSON — no other text:\n"
+            '{"<id>": "Serve with ...", ...}\n\n'
+            "Recipes:\n" + "\n".join(lines)
+        )
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=800,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = resp.content[0].text
+            s, e = text.find("{"), text.rfind("}") + 1
+            if s == -1 or e == 0:
+                continue
+            result = _json.loads(text[s:e])
+            for r in batch:
+                suggestion = result.get(str(r.id)) or result.get(r.id)
+                if suggestion and isinstance(suggestion, str):
+                    r.side_suggestion = suggestion.strip()
+                    saved += 1
+        except Exception as exc:
+            logger.warning("generate_side_suggestions_backlog: batch failed — %s", exc)
+
+    if saved:
+        db.commit()
+
+    return {"saved": saved, "total_checked": len(rows), "limit": limit}
+
+
 def _run_process_new_recipes() -> None:
     """Background worker — runs all enrichment steps and logs results."""
     logger.info("process_new_recipes: background task started")
@@ -857,6 +1033,113 @@ def _run_process_new_recipes() -> None:
                 logger.info("process_new_recipes: components done — saved=%d", saved)
             except Exception as exc:
                 logger.warning("process_new_recipes: components step failed — %s", exc)
+
+            # ── 7. Macro estimation ────────────────────────────────────────────
+            try:
+                import json as _json3
+                from app.db.models import RawRecipe as _RR, Ingredient as _Ing3
+                _macro_rows = (
+                    db.query(_RR)
+                    .filter(_RR.calories.is_(None), _RR.card_title.isnot(None))
+                    .limit(20)
+                    .all()
+                )
+                _recipe_ids3 = [r.id for r in _macro_rows]
+                _ings3 = db.query(_Ing3).filter(_Ing3.recipe_id.in_(_recipe_ids3)).all()
+                _ings_by3: dict[int, list] = {}
+                for _i in _ings3:
+                    _ings_by3.setdefault(_i.recipe_id, []).append(_i)
+                _macro_estimated = 0
+                for _start in range(0, len(_macro_rows), 10):
+                    _batch3 = _macro_rows[_start:_start + 10]
+                    _blocks = []
+                    for _r in _batch3:
+                        _ings_r = _ings_by3.get(_r.id, [])
+                        if not _ings_r:
+                            continue
+                        _ing_str = ", ".join(
+                            f"{_i.quantity or ''} {_i.unit or ''} {_i.ingredient_name}".strip()
+                            for _i in _ings_r[:20]
+                        )
+                        _blocks.append(
+                            f"ID {_r.id} | {_r.card_title} | {_r.cuisine or 'unknown'} | "
+                            f"serves {_r.servings or 4}\n  Ingredients: {_ing_str}"
+                        )
+                    if not _blocks:
+                        continue
+                    _prompt3 = (
+                        "Estimate realistic per-serving nutritional values for each recipe.\n"
+                        "All values must be integers.\n"
+                        'Reply ONLY with JSON: {"<id>": {"calories": N, "protein_g": N, "carbs_g": N, "fat_g": N}, ...}\n\n'
+                        "Recipes:\n" + "\n".join(_blocks)
+                    )
+                    try:
+                        _resp3 = client.messages.create(
+                            model="claude-haiku-4-5-20251001", max_tokens=800,
+                            messages=[{"role": "user", "content": _prompt3}],
+                        )
+                        _text3 = _resp3.content[0].text
+                        _s3, _e3 = _text3.find("{"), _text3.rfind("}") + 1
+                        if _s3 != -1 and _e3:
+                            _result3 = _json3.loads(_text3[_s3:_e3])
+                            for _r in _batch3:
+                                _d = _result3.get(str(_r.id)) or _result3.get(_r.id)
+                                if _d and all(k in _d for k in ("calories", "protein_g", "carbs_g", "fat_g")):
+                                    try:
+                                        _r.calories  = int(_d["calories"])
+                                        _r.protein_g = int(_d["protein_g"])
+                                        _r.carbs_g   = int(_d["carbs_g"])
+                                        _r.fat_g     = int(_d["fat_g"])
+                                        _macro_estimated += 1
+                                    except (ValueError, TypeError):
+                                        pass
+                    except Exception as _exc3:
+                        logger.warning("process_new_recipes: macro batch failed — %s", _exc3)
+                if _macro_estimated:
+                    db.commit()
+                logger.info("process_new_recipes: macros done — estimated=%d", _macro_estimated)
+            except Exception as exc:
+                logger.warning("process_new_recipes: macros step failed — %s", exc)
+
+            # ── 8. Side suggestions ────────────────────────────────────────────
+            try:
+                from app.db.models import RawRecipe as _RR2
+                _side_rows = (
+                    db.query(_RR2)
+                    .filter(_RR2.side_suggestion.is_(None), _RR2.card_title.isnot(None))
+                    .limit(30)
+                    .all()
+                )
+                _side_saved = 0
+                _side_lines = [
+                    f"ID {_r.id}: {_r.card_title} ({_r.cuisine or 'unknown'})"
+                    for _r in _side_rows
+                ]
+                if _side_lines:
+                    _side_prompt = (
+                        "For each recipe write a single short sentence suggesting a practical side dish "
+                        "(under 18 words). Format: \"Serve with [side] for [benefit].\"\n"
+                        'Reply ONLY with JSON: {"<id>": "Serve with ...", ...}\n\n'
+                        "Recipes:\n" + "\n".join(_side_lines)
+                    )
+                    _side_resp = client.messages.create(
+                        model="claude-haiku-4-5-20251001", max_tokens=800,
+                        messages=[{"role": "user", "content": _side_prompt}],
+                    )
+                    _side_text = _side_resp.content[0].text
+                    _ss, _se = _side_text.find("{"), _side_text.rfind("}") + 1
+                    if _ss != -1 and _se:
+                        _side_result = json.loads(_side_text[_ss:_se])
+                        for _r in _side_rows:
+                            _sugg = _side_result.get(str(_r.id)) or _side_result.get(_r.id)
+                            if _sugg and isinstance(_sugg, str):
+                                _r.side_suggestion = _sugg.strip()
+                                _side_saved += 1
+                if _side_saved:
+                    db.commit()
+                logger.info("process_new_recipes: side suggestions done — saved=%d", _side_saved)
+            except Exception as exc:
+                logger.warning("process_new_recipes: side suggestions step failed — %s", exc)
 
             logger.info("process_new_recipes: background task complete")
         finally:
@@ -1994,3 +2277,96 @@ def preview_card(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=recipe-card-{recipe.id}.pdf"},
     )
+
+
+@router.get("/preview-weekly-anchor")
+def preview_weekly_anchor(
+    slug: ThemeSlug,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate and download the full Weekly Anchor PDF for a theme.
+
+    Renders all pages: cover + 5 recipe cards + macro guide + shopping list + pantry sides.
+    Takes ~20 seconds. Use this to review the complete bundle before publishing.
+
+    Prerequisites — run these backlogs to completion first for best output:
+        estimate-macros-backlog         (fills macro guide)
+        generate-side-suggestions-backlog (fills "Pairs well with" on cards)
+        classify-ingredient-categories-backlog (fills shopping list aisles)
+
+    Query params:
+        slug    Theme slug, e.g. asian-kitchen, quick-cook
+    """
+    from app.themes import THEME_BY_SLUG
+    from app.weekly_anchor_generator import generate_weekly_anchor_pdf
+
+    theme = THEME_BY_SLUG.get(slug)
+    if not theme:
+        raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+    if not theme.active:
+        raise HTTPException(400, f"Theme '{slug}' is not active (placeholder).")
+
+    pdf_bytes = generate_weekly_anchor_pdf(theme, db)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=weekly-anchor-{slug}.pdf"},
+    )
+
+
+@router.post("/generate-weekly-anchors")
+def generate_weekly_anchors(
+    slug: ThemeSlug | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Pre-generate Weekly Anchor PDFs and upload them to Supabase Storage.
+
+    Iterates all active themes (or a single theme if slug is given), generates
+    the full PDF and uploads to Supabase under weekly-anchors/{slug}.pdf.
+
+    Returns a summary of what succeeded and what failed.
+
+    Query params:
+        slug    (optional) Only generate one theme, e.g. asian-kitchen
+    """
+    from app.themes import ACTIVE_THEMES, THEME_BY_SLUG
+    from app.weekly_anchor_generator import generate_weekly_anchor_pdf
+    from app.storage import upload_weekly_anchor_pdf
+
+    if slug:
+        theme = THEME_BY_SLUG.get(slug)
+        if not theme:
+            raise HTTPException(404, f"Theme '{slug}' not found. Available: {list(THEME_BY_SLUG.keys())}")
+        if not theme.active:
+            raise HTTPException(400, f"Theme '{slug}' is not active (placeholder).")
+        themes_to_generate = [theme]
+    else:
+        themes_to_generate = ACTIVE_THEMES
+
+    results = {}
+    for theme in themes_to_generate:
+        logger.info("generate_weekly_anchors: starting '%s'", theme.slug)
+        try:
+            pdf_bytes = generate_weekly_anchor_pdf(theme, db)
+            url = upload_weekly_anchor_pdf(pdf_bytes, slug=theme.slug)
+            results[theme.slug] = {
+                "status": "ok",
+                "pdf_bytes": len(pdf_bytes),
+                "storage_url": url,
+            }
+            logger.info(
+                "generate_weekly_anchors: '%s' done — %d bytes → %s",
+                theme.slug, len(pdf_bytes), url,
+            )
+        except Exception as exc:
+            logger.error("generate_weekly_anchors: '%s' failed — %s", theme.slug, exc, exc_info=True)
+            results[theme.slug] = {"status": "error", "detail": str(exc)}
+
+    return {
+        "generated": len([v for v in results.values() if v["status"] == "ok"]),
+        "results": results,
+    }

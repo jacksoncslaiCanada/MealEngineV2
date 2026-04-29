@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #fffdf8;
+}
+
+/* ── COVER WRAPPER ───────────────────────────────────────── */
+.cover {
+  width: 178mm;
+  height: 267mm;
+  max-height: 267mm;
+  overflow: hidden;
+  background: #fffdf8;
+  display: flex;
+  flex-direction: column;
+  border-top: 10px solid {{ theme.accent_color }};
+}
+
+.inner {
+  padding: 5mm 12mm 5mm;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── TOP BRANDING ───────────────────────────────────────── */
+.pack-label {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: {{ theme.accent_color }};
+  text-align: center;
+  margin-bottom: 2mm;
+}
+
+.theme-name {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 40pt;
+  text-transform: uppercase;
+  color: #2c2c2c;
+  text-align: center;
+  line-height: 1.0;
+  letter-spacing: 0.02em;
+  margin-bottom: 2mm;
+}
+
+.tagline {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: #555;
+  text-align: center;
+  margin-bottom: 3mm;
+}
+
+.divider {
+  width: 40mm;
+  height: 1px;
+  background: {{ theme.accent_color }};
+  opacity: 0.45;
+  margin: 0 auto 3mm;
+}
+
+.description {
+  font-family: 'Lora', serif;
+  font-size: 8.5pt;
+  color: #4a4a4a;
+  line-height: 1.6;
+  text-align: center;
+  max-width: 148mm;
+  margin: 0 auto 4mm;
+}
+
+/* ── SECTION RULE ───────────────────────────────────────── */
+.section-rule {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin-bottom: 3mm;
+  flex-shrink: 0;
+}
+
+.section-rule::before,
+.section-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #d8d0c8;
+}
+
+.section-header {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7pt;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #2c2c2c;
+  white-space: nowrap;
+}
+
+/* ── WEEK SCHEDULE ──────────────────────────────────────── */
+.week-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+  flex: 1;
+  min-height: 0;
+}
+
+.week-row {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  background: #f9f6f0;
+  border-radius: 6px;
+  padding: 2.5mm 3mm;
+  border-left: 3px solid {{ theme.accent_color }};
+}
+
+.day-label {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7.5pt;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: {{ theme.accent_color }};
+  flex-shrink: 0;
+  width: 14mm;
+}
+
+.week-recipe {
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-title-text {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 9pt;
+  color: #1a1208;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.recipe-meta-text {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 7pt;
+  color: #9a8878;
+  margin-top: 0.5mm;
+}
+
+.recipe-thumb-wrap {
+  flex-shrink: 0;
+  width: 14mm;
+  height: 10mm;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e8e2d8;
+}
+
+.recipe-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── INCLUDES BAR ───────────────────────────────────────── */
+.includes-bar {
+  margin-top: 3mm;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2mm;
+  flex-shrink: 0;
+}
+
+.includes-item {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b5744;
+  background: #f0ece5;
+  border-radius: 10px;
+  padding: 1mm 3mm;
+}
+
+.includes-sep {
+  color: #c0b8b0;
+  font-size: 7pt;
+}
+
+/* ── FOOTER ─────────────────────────────────────────────── */
+.footer {
+  margin-top: 3mm;
+  padding-top: 3mm;
+  border-top: 1px solid #d8d0c8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.footer-brand {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7pt;
+  color: #b0a898;
+  letter-spacing: 0.15em;
+}
+
+.footer-detail {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  color: #b0a898;
+}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="inner">
+
+    <div class="pack-label">&#10022; &nbsp; Weekly Dinner Blueprint &nbsp; &#10022;</div>
+    <div class="theme-name">{{ theme.name }}</div>
+    <div class="tagline">{{ theme.tagline }}</div>
+    <div class="divider"></div>
+    <div class="description">{{ theme.description }}</div>
+
+    <div class="section-rule">
+      <span class="section-header">Your 5-Day Menu</span>
+    </div>
+
+    <div class="week-grid">
+      {% for i in range(recipes | length) %}
+      {% set recipe = recipes[i] %}
+      <div class="week-row">
+        <div class="day-label">{{ days[i] if i < days | length else "Day " ~ (i+1) }}</div>
+        <div class="week-recipe">
+          <div class="recipe-title-text">{{ recipe.title }}</div>
+          <div class="recipe-meta-text">{{ recipe.cuisine }}{% if recipe.prep_time %} &middot; {{ recipe.prep_time }} min{% endif %}</div>
+        </div>
+        {% if recipe.image_url and recipe.image_url != "unavailable" %}
+        <div class="recipe-thumb-wrap">
+          <img class="recipe-thumb-img" src="{{ recipe.image_url }}" alt="{{ recipe.title }}">
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="includes-bar">
+      <span class="includes-item">5 Recipe Cards</span>
+      <span class="includes-sep">&middot;</span>
+      <span class="includes-item">Macro Guide</span>
+      <span class="includes-sep">&middot;</span>
+      <span class="includes-item">Shopping List</span>
+      <span class="includes-sep">&middot;</span>
+      <span class="includes-item">Pantry Sides</span>
+    </div>
+
+    <div class="footer">
+      <span class="footer-brand">MEALENGINE</span>
+      <span class="footer-detail">5 curated dinners &middot; $19.99</span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
