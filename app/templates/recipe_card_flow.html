@@ -387,9 +387,9 @@ body {
 
       {% set side = recipe.side_suggestion | default('') %}
       {% if side %}
-      <div class="card-tip" style="margin-top:2.5mm;border-left-color:#687f6a;">
+      <div class="card-tip" style="margin-top:1.5mm;border-left-color:#687f6a;">
         <div class="card-tip-label" style="color:#687f6a;">Pairs well with</div>
-        {{ side }}
+        <div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;">{{ side }}</div>
       </div>
       {% endif %}
     </div>
