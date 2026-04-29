@@ -135,6 +135,15 @@ body {
 .col-directions {
   flex: 1;
   padding-left: 6mm;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.steps-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ── SECTION HEADERS ──────────────────────────────────── */
@@ -369,25 +378,27 @@ body {
     <!-- RIGHT: DIRECTIONS -->
     <div class="col-directions">
       <div class="section-header" style="text-align:left;">Directions</div>
-      <ol class="steps-list">
-        {% for step in steps %}
-        <li class="step-item">
-          <span class="step-num">{{ loop.index }}.</span>
-          <span>{{ step }}</span>
-        </li>
-        {% endfor %}
-      </ol>
+      <div class="steps-wrap">
+        <ol class="steps-list">
+          {% for step in steps %}
+          <li class="step-item">
+            <span class="step-num">{{ loop.index }}.</span>
+            <span>{{ step }}</span>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
 
       {% if tip %}
-      <div class="card-tip">
+      <div class="card-tip" style="flex-shrink:0;">
         <div class="card-tip-label">Chef's tip</div>
-        {{ tip }}
+        <div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{{ tip }}</div>
       </div>
       {% endif %}
 
       {% set side = recipe.side_suggestion | default('') %}
       {% if side %}
-      <div class="card-tip" style="margin-top:1.5mm;border-left-color:#687f6a;">
+      <div class="card-tip" style="flex-shrink:0;margin-top:1.5mm;border-left-color:#687f6a;">
         <div class="card-tip-label" style="color:#687f6a;">Pairs well with</div>
         <div style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;">{{ side }}</div>
       </div>
