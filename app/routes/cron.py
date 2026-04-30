@@ -2432,3 +2432,68 @@ def generate_weekly_anchors(
         "generated": len([v for v in results.values() if v["status"] == "ok"]),
         "results": results,
     }
+
+
+@router.post("/generate-all")
+def generate_all(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate ALL theme pack PDFs and ALL weekly anchor PDFs in one call.
+
+    Iterates every active theme and runs both generators. Each product is
+    uploaded to Supabase independently, so a failure in one does not block
+    the others. Returns a combined summary keyed by slug, with sub-keys
+    'theme_pack' and 'weekly_anchor', each containing status/pdf_bytes/
+    storage_url (or status/detail on error).
+    """
+    from app.themes import ACTIVE_THEMES
+    from app.theme_pack_generator import generate_theme_pack_pdf
+    from app.weekly_anchor_generator import generate_weekly_anchor_pdf
+    from app.storage import upload_theme_pdf, upload_weekly_anchor_pdf
+
+    results: dict = {}
+
+    for theme in ACTIVE_THEMES:
+        results[theme.slug] = {}
+
+        # ── Theme pack ────────────────────────────────────────────────────────
+        logger.info("generate_all: theme-pack '%s' starting", theme.slug)
+        try:
+            pdf_bytes = generate_theme_pack_pdf(theme, db)
+            url = upload_theme_pdf(pdf_bytes, slug=theme.slug)
+            results[theme.slug]["theme_pack"] = {
+                "status": "ok",
+                "pdf_bytes": len(pdf_bytes),
+                "storage_url": url,
+            }
+            logger.info("generate_all: theme-pack '%s' done — %d bytes", theme.slug, len(pdf_bytes))
+        except Exception as exc:
+            logger.error("generate_all: theme-pack '%s' failed — %s", theme.slug, exc, exc_info=True)
+            results[theme.slug]["theme_pack"] = {"status": "error", "detail": str(exc)}
+
+        # ── Weekly anchor ─────────────────────────────────────────────────────
+        logger.info("generate_all: weekly-anchor '%s' starting", theme.slug)
+        try:
+            pdf_bytes = generate_weekly_anchor_pdf(theme, db)
+            url = upload_weekly_anchor_pdf(pdf_bytes, slug=theme.slug)
+            results[theme.slug]["weekly_anchor"] = {
+                "status": "ok",
+                "pdf_bytes": len(pdf_bytes),
+                "storage_url": url,
+            }
+            logger.info("generate_all: weekly-anchor '%s' done — %d bytes", theme.slug, len(pdf_bytes))
+        except Exception as exc:
+            logger.error("generate_all: weekly-anchor '%s' failed — %s", theme.slug, exc, exc_info=True)
+            results[theme.slug]["weekly_anchor"] = {"status": "error", "detail": str(exc)}
+
+    ok_theme_packs    = sum(1 for v in results.values() if v.get("theme_pack",    {}).get("status") == "ok")
+    ok_weekly_anchors = sum(1 for v in results.values() if v.get("weekly_anchor", {}).get("status") == "ok")
+
+    return {
+        "themes_processed":  len(ACTIVE_THEMES),
+        "theme_packs_ok":    ok_theme_packs,
+        "weekly_anchors_ok": ok_weekly_anchors,
+        "results": results,
+    }
