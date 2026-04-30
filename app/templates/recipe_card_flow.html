@@ -222,8 +222,6 @@ body {
   font-size: 8.5pt;
   line-height: 1.5;
   color: #2a1f14;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
 }
 
 .step-num {
@@ -232,6 +230,13 @@ body {
   color: #6b5744;
   flex-shrink: 0;
   min-width: 5mm;
+}
+
+.step-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── CHEF'S TIP ───────────────────────────────────────── */
@@ -389,7 +394,7 @@ body {
           {% for step in steps %}
           <li class="step-item">
             <span class="step-num">{{ loop.index }}.</span>
-            <span>{{ step }}</span>
+            <span class="step-text">{{ step }}</span>
           </li>
           {% endfor %}
         </ol>
