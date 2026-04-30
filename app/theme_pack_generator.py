@@ -22,35 +22,37 @@ logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 
-_STEP_CHAR_BUDGET = 550  # ~5 steps × 55 words × avg 2 chars/word
+_STEP_CHAR_BUDGET = 900  # ~5 steps × 55 words × 5 chars/word, with headroom
 
 
 def _truncate_steps(steps: list[str]) -> list[str]:
     """Cap to 5 steps and ensure total characters stay within the card budget.
 
-    If the total exceeds the budget, the last step is trimmed at the nearest
-    sentence boundary and an ellipsis is appended so the card reads naturally.
+    Strategy:
+      1. Drop steps from the end until the kept steps fit under budget.
+      2. Try to append a partial version of the next dropped step, cut at the
+         nearest sentence boundary, so readers see as much as possible.
     """
     steps = steps[:5]
-    total = sum(len(s) for s in steps)
-    if total <= _STEP_CHAR_BUDGET:
+    if sum(len(s) for s in steps) <= _STEP_CHAR_BUDGET:
         return steps
 
-    # Trim the last step until we're within budget
+    # Drop whole steps from the end until the remaining fit
     trimmed = list(steps)
-    while trimmed and sum(len(s) for s in trimmed) > _STEP_CHAR_BUDGET:
-        last = trimmed[-1]
-        # Try to cut at a sentence boundary first
-        for sep in (". ", "! ", "? "):
-            idx = last.rfind(sep)
-            if idx > 20:          # keep at least a meaningful fragment
-                trimmed[-1] = last[: idx + 1].rstrip() + "…"
-                break
-        else:
-            # No sentence boundary — hard-trim at word boundary
-            budget_left = _STEP_CHAR_BUDGET - sum(len(s) for s in trimmed[:-1])
-            trimmed[-1] = last[: max(budget_left - 1, 20)].rsplit(" ", 1)[0] + "…"
-        break  # one pass is enough
+    while len(trimmed) > 1 and sum(len(s) for s in trimmed) > _STEP_CHAR_BUDGET:
+        trimmed.pop()
+
+    # Try to squeeze in a partial version of the first dropped step
+    next_idx = len(trimmed)
+    if next_idx < len(steps):
+        budget_left = _STEP_CHAR_BUDGET - sum(len(s) for s in trimmed)
+        if budget_left >= 60:   # only worth adding if there's meaningful room
+            candidate = steps[next_idx]
+            for sep in (". ", "! ", "? "):
+                idx = candidate.rfind(sep, 0, budget_left)
+                if idx > 20:
+                    trimmed.append(candidate[: idx + 1].rstrip() + "…")
+                    break
 
     return trimmed
 
