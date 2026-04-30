@@ -212,12 +212,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.5mm;
+  width: 100%;
+  min-width: 0;
 }
 
 .step-item {
-  display: flex;
-  gap: 2mm;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 5mm 1fr;
+  column-gap: 2mm;
+  align-items: start;
   font-family: 'Lora', Georgia, serif;
   font-size: 8.5pt;
   line-height: 1.5;
@@ -228,15 +231,12 @@ body {
   font-family: 'Playfair Display', Georgia, serif;
   font-weight: 700;
   color: #6b5744;
-  flex-shrink: 0;
-  min-width: 5mm;
 }
 
 .step-text {
-  flex: 1;
-  min-width: 0;
   overflow-wrap: break-word;
   word-break: break-word;
+  min-width: 0;
 }
 
 /* ── CHEF'S TIP ───────────────────────────────────────── */
