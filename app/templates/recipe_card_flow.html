@@ -126,16 +126,17 @@ body {
 }
 
 .col-ingredients {
-  width: 42%;
-  flex-shrink: 0;
+  flex: 0 0 67mm;
   padding-right: 6mm;
   border-right: 1px solid #d8d8d8;
+  box-sizing: border-box;
 }
 
 .col-directions {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 93mm;
   padding-left: 6mm;
+  box-sizing: border-box;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
