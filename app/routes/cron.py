@@ -84,13 +84,20 @@ def generate_card_steps_backlog(
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
     limit: int = 50,
+    force: bool = False,
 ):
     """
     Generate detailed card_steps + card_tip for recipes that don't have them yet.
 
-    Uses Claude Haiku to produce 5-6 detailed cooking steps and a chef's tip from
+    Uses Claude Haiku to produce 5 detailed cooking steps and a chef's tip from
     each recipe's raw_content. Results are cached in raw_recipes.card_steps / card_tip.
     Call repeatedly until it returns {"saved": 0}.
+
+    Query params:
+        limit   (default 50) Recipes to process per call.
+        force   (default false) When true, re-generates even recipes that already
+                have card_steps — overwrites existing data only on success, so a
+                mid-run failure never leaves rows with NULL steps.
     """
     import json as _json
     import anthropic as _anthropic
@@ -99,13 +106,16 @@ def generate_card_steps_backlog(
 
     client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
+    filters = [
+        RawRecipe.raw_content.isnot(None),
+        RawRecipe.quick_steps.isnot(None),  # only classified recipes
+    ]
+    if not force:
+        filters.append(RawRecipe.card_steps.is_(None))
+
     rows = (
         db.query(RawRecipe)
-        .filter(
-            RawRecipe.card_steps.is_(None),
-            RawRecipe.raw_content.isnot(None),
-            RawRecipe.quick_steps.isnot(None),  # only classified recipes
-        )
+        .filter(*filters)
         .limit(limit)
         .all()
     )
@@ -128,7 +138,7 @@ def generate_card_steps_backlog(
     if saved:
         db.commit()
 
-    return {"saved": saved, "limit": limit}
+    return {"saved": saved, "limit": limit, "force": force}
 
 
 @router.post("/generate-ingredient-quantities-backlog")
