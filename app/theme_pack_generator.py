@@ -22,6 +22,38 @@ logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 
+_STEP_CHAR_BUDGET = 550  # ~5 steps × 55 words × avg 2 chars/word
+
+
+def _truncate_steps(steps: list[str]) -> list[str]:
+    """Cap to 5 steps and ensure total characters stay within the card budget.
+
+    If the total exceeds the budget, the last step is trimmed at the nearest
+    sentence boundary and an ellipsis is appended so the card reads naturally.
+    """
+    steps = steps[:5]
+    total = sum(len(s) for s in steps)
+    if total <= _STEP_CHAR_BUDGET:
+        return steps
+
+    # Trim the last step until we're within budget
+    trimmed = list(steps)
+    while trimmed and sum(len(s) for s in trimmed) > _STEP_CHAR_BUDGET:
+        last = trimmed[-1]
+        # Try to cut at a sentence boundary first
+        for sep in (". ", "! ", "? "):
+            idx = last.rfind(sep)
+            if idx > 20:          # keep at least a meaningful fragment
+                trimmed[-1] = last[: idx + 1].rstrip() + "…"
+                break
+        else:
+            # No sentence boundary — hard-trim at word boundary
+            budget_left = _STEP_CHAR_BUDGET - sum(len(s) for s in trimmed[:-1])
+            trimmed[-1] = last[: max(budget_left - 1, 20)].rsplit(" ", 1)[0] + "…"
+        break  # one pass is enough
+
+    return trimmed
+
 DIFFICULTY_COLORS = {
     "easy":    "#687f6a",
     "medium":  "#c9943a",
@@ -280,7 +312,7 @@ def generate_theme_pack_pdf(theme: "ThemePack", db: "Session") -> bytes:
         )
 
         dietary_tags = json.loads(r.dietary_tags) if r.dietary_tags else []
-        card_steps   = json.loads(r.card_steps)   if r.card_steps   else []
+        card_steps   = _truncate_steps(json.loads(r.card_steps)  if r.card_steps  else [])
         quick_steps  = json.loads(r.quick_steps)  if r.quick_steps  else []
 
         title = (

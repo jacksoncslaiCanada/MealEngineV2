@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
     from app.themes import ThemePack
 
+from app.theme_pack_generator import _truncate_steps
+
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -79,7 +81,7 @@ def generate_weekly_anchor_pdf(theme: "ThemePack", db: "Session") -> bytes:
         )
 
         dietary_tags = json.loads(r.dietary_tags) if r.dietary_tags else []
-        card_steps   = json.loads(r.card_steps)   if r.card_steps   else []
+        card_steps   = _truncate_steps(json.loads(r.card_steps)  if r.card_steps  else [])
         quick_steps  = json.loads(r.quick_steps)  if r.quick_steps  else []
 
         title = (
