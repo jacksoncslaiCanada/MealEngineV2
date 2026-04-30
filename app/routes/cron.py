@@ -1920,6 +1920,68 @@ def download_theme_packs_zip(
     )
 
 
+@router.get("/download-weekly-anchors-zip")
+def download_weekly_anchors_zip(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Download all active weekly anchor PDFs as a single ZIP file for proofreading.
+
+    Fetches each stored PDF from Supabase Storage (weekly-anchors/{slug}.pdf)
+    and bundles them into a ZIP. PDFs are named 01-asian-kitchen.pdf, etc.
+    Themes whose PDFs have not yet been generated are skipped and listed in
+    the X-Missing-Themes response header.
+
+    Run POST /internal/generate-weekly-anchors first if any are missing.
+    """
+    import io
+    import zipfile
+    import httpx
+    from app.themes import ACTIVE_THEMES
+    from app.config import settings
+
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(500, "Supabase not configured — cannot fetch stored PDFs.")
+
+    bucket = settings.supabase_storage_bucket
+    auth_headers = {"Authorization": f"Bearer {settings.supabase_service_key}"}
+    missing = []
+    zip_buf = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for i, theme in enumerate(ACTIVE_THEMES, start=1):
+            pdf_url = (
+                f"{settings.supabase_url}/storage/v1/object"
+                f"/{bucket}/weekly-anchors/{theme.slug}.pdf"
+            )
+            try:
+                resp = httpx.get(pdf_url, headers=auth_headers, timeout=30)
+                if resp.status_code == 200:
+                    filename = f"{i:02d}-{theme.slug}.pdf"
+                    zf.writestr(filename, resp.content)
+                    logger.info("download_weekly_anchors_zip: added %s (%d bytes)", filename, len(resp.content))
+                else:
+                    missing.append(theme.slug)
+                    logger.warning(
+                        "download_weekly_anchors_zip: %s not found (HTTP %s) — run generate-weekly-anchors first",
+                        theme.slug, resp.status_code,
+                    )
+            except Exception as exc:
+                missing.append(theme.slug)
+                logger.warning("download_weekly_anchors_zip: %s fetch failed — %s", theme.slug, exc)
+
+    zip_bytes = zip_buf.getvalue()
+    headers = {"Content-Disposition": "attachment; filename=weekly-anchors-proof.zip"}
+    if missing:
+        headers["X-Missing-Themes"] = ", ".join(missing)
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers=headers,
+    )
+
+
 @router.get("/preview-theme-selection")
 def preview_theme_selection(
     slug: ThemeSlug,
