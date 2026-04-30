@@ -134,6 +134,7 @@ body {
 
 .col-directions {
   flex: 1;
+  min-width: 0;
   padding-left: 6mm;
   display: flex;
   flex-direction: column;
@@ -142,6 +143,7 @@ body {
 
 .steps-wrap {
   flex: 1;
+  width: 100%;
   min-height: 0;
   overflow: hidden;
   -webkit-mask-image: linear-gradient(to bottom, black 78%, transparent 100%);
@@ -220,6 +222,8 @@ body {
   font-size: 8.5pt;
   line-height: 1.5;
   color: #2a1f14;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .step-num {
