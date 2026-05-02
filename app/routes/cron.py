@@ -1992,6 +1992,159 @@ def download_weekly_anchors_zip(
     )
 
 
+@router.get("/listing-copy")
+def download_listing_copy(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Download the Gumroad listing copy for all 23 products as a plain-text file.
+
+    Returns docs/gumroad-listing-copy.txt — cut-and-paste copy for theme packs,
+    weekly anchors, and cross-theme bundles. Each block contains product title,
+    short description, full description, and what's included bullets.
+    """
+    from pathlib import Path
+
+    copy_path = Path(__file__).parent.parent.parent / "docs" / "gumroad-listing-copy.txt"
+    if not copy_path.exists():
+        raise HTTPException(404, "Listing copy file not found — ensure docs/gumroad-listing-copy.txt exists.")
+
+    return Response(
+        content=copy_path.read_bytes(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=gumroad-listing-copy.txt"},
+    )
+
+
+@router.get("/download-listing-covers-zip")
+def download_listing_covers_zip(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Render all 23 Gumroad listing cover images (1600×900 PNG) and return them as a ZIP.
+
+    Generates covers for:
+      - 10 theme packs       →  theme-pack--{slug}.png
+      - 10 weekly anchors    →  weekly-anchor--{slug}.png
+      - 3 cross-theme bundles →  bundle--{slug}.png
+
+    Uses a single Playwright browser session for all 23 renders.
+    Expect ~30–60 seconds for the full run.
+    """
+    import io
+    import os
+    import zipfile
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+
+    _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+    _COVER_THEMES = [
+        {"slug": "asian-kitchen",    "name": "Asian Kitchen",    "tagline": "Bold, fragrant flavours from across Asia.",                              "accent_color": "#c2522a"},
+        {"slug": "mexican-fiesta",   "name": "Mexican Fiesta",   "tagline": "Vibrant, bold, and made for sharing.",                                   "accent_color": "#2a8a3a"},
+        {"slug": "light-and-fresh",  "name": "Light & Fresh",    "tagline": "Clean, nourishing meals that don't feel like a compromise.",              "accent_color": "#4a8a5a"},
+        {"slug": "quick-cook",       "name": "Quick Cook",       "tagline": "Dinner on the table in 30 minutes or less.",                             "accent_color": "#d4762a"},
+        {"slug": "comfort-food",     "name": "Comfort Food",     "tagline": "Hearty, warming dishes that feel like a hug.",                           "accent_color": "#8b4a2a"},
+        {"slug": "mediterranean",    "name": "Mediterranean",    "tagline": "Sun-drenched flavours from the shores of the Mediterranean.",             "accent_color": "#2a6b9c"},
+        {"slug": "italian-classics", "name": "Italian Classics", "tagline": "Timeless Italian recipes done properly.",                                 "accent_color": "#8b2a2a"},
+        {"slug": "middle-eastern",   "name": "Middle Eastern",   "tagline": "Ancient spices, vibrant flavours, generous tables.",                     "accent_color": "#c4823a"},
+        {"slug": "high-protein",     "name": "High Protein",     "tagline": "Fuel your body without compromising on flavour.",                        "accent_color": "#4a6b8a"},
+        {"slug": "one-pan",          "name": "One Pan",          "tagline": "Maximum flavour, minimal washing up.",                                   "accent_color": "#7a5a3a"},
+    ]
+
+    _COVER_BUNDLES = [
+        {"slug": "world-flavours",      "name": "World Flavours",      "accent_color": "#c4823a", "bundle_themes": ["Asian Kitchen", "Mexican Fiesta", "Middle Eastern"]},
+        {"slug": "weeknight-essentials","name": "Weeknight Essentials","accent_color": "#d4762a", "bundle_themes": ["Quick Cook", "One Pan", "Comfort Food"]},
+        {"slug": "eat-smart",           "name": "Eat Smart",           "accent_color": "#4a8a5a", "bundle_themes": ["Light & Fresh", "High Protein", "Mediterranean"]},
+    ]
+
+    def _name_px(name: str) -> str:
+        n = len(name)
+        if n <= 9:  return "130px"
+        if n <= 14: return "104px"
+        return "80px"
+
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+    tmpl = env.get_template("listing_cover.html")
+
+    launch_kwargs: dict = {}
+    ep = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    if not ep:
+        fallback = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+        if Path(fallback).exists():
+            ep = fallback
+    if ep:
+        launch_kwargs["executable_path"] = ep
+
+    zip_buf = io.BytesIO()
+
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page(viewport={"width": 1600, "height": 900})
+
+        with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for t in _COVER_THEMES:
+                ctx = {
+                    "accent_color":  t["accent_color"],
+                    "price":         "$6.99",
+                    "price_label":   "",
+                    "product_label": "Dinner Pack",
+                    "theme_name":    t["name"],
+                    "name_size":     _name_px(t["name"]),
+                    "tagline":       t["tagline"],
+                    "bundle_themes": [],
+                    "includes":      ["3 Recipe Cards", "Shopping List", "Pantry Guide"],
+                    "bottom_note":   "Instant PDF download — print or save to your phone",
+                    "right_note":    "Instant PDF download",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"theme-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+
+            for t in _COVER_THEMES:
+                ctx = {
+                    "accent_color":  t["accent_color"],
+                    "price":         "$12.99",
+                    "price_label":   "",
+                    "product_label": "Weekly Anchor",
+                    "theme_name":    t["name"],
+                    "name_size":     _name_px(t["name"]),
+                    "tagline":       t["tagline"],
+                    "bundle_themes": [],
+                    "includes":      ["5 Recipe Cards", "Macro Guide", "Shopping List", "Pantry Guide"],
+                    "bottom_note":   "Instant PDF download — Mon–Fri fully planned",
+                    "right_note":    "Instant PDF download",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"weekly-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+
+            for b in _COVER_BUNDLES:
+                ctx = {
+                    "accent_color":  b["accent_color"],
+                    "price":         "$19.99",
+                    "price_label":   "",
+                    "product_label": "Bundle · 3 Dinner Packs",
+                    "theme_name":    b["name"],
+                    "name_size":     _name_px(b["name"]),
+                    "tagline":       "",
+                    "bundle_themes": b["bundle_themes"],
+                    "includes":      ["9 Recipe Cards", "3 Shopping Lists", "Pantry Guides"],
+                    "bottom_note":   "Instant ZIP download — 3 complete packs",
+                    "right_note":    "Instant ZIP download",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
+
+        browser.close()
+
+    logger.info("download_listing_covers_zip: rendered 23 cover PNGs (%d bytes)", len(zip_buf.getvalue()))
+    return Response(
+        content=zip_buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=listing-covers.zip"},
+    )
+
+
 @router.get("/preview-theme-selection")
 def preview_theme_selection(
     slug: ThemeSlug,
