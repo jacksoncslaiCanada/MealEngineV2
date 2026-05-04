@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 1200px;
+  height: 1200px;
+  overflow: hidden;
+  background: #fffdf8;
+  font-family: 'Lora', Georgia, serif;
+}
+
+.cover {
+  width: 1200px;
+  height: 1200px;
+  display: flex;
+  flex-direction: row;
+  border-left: 12px solid {{ accent_color }};
+}
+
+/* ── LEFT PANEL ─────────────────────────────────────────── */
+.left {
+  flex: 0 0 530px;
+  background: #fffdf8;
+  padding: 56px 48px 52px 52px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* dot texture */
+.left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #b8a898 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* ── RIGHT PANEL (food photo) ───────────────────────────── */
+.right {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: {{ accent_color }}22;
+}
+
+.food-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.right::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(255,253,248,0.28) 0%, transparent 20%);
+  pointer-events: none;
+}
+
+/* ── BRAND ──────────────────────────────────────────────── */
+.brand {
+  position: relative;
+  z-index: 1;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.40em;
+  text-transform: uppercase;
+  color: #c0b4a4;
+  margin-bottom: 48px;
+  flex-shrink: 0;
+}
+
+/* spacer pushes bottom group to bottom of panel */
+.spacer { flex: 1; min-height: 32px; }
+
+/* ── PRODUCT LABEL ──────────────────────────────────────── */
+.product-label {
+  position: relative;
+  z-index: 1;
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  margin-bottom: 16px;
+}
+
+/* ── THEME NAME ─────────────────────────────────────────── */
+.theme-name {
+  position: relative;
+  z-index: 1;
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: {{ name_size | default('104px') }};
+  line-height: 0.93;
+  color: #1e1a14;
+  letter-spacing: -0.025em;
+  margin-bottom: 24px;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* ── TAGLINE ────────────────────────────────────────────── */
+.tagline {
+  position: relative;
+  z-index: 1;
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 20px;
+  color: #7a6a58;
+  line-height: 1.5;
+  margin-bottom: 36px;
+}
+
+/* bundle chips  */
+.bundle-chips {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+
+.bundle-chip {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  border-left: 3px solid {{ accent_color }};
+  padding-left: 12px;
+  opacity: 0.85;
+}
+
+/* ── DIVIDER ────────────────────────────────────────────── */
+.divider {
+  position: relative;
+  z-index: 1;
+  width: 52px;
+  height: 2px;
+  background: {{ accent_color }};
+  opacity: 0.35;
+  margin-bottom: 24px;
+}
+
+/* ── INCLUDES LIST ──────────────────────────────────────── */
+.includes-list {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.include-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.include-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  opacity: 0.70;
+}
+
+.include-text {
+  font-family: 'Lora', serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a4f40;
+}
+
+/* ── PRICE ROW ──────────────────────────────────────────── */
+.price-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: 22px;
+  border-top: 1px solid #ddd5c8;
+}
+
+.price {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 42px;
+  color: {{ accent_color }};
+  line-height: 1;
+}
+
+.delivery {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: #a89e90;
+  text-align: right;
+  line-height: 1.45;
+}
+</style>
+</head>
+<body>
+<div class="cover">
+
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <div class="brand">MealEngine</div>
+    <div class="product-label">&#10022; &nbsp; {{ product_label }} &nbsp; &#10022;</div>
+    <div class="theme-name">{{ theme_name }}</div>
+
+    {% if bundle_themes %}
+    <div class="bundle-chips">
+      {% for t in bundle_themes %}
+      <span class="bundle-chip">{{ t }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="tagline">{{ tagline }}</div>
+    {% endif %}
+
+    <div class="spacer"></div>
+
+    <div class="divider"></div>
+
+    <div class="includes-list">
+      {% for item in includes %}
+      <div class="include-row">
+        <span class="include-dot"></span>
+        <span class="include-text">{{ item }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="price-row">
+      <div class="price">{{ price }}</div>
+      <div class="delivery">{{ delivery_note }}</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+    {% if image_url %}
+    <img class="food-img" src="{{ image_url }}" alt="{{ theme_name }}"
+         onerror="this.style.display='none'">
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

@@ -1992,6 +1992,161 @@ def download_weekly_anchors_zip(
     )
 
 
+@router.get("/download-listing-covers-square-zip")
+def download_listing_covers_square_zip(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Render all 23 Gumroad listing covers at 1200x1200 PNG with food photo backgrounds.
+
+    Queries the database for one representative recipe image per theme, then renders
+    the square cover template (listing_cover_square.html) for all products:
+      - 10 theme packs       →  theme-pack--{slug}.png
+      - 10 weekly anchors    →  weekly-anchor--{slug}.png
+      - 3 cross-theme bundles →  bundle--{slug}.png
+
+    Uses a single Playwright browser session for all 23 renders (~60s).
+    """
+    import io
+    import os
+    import zipfile
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+    from app.db.models import RawRecipe
+    from app.themes import ACTIVE_THEMES
+
+    _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+    _COVER_THEMES = [
+        {"slug": "asian-kitchen",    "name": "Asian Kitchen",    "tagline": "Bold, fragrant flavours from across Asia.",                              "accent_color": "#c2522a", "cuisines": ("Asian", "Chinese", "Japanese", "Korean", "Thai", "Vietnamese", "Filipino", "Indian")},
+        {"slug": "mexican-fiesta",   "name": "Mexican Fiesta",   "tagline": "Vibrant, bold, and made for sharing.",                                   "accent_color": "#2a8a3a", "cuisines": ("Mexican", "Tex-Mex", "Latin")},
+        {"slug": "light-and-fresh",  "name": "Light & Fresh",    "tagline": "Clean, nourishing meals that don't feel like a compromise.",              "accent_color": "#4a8a5a", "cuisines": ()},
+        {"slug": "quick-cook",       "name": "Quick Cook",       "tagline": "Dinner on the table in 30 minutes or less.",                             "accent_color": "#d4762a", "cuisines": ()},
+        {"slug": "comfort-food",     "name": "Comfort Food",     "tagline": "Hearty, warming dishes that feel like a hug.",                           "accent_color": "#8b4a2a", "cuisines": ()},
+        {"slug": "mediterranean",    "name": "Mediterranean",    "tagline": "Sun-drenched flavours from the shores of the Mediterranean.",             "accent_color": "#2a6b9c", "cuisines": ("Mediterranean", "Greek", "Spanish", "Turkish", "Moroccan", "Lebanese")},
+        {"slug": "italian-classics", "name": "Italian Classics", "tagline": "Timeless Italian recipes done properly.",                                 "accent_color": "#8b2a2a", "cuisines": ("Italian",)},
+        {"slug": "middle-eastern",   "name": "Middle Eastern",   "tagline": "Ancient spices, vibrant flavours, generous tables.",                     "accent_color": "#c4823a", "cuisines": ("Middle Eastern", "Lebanese", "Persian", "Turkish", "Israeli", "Moroccan", "Egyptian")},
+        {"slug": "high-protein",     "name": "High Protein",     "tagline": "Fuel your body without compromising on flavour.",                        "accent_color": "#4a6b8a", "cuisines": ()},
+        {"slug": "one-pan",          "name": "One Pan",          "tagline": "Maximum flavour, minimal washing up.",                                   "accent_color": "#7a5a3a", "cuisines": ()},
+    ]
+
+    _COVER_BUNDLES = [
+        {"slug": "world-flavours",       "name": "World Flavours",       "accent_color": "#c4823a", "bundle_themes": ["Asian Kitchen", "Mexican Fiesta", "Middle Eastern"], "source_slug": "asian-kitchen"},
+        {"slug": "weeknight-essentials", "name": "Weeknight Essentials", "accent_color": "#d4762a", "bundle_themes": ["Quick Cook", "One Pan", "Comfort Food"],              "source_slug": "quick-cook"},
+        {"slug": "eat-smart",            "name": "Eat Smart",            "accent_color": "#4a8a5a", "bundle_themes": ["Light & Fresh", "High Protein", "Mediterranean"],     "source_slug": "light-and-fresh"},
+    ]
+
+    def _name_px(name: str) -> str:
+        n = len(name)
+        if n <= 8:  return "96px"
+        if n <= 12: return "80px"
+        if n <= 15: return "68px"
+        if n <= 18: return "58px"
+        return "48px"
+
+    def _fetch_image(cuisines: tuple) -> str | None:
+        base = db.query(RawRecipe.card_image_url).filter(
+            RawRecipe.card_image_url.isnot(None),
+            RawRecipe.card_image_url != "unavailable",
+            RawRecipe.card_image_url != "",
+        )
+        if cuisines:
+            row = base.filter(RawRecipe.cuisine.in_(cuisines)).first()
+            if row:
+                return row[0]
+        return (base.first() or (None,))[0]
+
+    # Pre-fetch one image URL per theme slug
+    image_by_slug: dict[str, str | None] = {}
+    for t in _COVER_THEMES:
+        image_by_slug[t["slug"]] = _fetch_image(t["cuisines"])
+
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+    tmpl = env.get_template("listing_cover_square.html")
+
+    launch_kwargs: dict = {}
+    ep = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    if not ep:
+        fallback = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+        if Path(fallback).exists():
+            ep = fallback
+    if ep:
+        launch_kwargs["executable_path"] = ep
+
+    zip_buf = io.BytesIO()
+
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page(viewport={"width": 1200, "height": 1200})
+
+        with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+
+            # Theme packs
+            for t in _COVER_THEMES:
+                ctx = {
+                    "accent_color":  t["accent_color"],
+                    "product_label": "Dinner Pack",
+                    "theme_name":    t["name"],
+                    "name_size":     _name_px(t["name"]),
+                    "tagline":       t["tagline"],
+                    "bundle_themes": [],
+                    "includes":      ["3 Recipe Cards", "Shopping List", "Pantry Guide"],
+                    "price":         "$6.99",
+                    "delivery_note": "Instant PDF\ndownload",
+                    "image_url":     image_by_slug.get(t["slug"]) or "",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"theme-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_square_zip: rendered theme-pack--%s", t["slug"])
+
+            # Weekly anchors
+            for t in _COVER_THEMES:
+                ctx = {
+                    "accent_color":  t["accent_color"],
+                    "product_label": "Weekly Anchor",
+                    "theme_name":    t["name"],
+                    "name_size":     _name_px(t["name"]),
+                    "tagline":       t["tagline"],
+                    "bundle_themes": [],
+                    "includes":      ["5 Recipe Cards", "Macro Guide", "Shopping List", "Pantry Guide"],
+                    "price":         "$12.99",
+                    "delivery_note": "Instant PDF\ndownload",
+                    "image_url":     image_by_slug.get(t["slug"]) or "",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"weekly-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_square_zip: rendered weekly-anchor--%s", t["slug"])
+
+            # Bundles
+            for b in _COVER_BUNDLES:
+                ctx = {
+                    "accent_color":  b["accent_color"],
+                    "product_label": "Bundle · 3 Dinner Packs",
+                    "theme_name":    b["name"],
+                    "name_size":     _name_px(b["name"]),
+                    "tagline":       "",
+                    "bundle_themes": b["bundle_themes"],
+                    "includes":      ["9 Recipe Cards", "3 Shopping Lists", "Pantry Guides"],
+                    "price":         "$19.99",
+                    "delivery_note": "Instant ZIP\ndownload",
+                    "image_url":     image_by_slug.get(b["source_slug"]) or "",
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(f"bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_square_zip: rendered bundle--%s", b["slug"])
+
+        browser.close()
+
+    logger.info("download_listing_covers_square_zip: all 23 covers rendered (%d bytes)", len(zip_buf.getvalue()))
+    return Response(
+        content=zip_buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=listing-covers-1200x1200.zip"},
+    )
+
+
 @router.get("/listing-copy")
 def download_listing_copy(
     _: None = Depends(_require_cron_secret),
