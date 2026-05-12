@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 1200px;
+  height: 1200px;
+  overflow: hidden;
+  background: #fffdf8;
+  font-family: 'Lora', Georgia, serif;
+}
+
+.cover {
+  width: 1200px;
+  height: 1200px;
+  display: flex;
+  border-left: 12px solid {{ accent_color }};
+}
+
+/* ── LEFT PANEL ─────────────────────────────────────────── */
+.left {
+  flex: 0 0 508px;
+  background: #fffdf8;
+  display: flex;
+  flex-direction: column;
+  padding: 52px 48px 48px 50px;
+  position: relative;
+}
+
+.left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, #b8a898 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.055;
+  pointer-events: none;
+}
+
+/* ── RIGHT PANEL ────────────────────────────────────────── */
+.right {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: {{ accent_color }}18;
+}
+
+.food-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.right::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(255,253,248,0.24) 0%, transparent 18%);
+  pointer-events: none;
+}
+
+/* ── BRAND ──────────────────────────────────────────────── */
+.brand {
+  position: relative;
+  z-index: 1;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: #c0b4a4;
+  flex-shrink: 0;
+}
+
+/* ── CENTRE BLOCK ───────────────────────────────────────── */
+.centre {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.product-label {
+  font-family: 'Lora', serif;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  margin-bottom: 18px;
+}
+
+.theme-name {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: {{ name_size | default('100px') }};
+  line-height: 0.92;
+  color: #1e1a14;
+  letter-spacing: -0.025em;
+  margin-bottom: 26px;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.tagline {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 19px;
+  color: #7a6a58;
+  line-height: 1.55;
+}
+
+.bundle-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bundle-chip {
+  font-family: 'Lora', serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  border-left: 2.5px solid {{ accent_color }};
+  padding-left: 11px;
+  opacity: 0.82;
+}
+
+/* ── BOTTOM BLOCK ────────────────────────────────────────── */
+.bottom {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.bottom-rule {
+  width: 100%;
+  height: 1px;
+  background: #ddd5c8;
+  margin-bottom: 18px;
+}
+
+.includes-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.includes-pill {
+  font-family: 'Lora', serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #5a4f40;
+  background: #ede9e1;
+  border-radius: 40px;
+  padding: 6px 14px;
+}
+
+.includes-sep {
+  color: #c8bfb4;
+  font-size: 12px;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.price {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 44px;
+  color: {{ accent_color }};
+  line-height: 1;
+}
+
+.delivery {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: #a89e90;
+  text-align: right;
+  line-height: 1.45;
+}
+</style>
+</head>
+<body>
+<div class="cover">
+
+  <div class="left">
+    <div class="brand">MealEngine</div>
+
+    <div class="centre">
+      <div class="product-label">&#10022; &nbsp; {{ product_label }} &nbsp; &#10022;</div>
+      <div class="theme-name">{{ theme_name }}</div>
+
+      {% if bundle_themes %}
+      <div class="bundle-chips">
+        {% for t in bundle_themes %}
+        <span class="bundle-chip">{{ t }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="tagline">{{ tagline }}</div>
+      {% endif %}
+    </div>
+
+    <div class="bottom">
+      <div class="bottom-rule"></div>
+      <div class="includes-bar">
+        {% for item in includes %}
+        <span class="includes-pill">{{ item }}</span>
+        {% if not loop.last %}<span class="includes-sep">&middot;</span>{% endif %}
+        {% endfor %}
+      </div>
+      <div class="price-row">
+        <div class="price">{{ price }}</div>
+        <div class="delivery">{{ delivery_note }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    {% if image_url %}
+    <img class="food-img" src="{{ image_url }}" alt="{{ theme_name }}"
+         onerror="this.style.display='none'">
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

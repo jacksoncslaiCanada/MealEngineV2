@@ -1992,19 +1992,19 @@ def download_weekly_anchors_zip(
     )
 
 
-@router.get("/download-listing-covers-square-zip")
-def download_listing_covers_square_zip(
+@router.get("/download-listing-thumbnails-zip")
+def download_listing_thumbnails_zip(
     db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
     """
-    Render all 23 Gumroad listing covers at 1200x1200 PNG with food photo backgrounds.
+    Render all 23 Gumroad listing thumbnails at 1200x1200 PNG with food photo backgrounds.
 
     Queries the database for one representative recipe image per theme, then renders
-    the square cover template (listing_cover_square.html) for all products:
-      - 10 theme packs       →  theme-pack--{slug}.png
-      - 10 weekly anchors    →  weekly-anchor--{slug}.png
-      - 3 cross-theme bundles →  bundle--{slug}.png
+    the thumbnail template (listing_thumbnail.html) for all products:
+      - 10 theme packs       →  thumbnail-pack--{slug}.png
+      - 10 weekly anchors    →  thumbnail-anchor--{slug}.png
+      - 3 cross-theme bundles →  thumbnail-bundle--{slug}.png
 
     Uses a single Playwright browser session for all 23 renders (~60s).
     """
@@ -2063,7 +2063,7 @@ def download_listing_covers_square_zip(
         image_by_slug[t["slug"]] = _fetch_image(t["cuisines"])
 
     env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
-    tmpl = env.get_template("listing_cover_square.html")
+    tmpl = env.get_template("listing_thumbnail.html")
 
     launch_kwargs: dict = {}
     ep = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
@@ -2098,8 +2098,8 @@ def download_listing_covers_square_zip(
                     "image_url":     image_by_slug.get(t["slug"]) or "",
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
-                zf.writestr(f"theme-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
-                logger.info("download_listing_covers_square_zip: rendered theme-pack--%s", t["slug"])
+                zf.writestr(f"thumbnail-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_thumbnails_zip: rendered thumbnail-pack--%s", t["slug"])
 
             # Weekly anchors
             for t in _COVER_THEMES:
@@ -2116,8 +2116,8 @@ def download_listing_covers_square_zip(
                     "image_url":     image_by_slug.get(t["slug"]) or "",
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
-                zf.writestr(f"weekly-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
-                logger.info("download_listing_covers_square_zip: rendered weekly-anchor--%s", t["slug"])
+                zf.writestr(f"thumbnail-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_thumbnails_zip: rendered thumbnail-anchor--%s", t["slug"])
 
             # Bundles
             for b in _COVER_BUNDLES:
@@ -2134,16 +2134,16 @@ def download_listing_covers_square_zip(
                     "image_url":     image_by_slug.get(b["source_slug"]) or "",
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
-                zf.writestr(f"bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
-                logger.info("download_listing_covers_square_zip: rendered bundle--%s", b["slug"])
+                zf.writestr(f"thumbnail-bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_thumbnails_zip: rendered thumbnail-bundle--%s", b["slug"])
 
         browser.close()
 
-    logger.info("download_listing_covers_square_zip: all 23 covers rendered (%d bytes)", len(zip_buf.getvalue()))
+    logger.info("download_listing_thumbnails_zip: all 23 thumbnails rendered (%d bytes)", len(zip_buf.getvalue()))
     return Response(
         content=zip_buf.getvalue(),
         media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=listing-covers-1200x1200.zip"},
+        headers={"Content-Disposition": "attachment; filename=listing-thumbnails.zip"},
     )
 
 
