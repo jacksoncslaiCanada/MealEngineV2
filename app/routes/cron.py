@@ -2815,3 +2815,58 @@ def generate_all(
         "weekly_anchors_ok": ok_weekly_anchors,
         "results": results,
     }
+
+
+@router.post("/test-purchase-delivery")
+def test_purchase_delivery(
+    email: str,
+    permalink: str,
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Simulate a Gumroad purchase and send the delivery email — without touching
+    the gumroad_sales table or requiring a real sale.
+
+    Use this to verify the full pipeline (Supabase PDF fetch → Resend email)
+    before your first real customer arrives.
+
+    Example:
+        POST /internal/test-purchase-delivery
+             ?email=you@example.com&permalink=asian_theme
+        Header: X-Cron-Secret: <your secret>
+
+    Valid permalinks: asian_theme, mexican_theme, lightfresh_theme,
+                      quickcook_theme, comfort_theme, mediterranean_theme,
+                      italian_theme, middleeastern_theme, highprotein_theme,
+                      onepan_theme
+    """
+    from app.email_sender import send_purchase_email
+    from app.routes.webhooks import _THEME_PACK_PRODUCTS, _fetch_pdf_from_supabase
+
+    product = _THEME_PACK_PRODUCTS.get(permalink)
+    if not product:
+        raise HTTPException(
+            400,
+            f"Unknown permalink '{permalink}'. Valid options: {', '.join(_THEME_PACK_PRODUCTS)}",
+        )
+
+    try:
+        pdf_bytes = _fetch_pdf_from_supabase(product["pdf_path"])
+    except Exception as exc:
+        raise HTTPException(502, f"Failed to fetch PDF from Supabase: {exc}") from exc
+
+    delivered = send_purchase_email(
+        to_email=email,
+        product_name=product["name"],
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"mealengine-{product['slug']}.pdf",
+    )
+
+    return {
+        "status": "ok" if delivered else "email_failed",
+        "email": email,
+        "product": product["name"],
+        "pdf_path": product["pdf_path"],
+        "pdf_bytes": len(pdf_bytes),
+        "delivered": delivered,
+    }
