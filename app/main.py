@@ -21,6 +21,7 @@ from app.routes.plans import router as plans_router
 from app.routes.recipes import router as recipes_router
 from app.routes.subscribe import router as subscribe_router
 from app.routes.ui import router as ui_router
+from app.routes.webhooks import router as webhooks_router
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ app.include_router(plans_router)
 app.include_router(subscribe_router)
 app.include_router(ui_router)
 app.include_router(cron_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/", include_in_schema=False)

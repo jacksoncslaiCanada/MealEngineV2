@@ -140,6 +140,23 @@ class Subscriber(Base):
     )
 
 
+class GumroadSale(Base):
+    """Record of every processed Gumroad purchase webhook — prevents double delivery."""
+
+    __tablename__ = "gumroad_sales"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    order_id: Mapped[str] = mapped_column(String(256), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(256), nullable=False)
+    product_permalink: Mapped[str] = mapped_column(String(256), nullable=False)
+    pdf_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class RecipeComponent(Base):
     """A named meal component (base/flavor/protein) — powers the Blueprint card view."""
 
