@@ -182,6 +182,80 @@ def send_welcome_email(
         return False
 
 
+def send_purchase_email(
+    *,
+    to_email: str,
+    product_name: str,
+    pdf_bytes: bytes,
+    pdf_filename: str,
+) -> bool:
+    """Send a one-shot delivery email after a Gumroad purchase.
+
+    Attaches the purchased PDF and includes brief instructions for getting
+    the most out of the pack.
+    """
+    if not settings.resend_api_key:
+        logger.warning("email_sender: RESEND_API_KEY not set — skipping purchase email to %s", to_email)
+        return False
+
+    subject = f"Your MealEngine pack is here — {product_name}"
+
+    html_body = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1f2937;">
+      <h2 style="margin-bottom:4px;">Your pack is attached.</h2>
+      <p style="color:#6b7280;margin-top:0;">MealEngine &middot; {product_name}</p>
+      <p>
+        Your recipe pack is attached to this email as a PDF.
+        Open it on your phone or print it out &mdash; either works well in the kitchen.
+      </p>
+      <p style="margin-top:16px;">
+        <strong>Getting started:</strong> flip to the shopping list first.
+        It&rsquo;s sorted by supermarket aisle so you can do the whole shop in one pass.
+      </p>
+      <p style="margin-top:16px;color:#6b7280;font-size:13px;">
+        Enjoying it? The full collection of dinner packs is at
+        <a href="https://mealengine.gumroad.com" style="color:#1f2937;">mealengine.gumroad.com</a>.
+      </p>
+      <p style="color:#9ca3af;font-size:11px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:12px;">
+        MealEngine &middot; mealengine.ca<br>
+        You&rsquo;re receiving this because you purchased a MealEngine dinner pack.
+        Reply to this email if you need anything.
+      </p>
+    </div>
+    """
+
+    import base64
+    payload = {
+        "from": f"MealEngine <{settings.email_from}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+        "attachments": [
+            {
+                "filename": pdf_filename,
+                "content": base64.b64encode(pdf_bytes).decode(),
+            }
+        ],
+    }
+
+    try:
+        resp = httpx.post(
+            _RESEND_URL,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json=payload,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        logger.info("email_sender: sent purchase email to %s (%s)", to_email, product_name)
+        return True
+    except httpx.HTTPStatusError as exc:
+        logger.error("email_sender: purchase email error %s — %s", exc.response.status_code, exc.response.text)
+        return False
+    except Exception as exc:
+        logger.error("email_sender: purchase email failed for %s — %s", to_email, exc)
+        return False
+
+
 def send_conversion_email(
     *,
     to_email: str,

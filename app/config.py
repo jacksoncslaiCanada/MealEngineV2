@@ -34,8 +34,7 @@ class Settings(BaseSettings):
 
     # Gumroad
     gumroad_access_token: str = ""
-    gumroad_product_little_ones: str = ""   # product ID from Gumroad listing URL
-    gumroad_product_teen_table: str = ""    # product ID from Gumroad listing URL
+    gumroad_webhook_token: str = ""         # set in Railway; include as ?token= in Gumroad ping URL
 
     # Supabase Storage
     supabase_url: str = ""
