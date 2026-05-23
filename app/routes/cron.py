@@ -1994,7 +1994,6 @@ def download_weekly_anchors_zip(
 
 @router.get("/download-listing-thumbnails-zip")
 def download_listing_thumbnails_zip(
-    db: Session = Depends(get_db),
     _: None = Depends(_require_cron_secret),
 ):
     """
@@ -2013,22 +2012,20 @@ def download_listing_thumbnails_zip(
     import zipfile
     from pathlib import Path
     from jinja2 import Environment, FileSystemLoader
-    from app.db.models import RawRecipe
-    from app.themes import ACTIVE_THEMES
 
     _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
     _COVER_THEMES = [
-        {"slug": "asian-kitchen",    "name": "Asian Kitchen",    "tagline": "Bold, fragrant flavours from across Asia.",                              "accent_color": "#c2522a", "cuisines": ("Asian", "Chinese", "Japanese", "Korean", "Thai", "Vietnamese", "Filipino", "Indian")},
-        {"slug": "mexican-fiesta",   "name": "Mexican Fiesta",   "tagline": "Vibrant, bold, and made for sharing.",                                   "accent_color": "#2a8a3a", "cuisines": ("Mexican", "Tex-Mex", "Latin")},
-        {"slug": "light-and-fresh",  "name": "Light & Fresh",    "tagline": "Clean, nourishing meals that don't feel like a compromise.",              "accent_color": "#4a8a5a", "cuisines": ()},
-        {"slug": "quick-cook",       "name": "Quick Cook",       "tagline": "Dinner on the table in 30 minutes or less.",                             "accent_color": "#d4762a", "cuisines": ()},
-        {"slug": "comfort-food",     "name": "Comfort Food",     "tagline": "Hearty, warming dishes that feel like a hug.",                           "accent_color": "#8b4a2a", "cuisines": ()},
-        {"slug": "mediterranean",    "name": "Mediterranean",    "tagline": "Sun-drenched flavours from the shores of the Mediterranean.",             "accent_color": "#2a6b9c", "cuisines": ("Mediterranean", "Greek", "Spanish", "Turkish", "Moroccan", "Lebanese")},
-        {"slug": "italian-classics", "name": "Italian Classics", "tagline": "Timeless Italian recipes done properly.",                                 "accent_color": "#8b2a2a", "cuisines": ("Italian",)},
-        {"slug": "middle-eastern",   "name": "Middle Eastern",   "tagline": "Ancient spices, vibrant flavours, generous tables.",                     "accent_color": "#c4823a", "cuisines": ("Middle Eastern", "Lebanese", "Persian", "Turkish", "Israeli", "Moroccan", "Egyptian")},
-        {"slug": "high-protein",     "name": "High Protein",     "tagline": "Fuel your body without compromising on flavour.",                        "accent_color": "#4a6b8a", "cuisines": ()},
-        {"slug": "one-pan",          "name": "One Pan",          "tagline": "Maximum flavour, minimal washing up.",                                   "accent_color": "#7a5a3a", "cuisines": ()},
+        {"slug": "asian-kitchen",    "name": "Asian Kitchen",    "tagline": "Bold, fragrant flavours from across Asia.",                              "accent_color": "#c2522a"},
+        {"slug": "mexican-fiesta",   "name": "Mexican Fiesta",   "tagline": "Vibrant, bold, and made for sharing.",                                   "accent_color": "#2a8a3a"},
+        {"slug": "light-and-fresh",  "name": "Light & Fresh",    "tagline": "Clean, nourishing meals that don't feel like a compromise.",              "accent_color": "#4a8a5a"},
+        {"slug": "quick-cook",       "name": "Quick Cook",       "tagline": "Dinner on the table in 30 minutes or less.",                             "accent_color": "#d4762a"},
+        {"slug": "comfort-food",     "name": "Comfort Food",     "tagline": "Hearty, warming dishes that feel like a hug.",                           "accent_color": "#8b4a2a"},
+        {"slug": "mediterranean",    "name": "Mediterranean",    "tagline": "Sun-drenched flavours from the shores of the Mediterranean.",             "accent_color": "#2a6b9c"},
+        {"slug": "italian-classics", "name": "Italian Classics", "tagline": "Timeless Italian recipes done properly.",                                 "accent_color": "#8b2a2a"},
+        {"slug": "middle-eastern",   "name": "Middle Eastern",   "tagline": "Ancient spices, vibrant flavours, generous tables.",                     "accent_color": "#c4823a"},
+        {"slug": "high-protein",     "name": "High Protein",     "tagline": "Fuel your body without compromising on flavour.",                        "accent_color": "#4a6b8a"},
+        {"slug": "one-pan",          "name": "One Pan",          "tagline": "Maximum flavour, minimal washing up.",                                   "accent_color": "#7a5a3a"},
     ]
 
     _COVER_BUNDLES = [
@@ -2045,22 +2042,14 @@ def download_listing_thumbnails_zip(
         if n <= 18: return "58px"
         return "48px"
 
-    def _fetch_image(cuisines: tuple) -> str | None:
-        base = db.query(RawRecipe.card_image_url).filter(
-            RawRecipe.card_image_url.isnot(None),
-            RawRecipe.card_image_url != "unavailable",
-            RawRecipe.card_image_url != "",
-        )
-        if cuisines:
-            row = base.filter(RawRecipe.cuisine.in_(cuisines)).first()
-            if row:
-                return row[0]
-        return (base.first() or (None,))[0]
-
-    # Pre-fetch one image URL per theme slug
-    image_by_slug: dict[str, str | None] = {}
-    for t in _COVER_THEMES:
-        image_by_slug[t["slug"]] = _fetch_image(t["cuisines"])
+    # Use the same AI images generated by /internal/generate-ai-cover-images
+    _ai_base = (
+        f"{settings.supabase_url}/storage/v1/object/public/"
+        f"{settings.supabase_images_bucket}/cover-images"
+        if settings.supabase_url else ""
+    )
+    def _ai_image_url(slug: str) -> str:
+        return f"{_ai_base}/{slug}.webp" if _ai_base else ""
 
     env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
     tmpl = env.get_template("listing_thumbnail.html")
@@ -2095,7 +2084,7 @@ def download_listing_thumbnails_zip(
                     "includes":      ["3 Recipe Cards", "Shopping List", "Pantry Guide"],
                     "price":         "$6.99",
                     "delivery_note": "Instant PDF\ndownload",
-                    "image_url":     image_by_slug.get(t["slug"]) or "",
+                    "image_url":     _ai_image_url(t["slug"]),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"thumbnail-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
@@ -2113,7 +2102,7 @@ def download_listing_thumbnails_zip(
                     "includes":      ["5 Recipe Cards", "Macro Guide", "Shopping List", "Pantry Guide"],
                     "price":         "$12.99",
                     "delivery_note": "Instant PDF\ndownload",
-                    "image_url":     image_by_slug.get(t["slug"]) or "",
+                    "image_url":     _ai_image_url(t["slug"]),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"thumbnail-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
@@ -2131,7 +2120,7 @@ def download_listing_thumbnails_zip(
                     "includes":      ["9 Recipe Cards", "3 Shopping Lists", "Pantry Guides"],
                     "price":         "$19.99",
                     "delivery_note": "Instant ZIP\ndownload",
-                    "image_url":     image_by_slug.get(b["source_slug"]) or "",
+                    "image_url":     _ai_image_url(b["source_slug"]),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"thumbnail-bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
