@@ -2340,7 +2340,9 @@ def generate_ai_cover_images(
             if not output:
                 raise RuntimeError("No output from Flux")
 
-            img_resp = _httpx.get(str(output[0]), timeout=30)
+            # Flux 1.1 Pro returns a plain string URL; Schnell returns a list
+            image_url = output if isinstance(output, str) else str(output[0])
+            img_resp = _httpx.get(image_url, timeout=30)
             img_resp.raise_for_status()
             image_bytes = img_resp.content
 
