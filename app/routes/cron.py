@@ -2171,6 +2171,195 @@ def download_listing_copy(
     )
 
 
+@router.post("/generate-ai-cover-images")
+def generate_ai_cover_images(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate AI food photography for all 10 theme packs using Flux 1.1 Pro,
+    then upload each image to Supabase Storage under cover-images/{slug}.webp.
+
+    These images are used as the full-bleed background in listing_cover.html
+    and listing_thumbnail.html. Run once; re-run to regenerate any theme.
+
+    Requires REPLICATE_API_KEY to be set in Railway environment variables.
+    Each image costs ~$0.04 (Flux 1.1 Pro). Total: ~$0.40 for all 10.
+    """
+    from app.storage import upload_cover_image
+    import httpx as _httpx
+    import time as _time
+
+    if not settings.replicate_api_key:
+        raise HTTPException(400, "REPLICATE_API_KEY not set in environment")
+
+    _COVER_IMAGE_PROMPTS: dict[str, str] = {
+        "asian-kitchen": (
+            "Professional food photography, bright editorial style. A bowl of fragrant "
+            "Asian noodle soup or stir-fry with glossy sauce in a wide dark ceramic bowl, "
+            "centred on a white marble countertop. Crisp natural window light from the left "
+            "casting soft shadows. Beside the bowl: wooden chopsticks on a ceramic rest, a "
+            "small ceramic bowl of sesame seeds, a few spring onion pieces scattered. "
+            "Shallow depth of field, background softly blurred. Clean, uncluttered. "
+            "Bon Appetit magazine quality."
+        ),
+        "mexican-fiesta": (
+            "Professional food photography, bright editorial style. Two vibrant tacos on a "
+            "handmade ceramic plate, centred on a pale oak wooden countertop. Crisp natural "
+            "window light from the left. Beside the plate: a halved lime, a small bunch of "
+            "fresh cilantro, a wooden board with a chef's knife. Shallow depth of field. "
+            "Clean, colourful, uncluttered. Bon Appetit magazine quality."
+        ),
+        "light-and-fresh": (
+            "Professional food photography, bright editorial style. A wide shallow bowl of "
+            "colourful grain salad with fresh vegetables and herbs, centred on a white marble "
+            "countertop. Crisp natural window light from the left. Beside the bowl: a wooden "
+            "serving spoon resting on the surface, a small glass jar of dressing, a few loose "
+            "herb sprigs. Shallow depth of field. Bright, airy, clean. "
+            "Bon Appetit magazine quality."
+        ),
+        "quick-cook": (
+            "Professional food photography, bright editorial style. A simple elegantly plated "
+            "pasta dish in a wide white bowl, centred on a pale oak wooden countertop. Crisp "
+            "natural window light from the left. Beside the bowl: a wooden spoon resting on "
+            "the surface, a small bunch of fresh flat-leaf parsley, a halved lemon. Shallow "
+            "depth of field. Unfussy, clean, warm. Bon Appetit magazine quality."
+        ),
+        "comfort-food": (
+            "Professional food photography, bright editorial style. A generous portion of "
+            "hearty casserole in a rustic ceramic bowl, centred on a white marble countertop. "
+            "Crisp natural window light from the left. Beside the bowl: a worn wooden serving "
+            "spoon on a small dish, a folded cream linen napkin, a sprig of fresh thyme. "
+            "Shallow depth of field. Warm but clean. Bon Appetit magazine quality."
+        ),
+        "mediterranean": (
+            "Professional food photography, bright editorial style. A colourful Mediterranean "
+            "dish of roasted vegetables or grilled fish on a white ceramic plate, centred on a "
+            "white marble countertop. Crisp natural window light from the left. Beside the "
+            "plate: a small olive oil pourer, a halved lemon, fresh herbs scattered. Shallow "
+            "depth of field. Bright, sun-drenched, clean. Bon Appetit magazine quality."
+        ),
+        "italian-classics": (
+            "Professional food photography, bright editorial style. A beautifully plated pasta "
+            "with fresh tomato sauce in a wide shallow white bowl, centred on a white marble "
+            "countertop. Crisp natural window light from the left. Beside the bowl: a small "
+            "wedge of parmesan and a microplane grater, fresh basil leaves scattered. Shallow "
+            "depth of field. Classic, clean, warm. Bon Appetit magazine quality."
+        ),
+        "middle-eastern": (
+            "Professional food photography, bright editorial style. A fragrant rice dish with "
+            "jewel-coloured toppings in a wide ceramic bowl, centred on a pale oak countertop. "
+            "Crisp natural window light from the left. Beside the bowl: a small dish of mixed "
+            "spices, scattered pomegranate seeds, a few mint leaves. Shallow depth of field. "
+            "Warm tones, clean surface. Bon Appetit magazine quality."
+        ),
+        "high-protein": (
+            "Professional food photography, bright editorial style. A perfectly grilled chicken "
+            "breast or seared salmon fillet on a white ceramic plate, centred on a white marble "
+            "countertop. Crisp natural window light from the left. Beside the plate: a chef's "
+            "knife on a small wooden board, a halved lemon, a small bowl of fresh seasoning. "
+            "Shallow depth of field. Precise, clean, modern. Bon Appetit magazine quality."
+        ),
+        "one-pan": (
+            "Professional food photography, bright editorial style. A hearty one-pan roast with "
+            "golden chicken thighs and roasted vegetables in a matte black cast iron skillet, "
+            "centred on a pale oak wooden countertop. Crisp natural window light from the left. "
+            "Beside the skillet: a wooden spatula resting against the handle, scattered fresh "
+            "thyme, a folded kitchen cloth. Shallow depth of field. Hearty but clean. "
+            "Bon Appetit magazine quality."
+        ),
+    }
+
+    results: dict[str, dict] = {}
+
+    for slug, prompt in _COVER_IMAGE_PROMPTS.items():
+        logger.info("generate_ai_cover_images: generating %s", slug)
+        try:
+            # Use Flux 1.1 Pro for higher quality than Schnell
+            resp = _httpx.post(
+                "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+                headers={
+                    "Authorization": f"Bearer {settings.replicate_api_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "wait",
+                },
+                json={
+                    "input": {
+                        "prompt": prompt,
+                        "aspect_ratio": "16:9",
+                        "output_format": "webp",
+                        "output_quality": 95,
+                        "num_outputs": 1,
+                    }
+                },
+                timeout=120,
+            )
+
+            # Handle rate limiting
+            if resp.status_code == 429:
+                logger.info("generate_ai_cover_images: rate limited, waiting 20s")
+                _time.sleep(20)
+                resp = _httpx.post(
+                    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+                    headers={
+                        "Authorization": f"Bearer {settings.replicate_api_key}",
+                        "Content-Type": "application/json",
+                        "Prefer": "wait",
+                    },
+                    json={
+                        "input": {
+                            "prompt": prompt,
+                            "aspect_ratio": "16:9",
+                            "output_format": "webp",
+                            "output_quality": 95,
+                            "num_outputs": 1,
+                        }
+                    },
+                    timeout=120,
+                )
+
+            resp.raise_for_status()
+            data = resp.json()
+            output = data.get("output") or []
+
+            # Poll if Prefer:wait timed out
+            if not output and data.get("id"):
+                for _ in range(40):
+                    _time.sleep(3)
+                    poll = _httpx.get(
+                        f"https://api.replicate.com/v1/predictions/{data['id']}",
+                        headers={"Authorization": f"Bearer {settings.replicate_api_key}"},
+                        timeout=15,
+                    )
+                    poll_data = poll.json()
+                    if poll_data.get("status") == "succeeded":
+                        output = poll_data.get("output") or []
+                        break
+                    if poll_data.get("status") in ("failed", "canceled"):
+                        raise RuntimeError(f"Flux prediction {poll_data.get('status')}")
+
+            if not output:
+                raise RuntimeError("No output from Flux")
+
+            img_resp = _httpx.get(str(output[0]), timeout=30)
+            img_resp.raise_for_status()
+            image_bytes = img_resp.content
+
+            url = upload_cover_image(image_bytes, slug=slug)
+            results[slug] = {
+                "status": "ok",
+                "bytes": len(image_bytes),
+                "url": url,
+            }
+            logger.info("generate_ai_cover_images: %s done — %d bytes → %s", slug, len(image_bytes), url)
+
+        except Exception as exc:
+            logger.error("generate_ai_cover_images: %s failed — %s", slug, exc, exc_info=True)
+            results[slug] = {"status": "error", "detail": str(exc)}
+
+    ok = sum(1 for v in results.values() if v["status"] == "ok")
+    return {"generated": ok, "total": len(_COVER_IMAGE_PROMPTS), "results": results}
+
+
 @router.get("/download-listing-covers-zip")
 def download_listing_covers_zip(
     _: None = Depends(_require_cron_secret),
@@ -2219,6 +2408,22 @@ def download_listing_covers_zip(
         if n <= 14: return "104px"
         return "80px"
 
+    # Build AI cover image URL map from Supabase Storage
+    _ai_image_base = (
+        f"{settings.supabase_url}/storage/v1/object/public/"
+        f"{settings.supabase_storage_bucket}/cover-images"
+        if settings.supabase_url else ""
+    )
+    def _ai_image_url(slug: str) -> str:
+        return f"{_ai_image_base}/{slug}.webp" if _ai_image_base else ""
+
+    # Bundle covers use the first theme's image as background
+    _BUNDLE_SOURCE: dict[str, str] = {
+        "world-flavours":       "asian-kitchen",
+        "weeknight-essentials": "quick-cook",
+        "eat-smart":            "light-and-fresh",
+    }
+
     env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
     tmpl = env.get_template("listing_cover.html")
 
@@ -2242,53 +2447,48 @@ def download_listing_covers_zip(
             for t in _COVER_THEMES:
                 ctx = {
                     "accent_color":  t["accent_color"],
-                    "price":         "$6.99",
-                    "price_label":   "",
                     "product_label": "Dinner Pack",
                     "theme_name":    t["name"],
                     "name_size":     _name_px(t["name"]),
                     "tagline":       t["tagline"],
                     "bundle_themes": [],
                     "includes":      ["3 Recipe Cards", "Shopping List", "Pantry Guide"],
-                    "bottom_note":   "Instant PDF download — print or save to your phone",
-                    "right_note":    "Instant PDF download",
+                    "image_url":     _ai_image_url(t["slug"]),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"theme-pack--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_zip: rendered theme-pack--%s", t["slug"])
 
             for t in _COVER_THEMES:
                 ctx = {
                     "accent_color":  t["accent_color"],
-                    "price":         "$12.99",
-                    "price_label":   "",
                     "product_label": "Weekly Anchor",
                     "theme_name":    t["name"],
                     "name_size":     _name_px(t["name"]),
                     "tagline":       t["tagline"],
                     "bundle_themes": [],
                     "includes":      ["5 Recipe Cards", "Macro Guide", "Shopping List", "Pantry Guide"],
-                    "bottom_note":   "Instant PDF download — Mon–Fri fully planned",
-                    "right_note":    "Instant PDF download",
+                    "image_url":     _ai_image_url(t["slug"]),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"weekly-anchor--{t['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_zip: rendered weekly-anchor--%s", t["slug"])
 
             for b in _COVER_BUNDLES:
+                source_slug = _BUNDLE_SOURCE.get(b["slug"], b["slug"])
                 ctx = {
                     "accent_color":  b["accent_color"],
-                    "price":         "$19.99",
-                    "price_label":   "",
                     "product_label": "Bundle · 3 Dinner Packs",
                     "theme_name":    b["name"],
                     "name_size":     _name_px(b["name"]),
                     "tagline":       "",
                     "bundle_themes": b["bundle_themes"],
                     "includes":      ["9 Recipe Cards", "3 Shopping Lists", "Pantry Guides"],
-                    "bottom_note":   "Instant ZIP download — 3 complete packs",
-                    "right_note":    "Instant ZIP download",
+                    "image_url":     _ai_image_url(source_slug),
                 }
                 page.set_content(tmpl.render(**ctx), wait_until="networkidle")
                 zf.writestr(f"bundle--{b['slug']}.png", page.screenshot(full_page=False, type="png"))
+                logger.info("download_listing_covers_zip: rendered bundle--%s", b["slug"])
 
         browser.close()
 

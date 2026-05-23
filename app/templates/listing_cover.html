@@ -12,188 +12,123 @@ body {
   width: 1600px;
   height: 900px;
   overflow: hidden;
-  background: #fffdf8;
+  background: #1a1510;
   font-family: 'Lora', Georgia, serif;
 }
 
-/* ── OUTER WRAPPER ──────────────────────────────────────────── */
+/* ── FULL BLEED WRAPPER ─────────────────────────────────── */
 .cover {
   width: 1600px;
   height: 900px;
-  display: flex;
-  flex-direction: row;
-  border-top: 14px solid {{ accent_color }};
-}
-
-/* ── LEFT PANEL (text) ──────────────────────────────────────── */
-.left {
-  flex: 0 0 62%;
-  background: #fffdf8;
-  display: flex;
-  flex-direction: column;
-  padding: 52px 64px 48px 72px;
-  position: relative;
-}
-
-/* faint dot texture on left panel */
-.left::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, #b8a898 1px, transparent 1px);
-  background-size: 28px 28px;
-  opacity: 0.07;
-  pointer-events: none;
-}
-
-.left-inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* ── RIGHT PANEL (accent) ───────────────────────────────────── */
-.right {
-  flex: 0 0 38%;
-  background: {{ accent_color }};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   position: relative;
   overflow: hidden;
 }
 
-/* large decorative circle rings */
-.right::before {
-  content: '';
+/* ── BACKGROUND PHOTO ───────────────────────────────────── */
+.bg-photo {
   position: absolute;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
-  border: 80px solid rgba(255,255,255,0.08);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
-.right::after {
-  content: '';
+.bg-fallback {
   position: absolute;
-  width: 340px;
-  height: 340px;
-  border-radius: 50%;
-  border: 50px solid rgba(255,255,255,0.07);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  background: {{ accent_color }}18;
 }
 
-.right-inner {
-  position: relative;
-  z-index: 1;
+/* ── GRADIENT OVERLAY ───────────────────────────────────── */
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(8, 6, 4, 0.92) 0%,
+    rgba(8, 6, 4, 0.85) 22%,
+    rgba(8, 6, 4, 0.62) 42%,
+    rgba(8, 6, 4, 0.22) 60%,
+    rgba(8, 6, 4, 0.00) 72%
+  );
+}
+
+/* ── TEXT PANEL ─────────────────────────────────────────── */
+.text-panel {
+  position: absolute;
+  inset: 0;
+  width: 54%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 40px;
-  gap: 0;
+  padding: 52px 64px 48px 68px;
 }
 
-.price-label {
-  font-family: 'Lora', serif;
-  font-size: 16px;
-  letter-spacing: 0.34em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.65);
-  margin-bottom: 10px;
-}
-
-.price-amount {
-  font-family: 'Playfair Display', serif;
-  font-weight: 900;
-  font-size: 96px;
-  line-height: 1;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-
-.price-divider {
-  width: 48px;
-  height: 2px;
-  background: rgba(255,255,255,0.35);
-  margin: 28px auto;
-}
-
-.delivery-note {
-  font-family: 'Lora', serif;
-  font-style: italic;
-  font-size: 18px;
-  color: rgba(255,255,255,0.72);
-  line-height: 1.5;
-}
-
-/* ── BRAND ROW ─────────────────────────────────────────────── */
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: auto;
-}
-
+/* ── BRAND ──────────────────────────────────────────────── */
 .brand {
   font-family: 'Playfair Display', serif;
   font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.38em;
+  font-size: 13px;
+  letter-spacing: 0.44em;
   text-transform: uppercase;
-  color: #b8ad9e;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
 }
 
-/* ── CENTRE TEXT BLOCK ─────────────────────────────────────── */
-.centre-block {
+/* ── CENTRE BLOCK ───────────────────────────────────────── */
+.centre {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 32px 0 24px;
+  gap: 22px;
 }
 
 .product-label {
   font-family: 'Lora', serif;
-  font-size: 16px;
-  letter-spacing: 0.38em;
+  font-size: 12px;
+  letter-spacing: 0.40em;
   text-transform: uppercase;
-  color: {{ accent_color }};
-  margin-bottom: 22px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.accent-line {
+  width: 3px;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  border-radius: 2px;
 }
 
 .theme-name {
   font-family: 'Playfair Display', serif;
   font-weight: 900;
-  font-size: {{ name_size | default('130px') }};
-  line-height: 0.95;
-  color: #1e1a14;
-  letter-spacing: -0.02em;
-  margin-bottom: 28px;
+  font-size: {{ name_size | default('118px') }};
+  line-height: 0.93;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .tagline {
   font-family: 'Lora', serif;
   font-style: italic;
-  font-size: 26px;
-  color: #7a6a58;
+  font-size: 21px;
+  color: rgba(255, 255, 255, 0.68);
   line-height: 1.5;
-  max-width: 680px;
+  max-width: 440px;
 }
 
-/* bundle chips shown instead of tagline */
 .bundle-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -203,99 +138,90 @@ body {
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: {{ accent_color }};
-  border: 1.5px solid {{ accent_color }};
-  border-radius: 3px;
-  padding: 7px 18px;
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.78);
+  border-left: 2.5px solid {{ accent_color }};
+  padding-left: 14px;
 }
 
-/* ── INCLUDES BAR ─────────────────────────────────────────── */
-.bottom-block {
+/* ── BOTTOM BAR ─────────────────────────────────────────── */
+.bottom {
   flex-shrink: 0;
-  padding-top: 28px;
-  border-top: 1px solid #ddd5c8;
+}
+
+.bottom-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  margin-bottom: 18px;
 }
 
 .includes-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
 }
 
 .includes-pill {
   font-family: 'Lora', serif;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: #5a4f40;
-  background: #ede9e1;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.11);
   border-radius: 40px;
-  padding: 8px 20px;
+  padding: 7px 18px;
 }
 
 .includes-sep {
-  color: #c8bfb4;
-  font-size: 16px;
-}
-
-.footer-note {
-  font-family: 'Lora', serif;
-  font-style: italic;
-  font-size: 15px;
-  color: #a89e90;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 12px;
 }
 </style>
 </head>
 <body>
 <div class="cover">
 
-  <!-- LEFT PANEL -->
-  <div class="left">
-    <div class="left-inner">
+  {% if image_url %}
+  <img class="bg-photo" src="{{ image_url }}" alt="{{ theme_name }}"
+       onerror="this.style.display='none'">
+  {% else %}
+  <div class="bg-fallback"></div>
+  {% endif %}
 
-      <div class="brand-row">
-        <span class="brand">MealEngine</span>
-      </div>
+  <div class="gradient"></div>
 
-      <div class="centre-block">
-        <div class="product-label">&#10022; &nbsp; {{ product_label }} &nbsp; &#10022;</div>
+  <div class="text-panel">
+    <div class="brand">MealEngine</div>
+
+    <div class="centre">
+      <div class="product-label">&#10022; &nbsp; {{ product_label }} &nbsp; &#10022;</div>
+
+      <div class="name-row">
+        <div class="accent-line"></div>
         <div class="theme-name">{{ theme_name }}</div>
-
-        {% if bundle_themes %}
-        <div class="bundle-chips">
-          {% for t in bundle_themes %}
-          <span class="bundle-chip">{{ t }}</span>
-          {% endfor %}
-        </div>
-        {% else %}
-        <div class="tagline">{{ tagline }}</div>
-        {% endif %}
       </div>
 
-      <div class="bottom-block">
-        <div class="includes-bar">
-          {% for item in includes %}
-          <span class="includes-pill">{{ item }}</span>
-          {% if not loop.last %}<span class="includes-sep">&middot;</span>{% endif %}
-          {% endfor %}
-        </div>
-        <div class="footer-note">{{ bottom_note }}</div>
+      {% if bundle_themes %}
+      <div class="bundle-chips">
+        {% for t in bundle_themes %}
+        <span class="bundle-chip">{{ t }}</span>
+        {% endfor %}
       </div>
-
+      {% else %}
+      <div class="tagline">{{ tagline }}</div>
+      {% endif %}
     </div>
-  </div>
 
-  <!-- RIGHT PANEL -->
-  <div class="right">
-    <div class="right-inner">
-      {% if price_label %}<div class="price-label">{{ price_label }}</div>{% endif %}
-      <div class="price-amount">{{ price }}</div>
-      <div class="price-divider"></div>
-      <div class="delivery-note">{{ right_note }}</div>
+    <div class="bottom">
+      <div class="bottom-rule"></div>
+      <div class="includes-bar">
+        {% for item in includes %}
+        <span class="includes-pill">{{ item }}</span>
+        {% if not loop.last %}<span class="includes-sep">&middot;</span>{% endif %}
+        {% endfor %}
+      </div>
     </div>
   </div>
 

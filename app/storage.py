@@ -45,6 +45,12 @@ def upload_image(image_bytes: bytes, *, filename: str, content_type: str = "imag
         return None
 
 
+def upload_cover_image(image_bytes: bytes, *, slug: str) -> str | None:
+    """Upload an AI-generated cover image to Supabase Storage. Returns public URL or None."""
+    filename = f"cover-images/{slug}.webp"
+    return upload_image(image_bytes, filename=filename, content_type="image/webp")
+
+
 def upload_theme_pdf(pdf_bytes: bytes, *, slug: str) -> str | None:
     """Upload a theme pack PDF to Supabase Storage. Returns the public URL or None."""
     if not settings.supabase_url or not settings.supabase_service_key:
