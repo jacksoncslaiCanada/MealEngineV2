@@ -2413,7 +2413,7 @@ def download_listing_covers_zip(
     # Build AI cover image URL map from Supabase Storage
     _ai_image_base = (
         f"{settings.supabase_url}/storage/v1/object/public/"
-        f"{settings.supabase_storage_bucket}/cover-images"
+        f"{settings.supabase_images_bucket}/cover-images"
         if settings.supabase_url else ""
     )
     def _ai_image_url(slug: str) -> str:
