@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 1000px;
+  height: 1500px;
+  overflow: hidden;
+  background: #1a1510;
+  font-family: 'Lora', Georgia, serif;
+}
+
+/* ── FULL BLEED WRAPPER ─────────────────────────────────── */
+.pin {
+  width: 1000px;
+  height: 1500px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── BACKGROUND PHOTO ───────────────────────────────────── */
+.bg-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.bg-fallback {
+  position: absolute;
+  inset: 0;
+  background: {{ accent_color }}18;
+}
+
+/* ── GRADIENT OVERLAY — dark bottom, fades up ───────────── */
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(8, 6, 4, 0.96) 0%,
+    rgba(8, 6, 4, 0.90) 20%,
+    rgba(8, 6, 4, 0.70) 38%,
+    rgba(8, 6, 4, 0.28) 55%,
+    rgba(8, 6, 4, 0.00) 68%
+  );
+}
+
+/* top brand bar */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 42px 52px;
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 6, 4, 0.72) 0%,
+    rgba(8, 6, 4, 0.00) 100%
+  );
+}
+
+.brand {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.50);
+}
+
+/* ── BOTTOM TEXT PANEL ──────────────────────────────────── */
+.text-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 52px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.product-label {
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  letter-spacing: 0.40em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.accent-line {
+  width: 3px;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.theme-name {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: {{ name_size | default('104px') }};
+  line-height: 0.93;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.tagline {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.5;
+}
+
+/* bundle chips shown instead of tagline */
+.bundle-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bundle-chip {
+  font-family: 'Lora', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  border-left: 2.5px solid {{ accent_color }};
+  padding-left: 14px;
+}
+
+/* ── BOTTOM BAR ─────────────────────────────────────────── */
+.bottom-rule {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.includes-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.includes-pill {
+  font-family: 'Lora', serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.11);
+  border-radius: 40px;
+  padding: 8px 20px;
+}
+
+.includes-sep {
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+<div class="pin">
+
+  {% if image_url %}
+  <img class="bg-photo" src="{{ image_url }}" alt="{{ theme_name }}"
+       onerror="this.style.display='none'">
+  {% else %}
+  <div class="bg-fallback"></div>
+  {% endif %}
+
+  <div class="gradient"></div>
+
+  <div class="top-bar">
+    <div class="brand">MealEngine</div>
+  </div>
+
+  <div class="text-panel">
+    <div class="product-label">&#10022; &nbsp; {{ product_label }} &nbsp; &#10022;</div>
+
+    <div class="name-row">
+      <div class="accent-line"></div>
+      <div class="theme-name">{{ theme_name }}</div>
+    </div>
+
+    {% if bundle_themes %}
+    <div class="bundle-chips">
+      {% for t in bundle_themes %}
+      <span class="bundle-chip">{{ t }}</span>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="tagline">{{ tagline }}</div>
+    {% endif %}
+
+    <div class="bottom-rule"></div>
+
+    <div class="includes-bar">
+      {% for item in includes %}
+      <span class="includes-pill">{{ item }}</span>
+      {% if not loop.last %}<span class="includes-sep">&middot;</span>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
