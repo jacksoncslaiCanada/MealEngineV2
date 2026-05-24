@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 400px;
+  height: 400px;
+  overflow: hidden;
+  background: #1e1a14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.letter {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 168px;
+  color: #fffdf8;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.rule {
+  width: 56px;
+  height: 2.5px;
+  background: #c2522a;
+  margin: 10px 0 14px;
+  border-radius: 2px;
+}
+
+.wordmark {
+  font-family: 'Lora', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: rgba(255, 253, 248, 0.50);
+}
+</style>
+</head>
+<body>
+<div class="mark">
+  <div class="letter">M</div>
+  <div class="rule"></div>
+  <div class="wordmark">Meal Engine</div>
+</div>
+</body>
+</html>

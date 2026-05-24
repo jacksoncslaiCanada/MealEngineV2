@@ -3061,3 +3061,142 @@ def test_purchase_delivery(
         "pdf_bytes": len(pdf_bytes),
         "delivered": delivered,
     }
+
+
+@router.get("/download-logo")
+def download_logo(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Render the MealEngine logo mark as a 400×400 PNG.
+
+    Use this as your Pinterest profile photo, Gumroad avatar, or anywhere
+    else a square brand mark is needed.
+    """
+    import os
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+
+    _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+    tmpl = env.get_template("logo_mark.html")
+
+    launch_kwargs: dict = {}
+    ep = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    if not ep:
+        fallback = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+        if Path(fallback).exists():
+            ep = fallback
+    if ep:
+        launch_kwargs["executable_path"] = ep
+
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page(viewport={"width": 400, "height": 400})
+        page.set_content(tmpl.render(), wait_until="networkidle")
+        png = page.screenshot(full_page=False, type="png")
+        browser.close()
+
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={"Content-Disposition": "attachment; filename=mealengine-logo.png"},
+    )
+
+
+@router.get("/download-pinterest-pins-zip")
+def download_pinterest_pins_zip(
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Render all 10 theme pack Pinterest pins (1000×1500 PNG) and return as a ZIP.
+
+    Each pin uses the AI food photo from Supabase as a full-bleed background
+    with a bottom-up gradient overlay and white text — optimised for Pinterest's
+    2:3 vertical format.
+
+    Output files: pinterest-pin--{slug}.png
+    """
+    import io
+    import os
+    import zipfile
+    from pathlib import Path
+    from jinja2 import Environment, FileSystemLoader
+
+    _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+
+    _PIN_THEMES = [
+        {"slug": "asian-kitchen",    "name": "Asian Kitchen",    "tagline": "Bold, fragrant flavours from across Asia.",                 "accent_color": "#c2522a"},
+        {"slug": "mexican-fiesta",   "name": "Mexican Fiesta",   "tagline": "Vibrant, bold, and made for sharing.",                      "accent_color": "#2a8a3a"},
+        {"slug": "light-and-fresh",  "name": "Light & Fresh",    "tagline": "Clean, nourishing meals that don't feel like a compromise.", "accent_color": "#4a8a5a"},
+        {"slug": "quick-cook",       "name": "Quick Cook",       "tagline": "Dinner on the table in 30 minutes or less.",                "accent_color": "#d4762a"},
+        {"slug": "comfort-food",     "name": "Comfort Food",     "tagline": "Hearty, warming dishes that feel like a hug.",              "accent_color": "#8b4a2a"},
+        {"slug": "mediterranean",    "name": "Mediterranean",    "tagline": "Sun-drenched flavours from the Mediterranean.",             "accent_color": "#2a6b9c"},
+        {"slug": "italian-classics", "name": "Italian Classics", "tagline": "Timeless Italian recipes done properly.",                   "accent_color": "#8b2a2a"},
+        {"slug": "middle-eastern",   "name": "Middle Eastern",   "tagline": "Ancient spices, vibrant flavours, generous tables.",        "accent_color": "#c4823a"},
+        {"slug": "high-protein",     "name": "High Protein",     "tagline": "Fuel your body without compromising on flavour.",           "accent_color": "#4a6b8a"},
+        {"slug": "one-pan",          "name": "One Pan",          "tagline": "Maximum flavour, minimal washing up.",                      "accent_color": "#7a5a3a"},
+    ]
+
+    def _name_px(name: str) -> str:
+        n = len(name)
+        if n <= 8:  return "112px"
+        if n <= 12: return "90px"
+        if n <= 15: return "76px"
+        return "62px"
+
+    _ai_base = (
+        f"{settings.supabase_url}/storage/v1/object/public/"
+        f"{settings.supabase_images_bucket}/cover-images"
+        if settings.supabase_url else ""
+    )
+    def _ai_image_url(slug: str) -> str:
+        return f"{_ai_base}/{slug}.webp" if _ai_base else ""
+
+    env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
+    tmpl = env.get_template("pinterest_pin.html")
+
+    launch_kwargs: dict = {}
+    ep = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    if not ep:
+        fallback = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+        if Path(fallback).exists():
+            ep = fallback
+    if ep:
+        launch_kwargs["executable_path"] = ep
+
+    zip_buf = io.BytesIO()
+
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**launch_kwargs)
+        page = browser.new_page(viewport={"width": 1000, "height": 1500})
+
+        with zipfile.ZipFile(zip_buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for t in _PIN_THEMES:
+                ctx = {
+                    "accent_color":  t["accent_color"],
+                    "product_label": "Dinner Pack",
+                    "theme_name":    t["name"],
+                    "name_size":     _name_px(t["name"]),
+                    "tagline":       t["tagline"],
+                    "bundle_themes": [],
+                    "includes":      ["3 Recipe Cards", "Shopping List", "Pantry Guide"],
+                    "image_url":     _ai_image_url(t["slug"]),
+                }
+                page.set_content(tmpl.render(**ctx), wait_until="networkidle")
+                zf.writestr(
+                    f"pinterest-pin--{t['slug']}.png",
+                    page.screenshot(full_page=False, type="png"),
+                )
+                logger.info("download_pinterest_pins_zip: rendered pin for %s", t["slug"])
+
+        browser.close()
+
+    logger.info("download_pinterest_pins_zip: all 10 pins rendered (%d bytes)", len(zip_buf.getvalue()))
+    return Response(
+        content=zip_buf.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=pinterest-pins.zip"},
+    )
