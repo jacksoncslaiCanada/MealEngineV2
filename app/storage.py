@@ -84,6 +84,39 @@ def upload_theme_pdf(pdf_bytes: bytes, *, slug: str) -> str | None:
         return None
 
 
+def upload_freebie_pdf(pdf_bytes: bytes, *, filename: str = "quick-cook-starter.pdf") -> str | None:
+    """Upload a free lead-magnet PDF to Supabase Storage. Returns the public URL or None."""
+    if not settings.supabase_url or not settings.supabase_service_key:
+        logger.warning("storage: Supabase not configured — skipping freebie upload")
+        return None
+
+    path = f"freebies/{filename}"
+    bucket = settings.supabase_storage_bucket
+    upload_url = f"{settings.supabase_url}/storage/v1/object/{bucket}/{path}"
+
+    try:
+        resp = httpx.put(
+            upload_url,
+            content=pdf_bytes,
+            headers={
+                "Authorization": f"Bearer {settings.supabase_service_key}",
+                "Content-Type": "application/pdf",
+                "x-upsert": "true",
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        public_url = f"{settings.supabase_url}/storage/v1/object/public/{bucket}/{path}"
+        logger.info("storage: uploaded freebie → %s", public_url)
+        return public_url
+    except httpx.HTTPStatusError as exc:
+        logger.error("storage: freebie upload error %s — %s", exc.response.status_code, exc.response.text)
+        return None
+    except Exception as exc:
+        logger.error("storage: unexpected freebie upload error — %s", exc)
+        return None
+
+
 def upload_weekly_anchor_pdf(pdf_bytes: bytes, *, slug: str) -> str | None:
     """Upload a Weekly Anchor PDF to Supabase Storage. Returns the public URL or None."""
     if not settings.supabase_url or not settings.supabase_service_key:

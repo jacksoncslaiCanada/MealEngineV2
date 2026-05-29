@@ -1835,6 +1835,34 @@ def generate_theme_packs(
     return {"generated": len([v for v in results.values() if v["status"] == "ok"]), "results": results}
 
 
+@router.post("/publish-freebie")
+def publish_freebie(
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate the Quick Cook theme pack PDF and upload it to Supabase Storage
+    under freebies/quick-cook-starter.pdf. Returns the permanent public URL
+    to paste into the Ghost welcome email.
+    """
+    from app.themes import THEME_BY_SLUG
+    from app.theme_pack_generator import generate_theme_pack_pdf
+    from app.storage import upload_freebie_pdf
+
+    theme = THEME_BY_SLUG.get("quick-cook")
+    if not theme:
+        raise HTTPException(404, "quick-cook theme not found")
+
+    pdf_bytes = generate_theme_pack_pdf(theme, db)
+    public_url = upload_freebie_pdf(pdf_bytes, filename="quick-cook-starter.pdf")
+
+    if not public_url:
+        raise HTTPException(500, "PDF generated but upload to Supabase failed — check logs")
+
+    logger.info("publish_freebie: uploaded %d bytes → %s", len(pdf_bytes), public_url)
+    return {"status": "ok", "pdf_bytes": len(pdf_bytes), "public_url": public_url}
+
+
 @router.get("/preview-theme-pack")
 def preview_theme_pack(
     slug: ThemeSlug,
