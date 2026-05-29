@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # Gumroad
     gumroad_access_token: str = ""
     gumroad_webhook_token: str = ""         # set in Railway; include as ?token= in Gumroad ping URL
+    ghost_webhook_token: str = ""           # set in Railway; include as ?token= in Ghost webhook URL
 
     # Supabase Storage
     supabase_url: str = ""

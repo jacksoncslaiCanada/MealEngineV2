@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -168,3 +168,52 @@ def gumroad_sale(
         )
 
     return {"status": "ok", "delivered": delivered}
+
+
+# ---------------------------------------------------------------------------
+# Ghost — new free member welcome email
+# ---------------------------------------------------------------------------
+
+def _require_ghost_token(token: str = Query(default="")) -> None:
+    """Reject requests that don't carry the correct Ghost webhook token."""
+    if not settings.ghost_webhook_token:
+        logger.warning("webhooks: GHOST_WEBHOOK_TOKEN not set — accepting all requests (unsafe)")
+        return
+    if token != settings.ghost_webhook_token:
+        raise HTTPException(status_code=403, detail="Invalid webhook token")
+
+
+@router.post("/ghost-member")
+async def ghost_member(
+    request: Request,
+    _: None = Depends(_require_ghost_token),
+):
+    """
+    Receive Ghost member.created webhook and send the freebie welcome email.
+
+    Ghost fires this on every new free member signup (after email confirmation).
+    Register in Ghost admin: Settings → Integrations → Custom Integrations → Add webhook
+      Event: Member added
+      URL:   https://mealengine.ca/webhooks/ghost-member?token=<GHOST_WEBHOOK_TOKEN>
+    """
+    from app.email_sender import send_ghost_welcome_email
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    # Ghost payload: { "member": { "current": { "email": "...", ... } } }
+    try:
+        email = body["member"]["current"]["email"]
+    except (KeyError, TypeError):
+        logger.warning("webhooks/ghost-member: unexpected payload shape — %s", body)
+        raise HTTPException(status_code=400, detail="Could not extract member email from payload")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Empty email in payload")
+
+    logger.info("webhooks/ghost-member: new member %s — sending welcome email", email)
+    delivered = send_ghost_welcome_email(to_email=email)
+
+    return {"status": "ok", "email": email, "delivered": delivered}

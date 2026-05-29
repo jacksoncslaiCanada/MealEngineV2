@@ -182,6 +182,68 @@ def send_welcome_email(
         return False
 
 
+def send_ghost_welcome_email(*, to_email: str) -> bool:
+    """Send the freebie welcome email to a new Ghost member via Resend."""
+    if not settings.resend_api_key:
+        logger.warning("email_sender: RESEND_API_KEY not set — skipping Ghost welcome to %s", to_email)
+        return False
+
+    freebie_url = "https://qkivwlnpzaqustwpzqjw.supabase.co/storage/v1/object/public/meal-plans/freebies/quick-cook-starter.pdf"
+
+    html_body = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1f2937;">
+      <h2 style="margin-bottom:4px;">Your free dinner pack is inside.</h2>
+      <p style="color:#6b7280;margin-top:0;">MealEngine &middot; Quick Cook Starter Pack</p>
+      <p>
+        Here's your free Quick Cook Dinner Pack &mdash; 3 recipes, a shopping list,
+        and a pantry guide in one PDF.
+      </p>
+      <p style="margin-top:20px;">
+        <a href="{freebie_url}"
+           style="background:#c2522a;color:#ffffff;padding:12px 24px;border-radius:6px;
+                  text-decoration:none;font-weight:600;display:inline-block;">
+          Download your free pack &rarr;
+        </a>
+      </p>
+      <p style="margin-top:24px;color:#6b7280;font-size:14px;">
+        If you like what's inside, there are 9 more themed packs available &mdash;
+        Mediterranean, Italian Classics, High Protein, Asian Kitchen, and more.
+        Each one includes 3 recipes, a shopping list, and a pantry guide.
+      </p>
+      <p style="margin-top:8px;font-size:14px;">
+        <a href="https://mealengine.gumroad.com" style="color:#c2522a;">
+          Browse all packs &rarr;
+        </a>
+      </p>
+      <p style="color:#9ca3af;font-size:11px;margin-top:32px;border-top:1px solid #f3f4f6;padding-top:12px;">
+        MealEngine &middot; start.mealengine.ca<br>
+        You&rsquo;re receiving this because you signed up for a free pack at MealEngine.
+        Reply to this email if you need anything.
+      </p>
+    </div>
+    """
+
+    import httpx as _httpx
+    try:
+        resp = _httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json={
+                "from": f"MealEngine <{settings.email_from}>",
+                "to": [to_email],
+                "subject": "Your free Quick Cook dinner pack is inside",
+                "html": html_body,
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        logger.info("email_sender: Ghost welcome email sent to %s", to_email)
+        return True
+    except Exception as exc:
+        logger.error("email_sender: Ghost welcome email failed for %s — %s", to_email, exc)
+        return False
+
+
 def send_purchase_email(
     *,
     to_email: str,
