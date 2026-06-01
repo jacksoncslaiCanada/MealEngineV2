@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+@page { size: A4; margin: 0; }
+
+body {
+  width: 210mm;
+  font-family: 'Lora', Georgia, serif;
+  background: #fffdf8;
+  color: #1a1510;
+}
+
+/* ── COVER PAGE ─────────────────────────────────────────────────────────── */
+.cover {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  background: #1a1510;
+}
+
+.cover-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+}
+
+.cover-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(8, 6, 4, 0.97) 0%,
+    rgba(8, 6, 4, 0.90) 28%,
+    rgba(8, 6, 4, 0.62) 52%,
+    rgba(8, 6, 4, 0.18) 70%,
+    rgba(8, 6, 4, 0.00) 84%
+  );
+}
+
+.cover-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 10mm 14mm;
+  background: linear-gradient(to bottom, rgba(8,6,4,0.65) 0%, rgba(8,6,4,0) 100%);
+}
+
+.cover-brand {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 7pt;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.42);
+}
+
+.cover-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 0 14mm 15mm;
+  display: flex;
+  flex-direction: column;
+  gap: 5mm;
+}
+
+.cover-tier-label {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.48);
+}
+
+.cover-name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 5mm;
+}
+
+.cover-accent-line {
+  width: 3px;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.cover-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: {{ title_size | default('38pt') }};
+  line-height: 0.93;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.cover-tagline {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: rgba(255,255,255,0.66);
+  line-height: 1.5;
+}
+
+.cover-rule {
+  height: 1px;
+  background: rgba(255,255,255,0.18);
+}
+
+.cover-meta {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+}
+
+/* ── CONTENT PAGES ──────────────────────────────────────────────────────── */
+.content-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fffdf8;
+  padding: 14mm 16mm 16mm;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 9mm;
+  padding-bottom: 3.5mm;
+  border-bottom: 0.5pt solid rgba(26,21,16,0.14);
+  flex-shrink: 0;
+}
+
+.eyebrow-guide {
+  font-family: 'Lora', serif;
+  font-size: 6.5pt;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(26,21,16,0.32);
+}
+
+.eyebrow-page {
+  font-family: 'Lora', serif;
+  font-size: 6.5pt;
+  letter-spacing: 0.18em;
+  color: rgba(26,21,16,0.22);
+}
+
+/* ── CONTENT BLOCKS ─────────────────────────────────────────────────────── */
+.b-heading {
+  display: flex;
+  align-items: stretch;
+  gap: 4mm;
+  margin-bottom: 6mm;
+}
+
+.b-heading-accent {
+  width: 3px;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.b-heading-text {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 18pt;
+  line-height: 1.15;
+  color: #1a1510;
+  letter-spacing: -0.015em;
+}
+
+.b-subheading {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 11pt;
+  color: #1a1510;
+  letter-spacing: 0.01em;
+  margin-bottom: 3mm;
+  margin-top: 5mm;
+}
+
+.b-body {
+  font-family: 'Lora', serif;
+  font-size: 9.5pt;
+  line-height: 1.75;
+  color: #2a2218;
+  margin-bottom: 4mm;
+}
+
+.b-checklist {
+  list-style: none;
+  margin-bottom: 5mm;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5mm;
+}
+
+.b-checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 3mm;
+  font-family: 'Lora', serif;
+  font-size: 9.5pt;
+  line-height: 1.6;
+  color: #2a2218;
+}
+
+.b-checklist li::before {
+  content: '';
+  width: 3.5mm;
+  height: 3.5mm;
+  min-width: 3.5mm;
+  border: 1.5px solid {{ accent_color }};
+  border-radius: 1px;
+  margin-top: 2pt;
+  flex-shrink: 0;
+}
+
+.b-callout {
+  display: flex;
+  margin: 5mm 0;
+}
+
+.b-callout-bar {
+  width: 3px;
+  background: {{ accent_color }};
+  flex-shrink: 0;
+  border-radius: 2px;
+  margin-right: 4.5mm;
+}
+
+.b-callout-box {
+  background: {{ accent_color }}14;
+  border-radius: 3px;
+  padding: 4mm 5mm;
+  flex: 1;
+}
+
+.b-callout-text {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 9.5pt;
+  line-height: 1.65;
+  color: #1a1510;
+}
+
+.b-rule {
+  height: 0.5pt;
+  background: rgba(26,21,16,0.14);
+  margin: 5mm 0;
+}
+
+.b-spacer-sm { height: 3mm; }
+.b-spacer-md { height: 6mm; }
+.b-spacer-lg { height: 12mm; }
+
+/* ── TABLES ─────────────────────────────────────────────────────────────── */
+.b-table-wrap {
+  margin: 4mm 0;
+}
+
+.b-table-label {
+  font-family: 'Lora', serif;
+  font-weight: 600;
+  font-size: 6.5pt;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(26,21,16,0.40);
+  margin-bottom: 2mm;
+}
+
+.b-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Lora', serif;
+  font-size: 8.5pt;
+}
+
+.b-table thead tr {
+  background: {{ accent_color }}1c;
+  border-bottom: 1pt solid {{ accent_color }}55;
+}
+
+.b-table thead th {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 7pt;
+  color: #1a1510;
+  padding: 2.5mm 3mm;
+  text-align: left;
+}
+
+.b-table tbody tr {
+  border-bottom: 0.5pt solid rgba(26,21,16,0.09);
+}
+
+.b-table tbody tr:last-child {
+  border-bottom: none;
+  font-weight: 600;
+  background: rgba(26,21,16,0.03);
+}
+
+.b-table tbody td {
+  padding: 2mm 3mm;
+  color: #2a2218;
+  line-height: 1.4;
+  vertical-align: top;
+}
+
+/* ── BACK COVER ─────────────────────────────────────────────────────────── */
+.back-cover {
+  width: 210mm;
+  height: 297mm;
+  background: #1a1510;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  page-break-after: never;
+}
+
+.back-letter {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 80pt;
+  color: #fffdf8;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.back-rule {
+  width: 14mm;
+  height: 1.5pt;
+  background: {{ accent_color }};
+  margin: 4mm 0 5mm;
+  border-radius: 2px;
+}
+
+.back-wordmark {
+  font-family: 'Lora', serif;
+  font-weight: 600;
+  font-size: 7pt;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: rgba(255,253,248,0.32);
+}
+
+.back-url {
+  margin-top: 6mm;
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  color: rgba(255,253,248,0.20);
+  letter-spacing: 0.12em;
+}
+</style>
+</head>
+<body>
+
+<!-- ── COVER ── -->
+<div class="cover">
+  {% if cover_image_url %}
+  <img class="cover-bg" src="{{ cover_image_url }}" alt="{{ guide_title }}"
+       onerror="this.style.display='none'">
+  {% endif %}
+  <div class="cover-gradient"></div>
+
+  <div class="cover-top">
+    <div class="cover-brand">MealEngine</div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cover-tier-label">&#10022; &nbsp; System Guide &nbsp; &#10022;</div>
+    <div class="cover-name-row">
+      <div class="cover-accent-line"></div>
+      <div class="cover-title">{{ guide_title }}</div>
+    </div>
+    <div class="cover-tagline">{{ guide_tagline }}</div>
+    <div class="cover-rule"></div>
+    <div class="cover-meta">Tier 2 &middot; MealEngine &middot; mealengine.ca</div>
+  </div>
+</div>
+
+<!-- ── CONTENT PAGES ── -->
+{% for page in pages %}
+<div class="content-page">
+  <div class="page-eyebrow">
+    <span class="eyebrow-guide">{{ guide_title }}</span>
+    <span class="eyebrow-page">{{ loop.index + 1 }} / {{ pages|length + 2 }}</span>
+  </div>
+
+  {% for block in page.blocks %}
+
+  {% if block.type == 'heading' %}
+  <div class="b-heading">
+    <div class="b-heading-accent"></div>
+    <div class="b-heading-text">{{ block.text }}</div>
+  </div>
+
+  {% elif block.type == 'subheading' %}
+  <div class="b-subheading">{{ block.text }}</div>
+
+  {% elif block.type == 'body' %}
+  <p class="b-body">{{ block.text }}</p>
+
+  {% elif block.type == 'checklist' %}
+  <ul class="b-checklist">
+    {% for item in block.items %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+
+  {% elif block.type == 'callout' %}
+  <div class="b-callout">
+    <div class="b-callout-bar"></div>
+    <div class="b-callout-box">
+      <div class="b-callout-text">{{ block.text }}</div>
+    </div>
+  </div>
+
+  {% elif block.type == 'table' %}
+  <div class="b-table-wrap">
+    {% if block.label %}<div class="b-table-label">{{ block.label }}</div>{% endif %}
+    <table class="b-table">
+      {% if block.headers %}
+      <thead>
+        <tr>{% for h in block.headers %}<th>{{ h }}</th>{% endfor %}</tr>
+      </thead>
+      {% endif %}
+      <tbody>
+        {% for row in block.rows %}
+        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% elif block.type == 'rule' %}
+  <div class="b-rule"></div>
+
+  {% elif block.type == 'spacer' %}
+  <div class="b-spacer-{{ block.size | default('md') }}"></div>
+
+  {% endif %}
+  {% endfor %}
+
+</div>
+{% endfor %}
+
+<!-- ── BACK COVER ── -->
+<div class="back-cover">
+  <div class="back-letter">M</div>
+  <div class="back-rule"></div>
+  <div class="back-wordmark">Meal Engine</div>
+  <div class="back-url">mealengine.ca</div>
+</div>
+
+</body>
+</html>
