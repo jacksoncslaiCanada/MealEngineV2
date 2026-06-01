@@ -424,7 +424,7 @@ body {
 
   {% elif block.type == 'checklist' %}
   <ul class="b-checklist">
-    {% for item in block.items %}
+    {% for item in block['items'] %}
     <li>{{ item }}</li>
     {% endfor %}
   </ul>
