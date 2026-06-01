@@ -2018,6 +2018,113 @@ def generate_system_guide_cover_images(
     }
 
 
+@router.post("/generate-system-guide-recipe-images")
+def generate_system_guide_recipe_images(
+    slug: SystemGuideSlug | None = None,
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate AI food-photography images for each recipe in System Guides using Flux Schnell
+    and upload to Supabase Storage at cover-images/system-guide-{slug}-recipe-{n:02d}.webp.
+
+    Run this after /generate-system-guide-cover-images and before /generate-system-guides
+    so recipe photos are embedded in the PDFs.
+
+    Query params:
+        slug    (optional) Limit to a single guide, e.g. zero-waste-grocery-audit
+    """
+    from app.system_guide_generator import SYSTEM_GUIDES
+    from app.storage import upload_cover_image
+    import httpx as _httpx
+    import time as _time
+
+    if not settings.replicate_api_key:
+        raise HTTPException(400, "REPLICATE_API_KEY not set in environment")
+
+    slugs_to_process = [slug] if slug else list(SYSTEM_GUIDES.keys())
+    results: dict[str, dict] = {}
+
+    for s in slugs_to_process:
+        guide = SYSTEM_GUIDES.get(s)
+        if not guide:
+            results[s] = {"status": "error", "detail": "Unknown slug"}
+            continue
+
+        recipe_results = []
+        for i, recipe in enumerate(guide["recipes"], 1):
+            name = recipe["name"]
+            first_sentence = recipe["description"].split(".")[0].strip()
+            prompt = (
+                f"Professional food photography, overhead close-up shot. {name}. "
+                f"{first_sentence}. "
+                "Served in a wide shallow bowl or on a ceramic plate on a white marble countertop. "
+                "Crisp natural window light from the left, shallow depth of field. "
+                "Clean, editorial styling. Bon Appetit magazine quality."
+            )
+
+            img_slug = f"system-guide-{s}-recipe-{i:02d}"
+            logger.info("generate_system_guide_recipe_images: %s recipe %02d — %s", s, i, name)
+            try:
+                resp = _httpx.post(
+                    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                    headers={
+                        "Authorization": f"Bearer {settings.replicate_api_key}",
+                        "Content-Type": "application/json",
+                        "Prefer": "wait",
+                    },
+                    json={
+                        "input": {
+                            "prompt": prompt,
+                            "aspect_ratio": "1:1",
+                            "output_format": "webp",
+                            "output_quality": 90,
+                            "num_outputs": 1,
+                        }
+                    },
+                    timeout=90,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                # Poll if not immediately done
+                if data.get("status") not in ("succeeded", None) or not data.get("output"):
+                    prediction_id = data.get("id")
+                    for _ in range(20):
+                        _time.sleep(3)
+                        poll = _httpx.get(
+                            f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                            headers={"Authorization": f"Bearer {settings.replicate_api_key}"},
+                            timeout=30,
+                        )
+                        poll.raise_for_status()
+                        data = poll.json()
+                        if data.get("status") == "succeeded":
+                            break
+                        if data.get("status") in ("failed", "canceled"):
+                            raise RuntimeError(f"Replicate {data.get('status')}: {data.get('error')}")
+
+                image_url = data["output"][0] if isinstance(data.get("output"), list) else data.get("output")
+                if not image_url:
+                    raise RuntimeError("No output URL from Replicate")
+
+                img_resp = _httpx.get(image_url, timeout=60)
+                img_resp.raise_for_status()
+                public_url = upload_cover_image(img_resp.content, slug=img_slug)
+                recipe_results.append({"recipe": name, "status": "ok", "url": public_url})
+                logger.info("generate_system_guide_recipe_images: uploaded %s → %s", img_slug, public_url)
+
+            except Exception as exc:
+                logger.error("generate_system_guide_recipe_images: %s failed — %s", img_slug, exc, exc_info=True)
+                recipe_results.append({"recipe": name, "status": "error", "detail": str(exc)})
+
+            _time.sleep(1)
+
+        ok_count = sum(1 for r in recipe_results if r["status"] == "ok")
+        results[s] = {"generated": ok_count, "total": len(recipe_results), "recipes": recipe_results}
+
+    return results
+
+
 @router.get("/preview-theme-pack")
 def preview_theme_pack(
     slug: ThemeSlug,

@@ -133,29 +133,51 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  z-index: 2;
 }
 
+/* Elegant typography placeholder — visible until AI image is generated */
 .cover-photo-placeholder {
   position: absolute;
   inset: 0;
-  background: {{ accent_color }}18;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cover-photo-placeholder-lines {
+  background: {{ accent_color }}09;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 3mm;
-  opacity: 0.25;
+  justify-content: center;
+  gap: 0;
+  padding: 7mm 20mm;
+  z-index: 1;
 }
 
-.cover-photo-placeholder-line {
-  width: 20mm;
-  height: 1px;
-  background: {{ accent_color }};
+.cover-placeholder-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4mm;
+  padding: 3mm 0;
+  border-bottom: 0.4pt solid {{ accent_color }}25;
+}
+
+.cover-placeholder-item:last-child {
+  border-bottom: none;
+}
+
+.cover-placeholder-num {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 8pt;
+  color: {{ accent_color }};
+  opacity: 0.55;
+  min-width: 8mm;
+  flex-shrink: 0;
+}
+
+.cover-placeholder-name {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 11pt;
+  color: {{ accent_color }};
+  opacity: 0.5;
+  line-height: 1.3;
 }
 
 /* Footer */
@@ -414,6 +436,56 @@ body {
   overflow: hidden;
 }
 
+/* Header row: text left, photo right */
+.recipe-header {
+  display: flex;
+  gap: 6mm;
+  align-items: flex-start;
+  margin-bottom: 4mm;
+  flex-shrink: 0;
+}
+
+.recipe-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-photo-wrap {
+  width: 60mm;
+  height: 60mm;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  background: {{ accent_color }}0e;
+}
+
+.recipe-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recipe-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5mm;
+}
+
+.recipe-photo-placeholder-text {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 7.5pt;
+  color: {{ accent_color }};
+  opacity: 0.45;
+  text-align: center;
+  line-height: 1.45;
+}
+
 .recipe-number {
   font-family: 'Lora', serif;
   font-size: 6.5pt;
@@ -426,26 +498,27 @@ body {
 .recipe-name {
   font-family: 'Playfair Display', serif;
   font-weight: 900;
-  font-size: 24pt;
+  font-size: 21pt;
   color: #2c2c2c;
   line-height: 1.05;
   letter-spacing: -0.01em;
-  margin-bottom: 2.5mm;
+  margin-bottom: 2mm;
 }
 
 .recipe-description {
   font-family: 'Lora', serif;
   font-style: italic;
-  font-size: 10pt;
+  font-size: 9.5pt;
   color: #5a5040;
   line-height: 1.5;
-  margin-bottom: 3mm;
+  margin-bottom: 2.5mm;
 }
 
 .recipe-meta {
   display: flex;
-  gap: 6mm;
-  margin-bottom: 4mm;
+  gap: 4mm;
+  flex-wrap: wrap;
+  margin-bottom: 0;
 }
 
 .meta-chip {
@@ -707,15 +780,15 @@ body {
 
 .shopping-body {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5mm;
   min-height: 0;
+  column-count: 2;
+  column-gap: 8mm;
+  column-fill: auto;
 }
 
 .shopping-section {
-  display: flex;
-  flex-direction: column;
+  break-inside: avoid;
+  margin-bottom: 4mm;
 }
 
 .shopping-section-label {
@@ -766,16 +839,17 @@ body {
 }
 
 .shopping-note {
-  margin-top: 4mm;
+  margin-top: 3mm;
   padding: 3mm 4mm;
   background: {{ accent_color }}10;
   border-left: 2.5px solid {{ accent_color }};
   border-radius: 0 2px 2px 0;
   font-family: 'Lora', serif;
   font-style: italic;
-  font-size: 8pt;
+  font-size: 7.5pt;
   color: #4a4040;
-  line-height: 1.55;
+  line-height: 1.5;
+  flex-shrink: 0;
 }
 
 /* ── BACK COVER ─────────────────────────────────────────────────────────── */
@@ -839,14 +913,15 @@ body {
     <div class="cover-description">{{ guide_description }}</div>
   </div>
 
-  <!-- AI-generated cover photo fills remaining vertical space -->
+  <!-- AI-generated cover photo; recipe names shown as elegant placeholder until image is ready -->
   <div class="cover-image-band">
     <div class="cover-photo-placeholder">
-      <div class="cover-photo-placeholder-lines">
-        <div class="cover-photo-placeholder-line"></div>
-        <div class="cover-photo-placeholder-line" style="width:30mm;"></div>
-        <div class="cover-photo-placeholder-line" style="width:12mm;"></div>
+      {% for recipe in recipes %}
+      <div class="cover-placeholder-item">
+        <span class="cover-placeholder-num">{{ "%02d"|format(loop.index) }}</span>
+        <span class="cover-placeholder-name">{{ recipe.name }}</span>
       </div>
+      {% endfor %}
     </div>
     {% if cover_image_url %}
     <img class="cover-photo" src="{{ cover_image_url }}" alt="{{ guide_title }}">
@@ -931,16 +1006,27 @@ body {
     <span class="eyebrow-page">{{ loop.index + 1 }} / {{ recipes|length + 3 }}</span>
   </div>
 
-  <div class="recipe-number">Recipe {{ "%02d"|format(loop.index) }}</div>
-  <div class="recipe-name">{{ recipe.name }}</div>
-  <div class="recipe-description">{{ recipe.description }}</div>
-
-  <div class="recipe-meta">
-    <span class="meta-chip">Serves {{ recipe.serves }}</span>
-    <span class="meta-chip">{{ recipe.time }}</span>
-    {% if recipe.label %}
-    <span class="meta-chip">{{ recipe.label }}</span>
-    {% endif %}
+  <!-- Header: text left, food photo right -->
+  <div class="recipe-header">
+    <div class="recipe-header-text">
+      <div class="recipe-number">Recipe {{ "%02d"|format(loop.index) }}</div>
+      <div class="recipe-name">{{ recipe.name }}</div>
+      <div class="recipe-description">{{ recipe.description }}</div>
+      <div class="recipe-meta">
+        <span class="meta-chip">Serves {{ recipe.serves }}</span>
+        <span class="meta-chip">{{ recipe.time }}</span>
+        {% if recipe.label %}<span class="meta-chip">{{ recipe.label }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="recipe-photo-wrap">
+      {% if recipe.image_url %}
+      <img class="recipe-photo" src="{{ recipe.image_url }}" alt="{{ recipe.name }}">
+      {% else %}
+      <div class="recipe-photo-placeholder">
+        <div class="recipe-photo-placeholder-text">{{ recipe.name }}</div>
+      </div>
+      {% endif %}
+    </div>
   </div>
 
   <div class="recipe-rule"></div>
