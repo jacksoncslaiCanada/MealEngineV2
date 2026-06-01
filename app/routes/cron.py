@@ -15,6 +15,7 @@ from app.config import settings
 from app.db.models import Subscriber
 from app.db.session import get_db
 from app.themes import ThemeSlug
+from app.system_guide_generator import SystemGuideSlug
 from app.classifier import classify_unclassified
 from app.email_sender import send_conversion_email, send_plan_email
 from app.gumroad import update_product_url
@@ -1865,7 +1866,7 @@ def publish_freebie(
 
 @router.post("/generate-system-guides")
 def generate_system_guides(
-    slug: str | None = None,
+    slug: SystemGuideSlug | None = None,
     _: None = Depends(_require_cron_secret),
 ):
     """
@@ -1900,7 +1901,7 @@ def generate_system_guides(
 
 @router.get("/preview-system-guide")
 def preview_system_guide(
-    slug: str,
+    slug: SystemGuideSlug,
     _: None = Depends(_require_cron_secret),
 ):
     """Preview a System Guide PDF in the browser."""

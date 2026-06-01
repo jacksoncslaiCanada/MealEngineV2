@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+from enum import Enum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -276,6 +277,13 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
         ],
     },
 }
+
+
+SystemGuideSlug = Enum(  # type: ignore[misc]
+    "SystemGuideSlug",
+    {k.replace("-", "_"): k for k in SYSTEM_GUIDES},
+    type=str,
+)
 
 
 def generate_system_guide_pdf(slug: str) -> bytes:
