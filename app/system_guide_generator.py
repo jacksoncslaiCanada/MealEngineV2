@@ -1,7 +1,7 @@
 """System Guide PDF generator — Tier 2 products.
 
 Recipe-focused packs framed around a specific cooking pain point.
-Each guide: cover → 1-page intro → 3 recipe cards → shopping list → back cover.
+Each guide: cover → 1-page intro → 5 recipe cards → shopping list → back cover.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
         "guide_tagline": "Three recipes. One shopping list. Nothing wasted on Friday.",
         "guide_description": "Every perishable ingredient in this pack appears in at least two recipes — by design. Buy once, use completely.",
         "accent_color": "#4a8a5a",
-        "includes": ["3 Recipe Cards", "Shopping List", "Waste Map"],
+        "includes": ["5 Recipe Cards", "Shopping List", "Waste Map"],
 
         "intro": {
             "heading": "Why Most Grocery Lists Create Waste",
@@ -121,6 +121,61 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
                 ],
                 "note": "This is intentionally simple — let the lemon and garlic do the work.",
             },
+            {
+                "number": "04",
+                "name": "Green Shakshuka",
+                "description": "Eggs poached in a garlicky tomato and spinach sauce. Uses the last of your cherry tomatoes and spinach in one pan, in under 20 minutes.",
+                "serves": "2",
+                "time": "18 min",
+                "label": "Cook Tuesday",
+                "ingredients": [
+                    "4 large eggs",
+                    "250g cherry tomatoes, halved",
+                    "2 large handfuls baby spinach",
+                    "3 garlic cloves, thinly sliced",
+                    "½ tsp ground cumin",
+                    "¼ tsp chilli flakes (optional)",
+                    "2 tbsp olive oil",
+                    "Salt and black pepper",
+                    "Crusty bread to serve",
+                ],
+                "steps": [
+                    "Heat olive oil in a wide, lidded pan over medium heat. Add garlic and cook 1 minute until fragrant.",
+                    "Add cherry tomatoes, cumin, and chilli flakes. Cook 6–8 minutes until tomatoes are jammy and saucy.",
+                    "Stir in spinach and cook until just wilted, about 2 minutes.",
+                    "Make 4 wells in the sauce. Crack an egg into each well.",
+                    "Cover and cook on low heat for 4–5 minutes until whites are set but yolks are still runny.",
+                    "Season and serve directly from the pan with crusty bread.",
+                ],
+                "note": "A lid is essential — it traps steam and sets the egg whites without overcooking the yolks.",
+            },
+            {
+                "number": "05",
+                "name": "Lemon Garlic Pasta with White Beans",
+                "description": "A pantry dinner that comes together in 15 minutes. Creamy white beans, bright lemon, and the last of the garlic and parsley make this the easiest recipe in the pack.",
+                "serves": "2",
+                "time": "15 min",
+                "label": "Cook Thursday",
+                "ingredients": [
+                    "200g spaghetti or pasta of choice",
+                    "1 × 400g can white beans, drained and rinsed",
+                    "3 garlic cloves, thinly sliced",
+                    "1 lemon, juice and zest",
+                    "Remaining flat-leaf parsley, chopped",
+                    "3 tbsp extra virgin olive oil",
+                    "Salt and black pepper",
+                    "Parmesan to serve",
+                ],
+                "steps": [
+                    "Cook pasta in well-salted boiling water until al dente. Reserve 1 cup pasta water before draining.",
+                    "While pasta cooks, warm olive oil in a wide pan over medium heat. Add garlic, cook 2 minutes until pale golden.",
+                    "Add white beans and warm through for 3 minutes, lightly crushing a few with the back of a spoon.",
+                    "Add drained pasta to the pan with a splash of pasta water. Toss to combine.",
+                    "Remove from heat. Add lemon juice, zest, and most of the parsley. Toss again, adding pasta water to loosen.",
+                    "Serve with remaining parsley, parmesan, and a drizzle of olive oil.",
+                ],
+                "note": "Crushing some of the beans creates a creamy sauce without any cream.",
+            },
         ],
 
         "shopping": {
@@ -130,32 +185,34 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
                     "label": "Eat First — Use Monday through Wednesday",
                     "items": [
                         {"item": "Chicken thighs, bone-in skin-on", "qty": "4 pieces (~800g)", "note": "Recipe 1"},
-                        {"item": "Cherry tomatoes", "qty": "500g (1 punnet)", "note": "Recipes 1 + 2"},
-                        {"item": "Flat-leaf parsley", "qty": "1 bunch", "note": "Recipes 1, 2 + 3"},
-                        {"item": "Baby spinach", "qty": "2 large handfuls", "note": "Recipe 3"},
+                        {"item": "Cherry tomatoes", "qty": "500g (1 punnet)", "note": "Recipes 1, 2 + 4"},
+                        {"item": "Flat-leaf parsley", "qty": "1 bunch", "note": "Recipes 1, 2, 3 + 5"},
+                        {"item": "Baby spinach", "qty": "1 bag (~120g)", "note": "Recipes 3 + 4"},
+                        {"item": "Eggs", "qty": "4 large", "note": "Recipe 4"},
                     ],
                 },
                 {
                     "label": "Lasts the Week — Use any day",
                     "items": [
-                        {"item": "Garlic", "qty": "1 head (10 cloves)", "note": "All 3 recipes"},
-                        {"item": "Lemons", "qty": "2", "note": "Recipes 1, 2 + 3"},
-                        {"item": "White beans, canned", "qty": "2 × 400g cans", "note": "Recipe 3"},
+                        {"item": "Garlic", "qty": "1 head (12+ cloves)", "note": "All 5 recipes"},
+                        {"item": "Lemons", "qty": "2", "note": "Recipes 1, 2, 3 + 5"},
+                        {"item": "White beans, canned", "qty": "3 × 400g cans", "note": "Recipes 3 + 5"},
                     ],
                 },
                 {
                     "label": "Pantry",
                     "items": [
-                        {"item": "Spaghetti or linguine", "qty": "200g", "note": "Recipe 2"},
+                        {"item": "Spaghetti or linguine", "qty": "400g total", "note": "Recipes 2 + 5"},
                         {"item": "Coarse breadcrumbs", "qty": "40g", "note": "Recipe 2"},
-                        {"item": "Parmesan", "qty": "small piece", "note": "Recipe 2"},
-                        {"item": "Olive oil", "qty": "good bottle", "note": "All 3 recipes"},
-                        {"item": "Salt and black pepper", "qty": "—", "note": "All 3 recipes"},
-                        {"item": "Crusty bread", "qty": "1 loaf", "note": "Recipe 3"},
+                        {"item": "Parmesan", "qty": "small piece", "note": "Recipes 2 + 5"},
+                        {"item": "Ground cumin, chilli flakes", "qty": "pantry", "note": "Recipe 4"},
+                        {"item": "Olive oil", "qty": "good bottle", "note": "All 5 recipes"},
+                        {"item": "Salt and black pepper", "qty": "—", "note": "All 5 recipes"},
+                        {"item": "Crusty bread", "qty": "1 loaf", "note": "Recipes 3 + 4"},
                     ],
                 },
             ],
-            "note": "Total fresh spend: ~$28–34. Every perishable item above is fully used across the three recipes — nothing left behind on Friday.",
+            "note": "Total fresh spend: ~$32–40. Every perishable item above is shared across at least two recipes — nothing left behind on Friday.",
         },
     },
 
@@ -165,7 +222,7 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
         "guide_tagline": "Cook once on Sunday. Three completely different meals.",
         "guide_description": "One master protein batch, prepared Sunday. Three distinct cuisines, Monday through Wednesday. Forty minutes less cooking than three separate preps.",
         "accent_color": "#c2522a",
-        "includes": ["Master Batch Recipe", "3 Recipe Cards", "Shopping List"],
+        "includes": ["Master Batch Recipe", "5 Recipe Cards", "Shopping List"],
 
         "intro": {
             "heading": "One Cook. Three Meals. Zero Repetition.",
@@ -176,9 +233,9 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
             "prep_box": {
                 "label": "Sunday Prep — Do This Once",
                 "title": "Pulled Chicken Master Batch",
-                "body": "Season 1.2kg bone-in chicken thighs with salt, pepper, garlic powder, smoked paprika. Sear skin-down 4–5 min until golden. Flip, add 240ml chicken stock, cover with foil. Braise at 180°C / 350°F for 45 min. Rest, then pull into shreds and divide into 3 equal portions (~200g each). Refrigerate.",
+                "body": "Season 1.8kg bone-in chicken thighs with salt, pepper, garlic powder, smoked paprika. Sear skin-down 4–5 min until golden. Flip, add 300ml chicken stock, cover with foil. Braise at 180°C / 350°F for 45 min. Rest, then pull into shreds and divide into 5 equal portions (~160g each). Refrigerate.",
                 "steps": [
-                    "Keeps 4 days refrigerated. Use Portion 1 Monday, 2 Tuesday, 3 Wednesday.",
+                    "Keeps 4 days refrigerated. Use Portions 1–3 Mon–Wed, Portions 4–5 Thu–Fri.",
                     "Use bone-in thighs — they stay moist when reheated. Breasts dry out.",
                 ],
             },
@@ -187,6 +244,8 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
                 "Recipe 01: Asian Noodle Bowl — soy, sesame, ginger, green onion",
                 "Recipe 02: Mexican Taco Plate — cumin, chipotle, avocado, lime",
                 "Recipe 03: Mediterranean Grain Bowl — lemon, oregano, feta, olives",
+                "Recipe 04: Thai Fried Rice — fish sauce, lime, egg, chilli",
+                "Recipe 05: Chicken & White Bean Soup — garlic, spinach, stock",
             ],
         },
 
@@ -272,16 +331,74 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
                 ],
                 "note": "Farro gives a nuttier texture than couscous — cook it like pasta (20 min in boiling salted water).",
             },
+            {
+                "number": "04",
+                "name": "Thai Fried Rice",
+                "description": "Day-old rice, a fried egg on top, and the pulled chicken transformed with fish sauce, lime, and chilli. One of the fastest meals in the pack.",
+                "serves": "2",
+                "time": "12 min active",
+                "label": "Thursday",
+                "ingredients": [
+                    "1 portion pulled chicken (~160g)",
+                    "300g cooked jasmine rice (day-old is best)",
+                    "2 eggs",
+                    "2 tbsp fish sauce",
+                    "1 tbsp soy sauce",
+                    "1 tsp sugar",
+                    "1 lime, halved",
+                    "2 garlic cloves, minced",
+                    "2 green onions, sliced",
+                    "1 red chilli, sliced (optional)",
+                    "2 tbsp neutral oil",
+                ],
+                "steps": [
+                    "Mix fish sauce, soy sauce, and sugar in a small bowl. Set aside.",
+                    "Heat 1 tbsp oil in a wok or large pan over high heat until smoking. Add garlic, stir 30 seconds.",
+                    "Add cold rice, breaking up any clumps. Stir-fry 3 minutes until starting to crisp.",
+                    "Add pulled chicken and sauce mixture. Toss well for 2 minutes.",
+                    "Push rice to one side. Add remaining oil, crack in eggs, and scramble briefly before folding through the rice.",
+                    "Serve topped with green onions, chilli, and a squeeze of lime.",
+                ],
+                "note": "Day-old rice fries better than fresh — the drier grains separate and crisp properly.",
+            },
+            {
+                "number": "05",
+                "name": "Chicken & White Bean Soup",
+                "description": "A quietly comforting Friday soup. The pulled chicken melts into the broth with white beans, garlic, and spinach — on the table in 20 minutes.",
+                "serves": "2",
+                "time": "20 min",
+                "label": "Friday",
+                "ingredients": [
+                    "1 portion pulled chicken (~160g)",
+                    "1 × 400g can white beans, drained and rinsed",
+                    "3 garlic cloves, minced",
+                    "500ml chicken stock",
+                    "2 large handfuls baby spinach",
+                    "1 lemon, juice only",
+                    "2 tbsp olive oil",
+                    "Salt and black pepper",
+                    "Crusty bread to serve",
+                ],
+                "steps": [
+                    "Warm olive oil in a medium saucepan over medium heat. Add garlic and cook 2 minutes until softened.",
+                    "Add chicken stock and bring to a gentle simmer.",
+                    "Add white beans and pulled chicken. Simmer 8–10 minutes until warmed through and slightly thickened.",
+                    "Lightly crush a few beans against the side of the pot to thicken the broth.",
+                    "Stir in spinach and cook until just wilted, about 1 minute.",
+                    "Add lemon juice. Taste and season. Serve with crusty bread.",
+                ],
+                "note": "This is intentionally simple. The pulled chicken carries enough flavour — don't over-season.",
+            },
         ],
 
         "shopping": {
-            "subhead": "One master batch, three flavour kits. Buy everything Sunday.",
+            "subhead": "One master batch, five flavour kits. Buy everything Sunday.",
             "sections": [
                 {
                     "label": "Master Batch — Sunday",
                     "items": [
-                        {"item": "Chicken thighs, bone-in skin-on", "qty": "1.2 kg (~6 pieces)", "note": "All 3 meals"},
-                        {"item": "Chicken stock", "qty": "240 ml", "note": "Braising liquid"},
+                        {"item": "Chicken thighs, bone-in skin-on", "qty": "1.8 kg (~8 pieces)", "note": "All 5 meals"},
+                        {"item": "Chicken stock", "qty": "300 ml", "note": "Braising liquid"},
                         {"item": "Garlic powder, smoked paprika", "qty": "pantry", "note": "Master batch rub"},
                     ],
                 },
@@ -316,8 +433,28 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
                         {"item": "Dried oregano", "qty": "pantry", "note": ""},
                     ],
                 },
+                {
+                    "label": "Flavour Kit 4 — Thai Fried Rice",
+                    "items": [
+                        {"item": "Jasmine rice (cook Sunday, refrigerate)", "qty": "150g dry", "note": "Day-old is best"},
+                        {"item": "Eggs", "qty": "2 large", "note": ""},
+                        {"item": "Fish sauce, soy sauce", "qty": "pantry", "note": ""},
+                        {"item": "Lime", "qty": "1", "note": ""},
+                        {"item": "Red chilli (optional)", "qty": "1", "note": ""},
+                    ],
+                },
+                {
+                    "label": "Flavour Kit 5 — Chicken & White Bean Soup",
+                    "items": [
+                        {"item": "White beans, canned", "qty": "1 × 400g can", "note": ""},
+                        {"item": "Chicken stock", "qty": "500 ml", "note": ""},
+                        {"item": "Baby spinach", "qty": "2 large handfuls", "note": ""},
+                        {"item": "Lemon", "qty": "1", "note": ""},
+                        {"item": "Crusty bread", "qty": "1 loaf", "note": ""},
+                    ],
+                },
             ],
-            "note": "The master batch takes 60 min on Sunday (15 active). Each weeknight meal takes 10–15 min. Total active cooking time for the week: under 60 minutes.",
+            "note": "The master batch takes 60 min on Sunday (15 active). Each weeknight meal takes 10–20 min. Total active cooking time for the week: under 75 minutes.",
         },
     },
 }
