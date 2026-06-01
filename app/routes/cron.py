@@ -1916,6 +1916,108 @@ def preview_system_guide(
     )
 
 
+@router.post("/generate-system-guide-cover-images")
+def generate_system_guide_cover_images(
+    slug: SystemGuideSlug | None = None,
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate AI food-photography cover images for System Guides using Flux 1.1 Pro
+    and upload to Supabase Storage at cover-images/system-guide-{slug}.webp.
+
+    Run this once before generating guide PDFs so cover images are embedded.
+    Each image costs ~$0.04. Run /generate-system-guides afterwards to rebuild PDFs.
+
+    Query params:
+        slug    (optional) Generate for a single guide only
+    """
+    from app.system_guide_generator import SYSTEM_GUIDES
+    from app.storage import upload_cover_image
+    import httpx as _httpx
+    import time as _time
+
+    if not settings.replicate_api_key:
+        raise HTTPException(400, "REPLICATE_API_KEY not set in environment")
+
+    slugs_to_generate = [slug] if slug else list(SYSTEM_GUIDES.keys())
+    results: dict[str, dict] = {}
+
+    for s in slugs_to_generate:
+        guide = SYSTEM_GUIDES.get(s)
+        if not guide:
+            results[s] = {"status": "error", "detail": "Unknown slug"}
+            continue
+
+        prompt = guide.get("cover_image_prompt", "")
+        if not prompt:
+            results[s] = {"status": "skipped", "detail": "No cover_image_prompt defined"}
+            continue
+
+        logger.info("generate_system_guide_cover_images: generating %s", s)
+        try:
+            resp = _httpx.post(
+                "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+                headers={
+                    "Authorization": f"Bearer {settings.replicate_api_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "wait",
+                },
+                json={
+                    "input": {
+                        "prompt": prompt,
+                        "aspect_ratio": "2:3",
+                        "output_format": "webp",
+                        "output_quality": 95,
+                        "num_outputs": 1,
+                    }
+                },
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Poll if not immediately done
+            if data.get("status") not in ("succeeded", None) or not data.get("output"):
+                prediction_id = data.get("id")
+                for _ in range(30):
+                    _time.sleep(4)
+                    poll = _httpx.get(
+                        f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                        headers={"Authorization": f"Bearer {settings.replicate_api_key}"},
+                        timeout=30,
+                    )
+                    poll.raise_for_status()
+                    data = poll.json()
+                    if data.get("status") == "succeeded":
+                        break
+                    if data.get("status") in ("failed", "canceled"):
+                        raise RuntimeError(f"Replicate prediction {data.get('status')}: {data.get('error')}")
+
+            image_url = data["output"][0] if isinstance(data.get("output"), list) else data.get("output")
+            if not image_url:
+                raise RuntimeError("No output URL from Replicate")
+
+            img_resp = _httpx.get(image_url, timeout=60)
+            img_resp.raise_for_status()
+            image_bytes = img_resp.content
+
+            # Store at cover-images/system-guide-{slug}.webp in the recipe-images bucket
+            public_url = upload_cover_image(image_bytes, slug=f"system-guide-{s}")
+            results[s] = {"status": "ok", "public_url": public_url, "bytes": len(image_bytes)}
+            logger.info("generate_system_guide_cover_images: %s → %s", s, public_url)
+
+        except Exception as exc:
+            logger.error("generate_system_guide_cover_images: %s failed — %s", s, exc, exc_info=True)
+            results[s] = {"status": "error", "detail": str(exc)}
+
+        _time.sleep(2)  # brief pause between requests
+
+    return {
+        "generated": len([v for v in results.values() if v["status"] == "ok"]),
+        "results": results,
+    }
+
+
 @router.get("/preview-theme-pack")
 def preview_theme_pack(
     slug: ThemeSlug,

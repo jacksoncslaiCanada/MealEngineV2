@@ -24,19 +24,32 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
         "accent_color": "#4a8a5a",
         "includes": ["5 Recipe Cards", "Shopping List", "Waste Map"],
 
+        "cover_image_prompt": (
+            "Professional food photography, bright editorial style. A beautiful flat-lay of a "
+            "week's zero-waste meal prep on a white marble countertop — a golden herb-roasted "
+            "chicken thigh beside collapsed cherry tomatoes, a bowl of pasta al pomodoro, and a "
+            "warm white bean salad with parsley and lemon. A head of garlic, two lemons, a bunch "
+            "of flat-leaf parsley, and a punnet of cherry tomatoes are arranged nearby. Crisp "
+            "natural window light from the left casting soft shadows. Clean, uncluttered, warm. "
+            "Bon Appetit magazine quality."
+        ),
+
         "intro": {
             "heading": "Why Most Grocery Lists Create Waste",
+            "highlight": (
+                "Standard recipes are written for one dish. You buy a bunch of parsley, use four sprigs, "
+                "and throw the rest away on Friday. This pack is built to end that cycle."
+            ),
             "paragraphs": [
-                "Standard recipes are written for one dish. You buy a bunch of parsley for Tuesday's chicken. You use four sprigs. The rest sits in the crisper until Friday, when you throw it away and feel guilty.",
-                "This pack is built differently. Every fresh ingredient here appears in at least two recipes. One head of garlic. Two lemons. One bunch of parsley. One punnet of cherry tomatoes. Between the three dinners, every item gets fully used.",
-                "Cook these in order — Monday, Wednesday, Friday — and you'll end the week with an empty crisper and nothing to throw away.",
+                "Every fresh ingredient in this guide appears in at least two recipes — by design. One head of garlic. Two lemons. One bunch of parsley. One punnet of cherry tomatoes. Between the five dinners, every perishable item gets fully used.",
+                "Cook these in order across the week and you'll end Friday with an empty crisper and nothing to throw away.",
             ],
             "prep_box": None,
             "bullets_label": "What makes this pack different",
             "bullets": [
                 "Every perishable ingredient is cross-used across at least two recipes",
                 "Shopping list is sorted by shelf life — delicate items first, sturdy items last",
-                "Quantities are calculated to the gram so you buy exactly what you need",
+                "Quantities are calculated so you buy exactly what you need",
             ],
         },
 
@@ -180,6 +193,33 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
 
         "shopping": {
             "subhead": "Sorted by shelf life — cook delicate items first.",
+            "master_sections": [
+                {
+                    "label": "Fresh & Chilled",
+                    "items": [
+                        {"item": "Chicken thighs, bone-in skin-on", "qty": "4 pieces (~800g)"},
+                        {"item": "Cherry tomatoes", "qty": "500g"},
+                        {"item": "Flat-leaf parsley", "qty": "1 bunch"},
+                        {"item": "Baby spinach", "qty": "1 bag (~120g)"},
+                        {"item": "Eggs", "qty": "4 large"},
+                        {"item": "Lemons", "qty": "2"},
+                        {"item": "Garlic", "qty": "1 head"},
+                    ],
+                },
+                {
+                    "label": "Pantry & Dry",
+                    "items": [
+                        {"item": "White beans, canned", "qty": "3 × 400g"},
+                        {"item": "Spaghetti or linguine", "qty": "400g"},
+                        {"item": "Coarse breadcrumbs", "qty": "40g"},
+                        {"item": "Parmesan", "qty": "small piece"},
+                        {"item": "Crusty bread", "qty": "1 loaf"},
+                        {"item": "Olive oil", "qty": "good bottle"},
+                        {"item": "Ground cumin, chilli flakes", "qty": "pantry"},
+                        {"item": "Salt and black pepper", "qty": "pantry"},
+                    ],
+                },
+            ],
             "sections": [
                 {
                     "label": "Eat First — Use Monday through Wednesday",
@@ -224,11 +264,25 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
         "accent_color": "#c2522a",
         "includes": ["Master Batch Recipe", "5 Recipe Cards", "Shopping List"],
 
+        "cover_image_prompt": (
+            "Professional food photography, bright editorial style. Five small bowls arranged on "
+            "a white marble countertop, each showing a different cuisine — an Asian noodle bowl "
+            "with sesame and green onion, a Mexican taco plate with avocado, a Mediterranean "
+            "grain bowl with feta and olives, Thai fried rice with a fried egg, and a rustic "
+            "white bean chicken soup. In the centre, a pile of tender pulled chicken. Crisp "
+            "natural window light from the left. Vibrant, clean, editorial. "
+            "Bon Appetit magazine quality."
+        ),
+
         "intro": {
-            "heading": "One Cook. Three Meals. Zero Repetition.",
+            "heading": "One Cook. Five Meals. Zero Repetition.",
+            "highlight": (
+                "Most meal prep fails because you're prepping finished dishes. Tuesday's chicken "
+                "looks exactly like Monday's, just colder. This guide preps one thing — and turns it "
+                "into five completely different meals."
+            ),
             "paragraphs": [
-                "The reason meal prep feels like eating the same thing every night: you're prepping finished dishes. Tuesday's chicken looks exactly like Monday's, just colder. By Wednesday you're ordering takeout.",
-                "The Cross-Over Kitchen changes the structure. You prep one neutral master batch on Sunday — pulled chicken — and transform it into three completely different meals across the week. Asian on Monday. Mexican on Tuesday. Mediterranean on Wednesday. Same protein, different cuisine, different experience every night.",
+                "Sunday: one neutral master batch of pulled chicken, 60 minutes, 15 active. Monday through Friday: five different cuisines — Asian, Mexican, Mediterranean, Thai, and a comforting soup. Same protein, completely different experience every night.",
             ],
             "prep_box": {
                 "label": "Sunday Prep — Do This Once",
@@ -393,6 +447,56 @@ SYSTEM_GUIDES: dict[str, dict[str, Any]] = {
 
         "shopping": {
             "subhead": "One master batch, five flavour kits. Buy everything Sunday.",
+            "master_sections": [
+                {
+                    "label": "Protein",
+                    "items": [
+                        {"item": "Chicken thighs, bone-in skin-on", "qty": "1.8 kg (~8 pcs)"},
+                    ],
+                },
+                {
+                    "label": "Fresh & Chilled",
+                    "items": [
+                        {"item": "Eggs", "qty": "2 large"},
+                        {"item": "Fresh ginger", "qty": "small piece"},
+                        {"item": "Green onions", "qty": "4 stalks"},
+                        {"item": "Avocado", "qty": "1 ripe"},
+                        {"item": "Lime", "qty": "3"},
+                        {"item": "Fresh cilantro", "qty": "small bunch"},
+                        {"item": "Cherry tomatoes", "qty": "handful"},
+                        {"item": "Baby spinach", "qty": "2 large handfuls"},
+                        {"item": "Lemon", "qty": "2"},
+                        {"item": "Red chilli (optional)", "qty": "1"},
+                        {"item": "Feta cheese", "qty": "40g"},
+                    ],
+                },
+                {
+                    "label": "Pantry & Dry",
+                    "items": [
+                        {"item": "Chicken stock", "qty": "800 ml total"},
+                        {"item": "Soba or udon noodles", "qty": "100g"},
+                        {"item": "Small tortillas (corn or flour)", "qty": "4"},
+                        {"item": "Couscous or farro", "qty": "100g"},
+                        {"item": "Jasmine rice (cook Sunday)", "qty": "150g dry"},
+                        {"item": "White beans, canned", "qty": "1 × 400g"},
+                        {"item": "Kalamata olives", "qty": "small handful"},
+                        {"item": "Salsa", "qty": "small jar"},
+                        {"item": "Crusty bread", "qty": "1 loaf"},
+                    ],
+                },
+                {
+                    "label": "Condiments & Spices",
+                    "items": [
+                        {"item": "Soy sauce, sesame oil, rice vinegar", "qty": "pantry"},
+                        {"item": "Sesame seeds", "qty": "small bag"},
+                        {"item": "Cumin, chipotle or smoked paprika", "qty": "pantry"},
+                        {"item": "Dried oregano", "qty": "pantry"},
+                        {"item": "Fish sauce", "qty": "pantry"},
+                        {"item": "Garlic powder, smoked paprika", "qty": "pantry"},
+                        {"item": "Olive oil, neutral oil", "qty": "pantry"},
+                    ],
+                },
+            ],
             "sections": [
                 {
                     "label": "Master Batch — Sunday",
@@ -467,7 +571,7 @@ SystemGuideSlug = Enum(  # type: ignore[misc]
 )
 
 
-def generate_system_guide_pdf(slug: str) -> bytes:
+def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) -> bytes:
     """Render a System Guide to a multi-page A4 PDF and return the bytes."""
     if slug not in SYSTEM_GUIDES:
         raise ValueError(
@@ -477,11 +581,23 @@ def generate_system_guide_pdf(slug: str) -> bytes:
 
     from jinja2 import Environment, FileSystemLoader
 
+    # Compute cover image URL from predictable Supabase path if not supplied
+    if cover_image_url is None:
+        try:
+            from app.config import settings
+            if settings.supabase_url and settings.supabase_images_bucket:
+                cover_image_url = (
+                    f"{settings.supabase_url}/storage/v1/object/public/"
+                    f"{settings.supabase_images_bucket}/cover-images/system-guide-{slug}.webp"
+                )
+        except Exception:
+            cover_image_url = ""
+
     guide = SYSTEM_GUIDES[slug]
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True)
     template = env.get_template("system_guide.html")
-    html = template.render(**guide)
+    html = template.render(**guide, cover_image_url=cover_image_url or "")
 
     launch_kwargs: dict = {}
     if ep := os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
