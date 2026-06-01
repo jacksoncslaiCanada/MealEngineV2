@@ -48,18 +48,18 @@ body {
   border-top: 10px solid {{ accent_color }};
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   page-break-after: always;
   overflow: hidden;
 }
 
-.cover-inner {
-  flex: 1;
-  width: 100%;
+/* Top text block */
+.cover-top {
+  padding: 8mm 16mm 4mm;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10mm 16mm 10mm;
+  flex-shrink: 0;
 }
 
 .cover-series-label {
@@ -75,13 +75,13 @@ body {
   width: 30mm;
   height: 0.5pt;
   background: #d8d0c8;
-  margin-bottom: 8mm;
+  margin-bottom: 6mm;
 }
 
 .cover-title {
   font-family: 'Playfair Display', serif;
   font-weight: 900;
-  font-size: 42pt;
+  font-size: 40pt;
   text-transform: uppercase;
   color: #2c2c2c;
   text-align: center;
@@ -106,7 +106,7 @@ body {
   height: 1px;
   background: {{ accent_color }};
   opacity: 0.45;
-  margin-bottom: 4mm;
+  margin-bottom: 3mm;
 }
 
 .cover-description {
@@ -116,11 +116,49 @@ body {
   text-align: center;
   line-height: 1.7;
   max-width: 140mm;
-  margin-bottom: 0;
 }
 
-.cover-spacer { flex: 1; }
+/* Image band — fills remaining space between top text and footer */
+.cover-image-band {
+  flex: 1;
+  min-height: 55mm;
+  position: relative;
+  overflow: hidden;
+}
 
+.cover-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-photo-placeholder {
+  position: absolute;
+  inset: 0;
+  background: {{ accent_color }}18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-photo-placeholder-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3mm;
+  opacity: 0.25;
+}
+
+.cover-photo-placeholder-line {
+  width: 20mm;
+  height: 1px;
+  background: {{ accent_color }};
+}
+
+/* Footer */
 .cover-footer {
   width: 100%;
   padding: 4mm 16mm 10mm;
@@ -128,6 +166,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4mm;
+  flex-shrink: 0;
 }
 
 .cover-footer-rule {
@@ -182,7 +221,25 @@ body {
   font-size: 20pt;
   color: #2c2c2c;
   line-height: 1.15;
+  margin-bottom: 3mm;
+}
+
+/* Pull-quote / hook callout */
+.intro-highlight-box {
+  background: {{ accent_color }}12;
+  border-left: 3px solid {{ accent_color }};
+  border-radius: 0 3px 3px 0;
+  padding: 3mm 5mm;
   margin-bottom: 4mm;
+  flex-shrink: 0;
+}
+
+.intro-highlight-text {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 10pt;
+  color: #3a3a3a;
+  line-height: 1.5;
 }
 
 .intro-body {
@@ -197,7 +254,8 @@ body {
   width: 100%;
   height: 0.5pt;
   background: #d8d0c8;
-  margin: 4mm 0;
+  margin: 3.5mm 0;
+  flex-shrink: 0;
 }
 
 .intro-section-label {
@@ -207,6 +265,7 @@ body {
   text-transform: uppercase;
   color: {{ accent_color }};
   margin-bottom: 3mm;
+  flex-shrink: 0;
 }
 
 .intro-bullets {
@@ -214,7 +273,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2.5mm;
-  margin-bottom: 4mm;
+  margin-bottom: 3mm;
 }
 
 .intro-bullets li {
@@ -238,13 +297,60 @@ body {
   flex-shrink: 0;
 }
 
+/* Week-at-a-glance recipe strip */
+.intro-recipe-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.intro-strip-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  padding: 2mm 2mm 2mm 0;
+  border-bottom: 0.5pt solid #ede8e0;
+}
+
+.intro-strip-item:last-child {
+  border-bottom: none;
+}
+
+.strip-day {
+  font-family: 'Lora', serif;
+  font-size: 7pt;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  width: 24mm;
+  flex-shrink: 0;
+}
+
+.strip-title {
+  font-family: 'Lora', serif;
+  font-size: 9pt;
+  font-weight: 600;
+  color: #2c2c2c;
+  flex: 1;
+}
+
+.strip-time {
+  font-family: 'Lora', serif;
+  font-size: 8pt;
+  color: #a09880;
+  flex-shrink: 0;
+}
+
 /* compact prep box (for cross-over kitchen master batch) */
 .prep-box {
   background: {{ accent_color }}12;
   border-left: 3px solid {{ accent_color }};
   border-radius: 0 3px 3px 0;
   padding: 4mm 5mm;
-  margin: 4mm 0;
+  margin: 3.5mm 0;
+  flex-shrink: 0;
 }
 
 .prep-box-label {
@@ -464,7 +570,114 @@ body {
   line-height: 1.5;
 }
 
-/* ── SHOPPING LIST PAGE ─────────────────────────────────────────────────── */
+/* ── MASTER SHOPPING LIST (take-to-store) ───────────────────────────────── */
+.master-shop-page {
+  width: 210mm;
+  height: 297mm;
+  background: #fffdf8;
+  padding: 12mm 16mm 12mm;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.master-shop-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 4mm;
+  padding-bottom: 3mm;
+  border-bottom: 1.5pt solid {{ accent_color }};
+  flex-shrink: 0;
+}
+
+.master-shop-heading {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 20pt;
+  color: #2c2c2c;
+  line-height: 1.1;
+}
+
+.master-shop-subhead {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 8.5pt;
+  color: #5a5040;
+  text-align: right;
+}
+
+/* Two-column grid for sections */
+.master-shop-body {
+  flex: 1;
+  min-height: 0;
+  column-count: 2;
+  column-gap: 8mm;
+  column-fill: auto;
+}
+
+.master-shop-section {
+  break-inside: avoid;
+  margin-bottom: 4mm;
+}
+
+.master-shop-section-label {
+  font-family: 'Lora', serif;
+  font-size: 6.5pt;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: {{ accent_color }};
+  padding-bottom: 1.5mm;
+  border-bottom: 0.5pt solid {{ accent_color }}55;
+  margin-bottom: 2mm;
+}
+
+.master-shop-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.master-shop-item {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  padding: 1.5mm 0;
+  border-bottom: 0.4pt solid #ede8e0;
+  font-family: 'Lora', serif;
+  font-size: 9pt;
+  color: #2c2c2c;
+  line-height: 1.35;
+}
+
+.master-shop-item:last-child {
+  border-bottom: none;
+}
+
+.master-shop-check {
+  color: #c8c0b8;
+  font-size: 10pt;
+  flex-shrink: 0;
+  width: 4mm;
+  line-height: 1.35;
+}
+
+.master-shop-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.master-shop-qty {
+  font-size: 7.5pt;
+  color: #7a6a5a;
+  text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-left: 2mm;
+}
+
+/* ── DETAILED SHOPPING LIST PAGE ────────────────────────────────────────── */
 .shopping-page {
   width: 210mm;
   height: 297mm;
@@ -617,15 +830,29 @@ body {
 
 <!-- ── COVER ── -->
 <div class="cover">
-  <div class="cover-inner">
+  <div class="cover-top">
     <div class="cover-series-label">System Guide &nbsp;&middot;&nbsp; Tier 2</div>
     <div class="cover-divider-top"></div>
     <div class="cover-title">{{ guide_title }}</div>
     <div class="cover-tagline">{{ guide_tagline }}</div>
     <div class="cover-divider"></div>
     <div class="cover-description">{{ guide_description }}</div>
-    <div class="cover-spacer"></div>
   </div>
+
+  <!-- AI-generated cover photo fills remaining vertical space -->
+  <div class="cover-image-band">
+    <div class="cover-photo-placeholder">
+      <div class="cover-photo-placeholder-lines">
+        <div class="cover-photo-placeholder-line"></div>
+        <div class="cover-photo-placeholder-line" style="width:30mm;"></div>
+        <div class="cover-photo-placeholder-line" style="width:12mm;"></div>
+      </div>
+    </div>
+    {% if cover_image_url %}
+    <img class="cover-photo" src="{{ cover_image_url }}" alt="{{ guide_title }}">
+    {% endif %}
+  </div>
+
   <div class="cover-footer">
     <div class="cover-footer-rule"></div>
     <div class="cover-includes">
@@ -641,10 +868,16 @@ body {
 <div class="intro-page">
   <div class="page-eyebrow">
     <span class="eyebrow-guide">{{ guide_title }}</span>
-    <span class="eyebrow-page">1 / {{ recipes|length + 2 }}</span>
+    <span class="eyebrow-page">1 / {{ recipes|length + 3 }}</span>
   </div>
 
   <div class="intro-heading">{{ intro.heading }}</div>
+
+  {% if intro.highlight %}
+  <div class="intro-highlight-box">
+    <div class="intro-highlight-text">{{ intro.highlight }}</div>
+  </div>
+  {% endif %}
 
   {% for para in intro.paragraphs %}
   <p class="intro-body">{{ para }}</p>
@@ -675,6 +908,19 @@ body {
     {% endfor %}
   </ul>
   {% endif %}
+
+  <!-- Week at a Glance -->
+  <div class="intro-accent-rule"></div>
+  <div class="intro-section-label">Week at a Glance</div>
+  <div class="intro-recipe-strip">
+    {% for recipe in recipes %}
+    <div class="intro-strip-item">
+      <span class="strip-day">{{ recipe.label }}</span>
+      <span class="strip-title">{{ recipe.name }}</span>
+      <span class="strip-time">{{ recipe.time }}</span>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 
 <!-- ── RECIPE PAGES ── -->
@@ -682,7 +928,7 @@ body {
 <div class="recipe-page">
   <div class="page-eyebrow">
     <span class="eyebrow-guide">{{ guide_title }}</span>
-    <span class="eyebrow-page">{{ loop.index + 1 }} / {{ recipes|length + 2 }}</span>
+    <span class="eyebrow-page">{{ loop.index + 1 }} / {{ recipes|length + 3 }}</span>
   </div>
 
   <div class="recipe-number">Recipe {{ "%02d"|format(loop.index) }}</div>
@@ -732,14 +978,44 @@ body {
 </div>
 {% endfor %}
 
-<!-- ── SHOPPING LIST ── -->
+<!-- ── MASTER SHOPPING LIST — take to store ── -->
+<div class="master-shop-page">
+  <div class="page-eyebrow">
+    <span class="eyebrow-guide">{{ guide_title }}</span>
+    <span class="eyebrow-page">{{ recipes|length + 2 }} / {{ recipes|length + 3 }}</span>
+  </div>
+
+  <div class="master-shop-intro">
+    <div class="master-shop-heading">Shopping List</div>
+    <div class="master-shop-subhead">Everything for all {{ recipes|length }} recipes.<br>Take this page to the store.</div>
+  </div>
+
+  <div class="master-shop-body">
+    {% for section in shopping.master_sections %}
+    <div class="master-shop-section">
+      <div class="master-shop-section-label">{{ section.label }}</div>
+      <div class="master-shop-items">
+        {% for item in section['items'] %}
+        <div class="master-shop-item">
+          <span class="master-shop-check">&#9744;</span>
+          <span class="master-shop-name">{{ item.item }}</span>
+          <span class="master-shop-qty">{{ item.qty }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── DETAILED SHOPPING BREAKDOWN ── -->
 <div class="shopping-page">
   <div class="page-eyebrow">
     <span class="eyebrow-guide">{{ guide_title }}</span>
-    <span class="eyebrow-page">{{ recipes|length + 2 }} / {{ recipes|length + 2 }}</span>
+    <span class="eyebrow-page">{{ recipes|length + 3 }} / {{ recipes|length + 3 }}</span>
   </div>
 
-  <div class="shopping-heading">Shopping List</div>
+  <div class="shopping-heading">Shopping Breakdown</div>
   <div class="shopping-subhead">{{ shopping.subhead }}</div>
 
   <div class="shopping-body">
