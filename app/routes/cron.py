@@ -1863,6 +1863,58 @@ def publish_freebie(
     return {"status": "ok", "pdf_bytes": len(pdf_bytes), "public_url": public_url}
 
 
+@router.post("/generate-system-guides")
+def generate_system_guides(
+    slug: str | None = None,
+    _: None = Depends(_require_cron_secret),
+):
+    """
+    Generate one or all System Guide PDFs and upload to Supabase Storage
+    under system-guides/{slug}.pdf. Returns a summary of results.
+
+    Query params:
+        slug    (optional) Generate a single guide, e.g. zero-waste-grocery-audit
+    """
+    from app.system_guide_generator import generate_system_guide_pdf, SYSTEM_GUIDES
+    from app.storage import upload_system_guide_pdf
+
+    slugs_to_generate = [slug] if slug else list(SYSTEM_GUIDES.keys())
+
+    results = {}
+    for s in slugs_to_generate:
+        if s not in SYSTEM_GUIDES:
+            results[s] = {"status": "error", "detail": f"Unknown slug. Available: {list(SYSTEM_GUIDES.keys())}"}
+            continue
+        logger.info("generate_system_guides: starting '%s'", s)
+        try:
+            pdf_bytes = generate_system_guide_pdf(s)
+            public_url = upload_system_guide_pdf(pdf_bytes, slug=s)
+            results[s] = {"status": "ok", "pdf_bytes": len(pdf_bytes), "storage_url": public_url}
+            logger.info("generate_system_guides: '%s' done — %d bytes → %s", s, len(pdf_bytes), public_url)
+        except Exception as exc:
+            logger.error("generate_system_guides: '%s' failed — %s", s, exc, exc_info=True)
+            results[s] = {"status": "error", "detail": str(exc)}
+
+    return {"generated": len([v for v in results.values() if v["status"] == "ok"]), "results": results}
+
+
+@router.get("/preview-system-guide")
+def preview_system_guide(
+    slug: str,
+    _: None = Depends(_require_cron_secret),
+):
+    """Preview a System Guide PDF in the browser."""
+    from app.system_guide_generator import generate_system_guide_pdf
+    from fastapi.responses import Response
+
+    pdf_bytes = generate_system_guide_pdf(slug)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=system-guide-{slug}.pdf"},
+    )
+
+
 @router.get("/preview-theme-pack")
 def preview_theme_pack(
     slug: ThemeSlug,
