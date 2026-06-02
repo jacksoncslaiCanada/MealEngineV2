@@ -2075,7 +2075,7 @@ def generate_system_guide_recipe_images(
                     json={
                         "input": {
                             "prompt": prompt,
-                            "aspect_ratio": "1:1",
+                            "aspect_ratio": "16:9",
                             "output_format": "webp",
                             "output_quality": 90,
                             "num_outputs": 1,

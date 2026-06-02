@@ -429,33 +429,29 @@ body {
   width: 210mm;
   height: 297mm;
   background: #fffdf8;
-  padding: 12mm 16mm 12mm;
+  padding: 12mm 0 12mm;       /* no horizontal padding — managed by children */
   page-break-after: always;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Header row: text left, photo right */
-.recipe-header {
-  display: flex;
-  gap: 6mm;
-  align-items: flex-start;
-  margin-bottom: 4mm;
+.recipe-eyebrow-wrap {
+  padding: 0 16mm;
   flex-shrink: 0;
 }
 
-.recipe-header-text {
-  flex: 1;
-  min-width: 0;
+/* Override default page-eyebrow bottom margin so image follows immediately */
+.recipe-eyebrow-wrap .page-eyebrow {
+  margin-bottom: 0;
 }
 
-.recipe-photo-wrap {
-  width: 60mm;
-  height: 60mm;
-  flex-shrink: 0;
-  border-radius: 3px;
+/* Full-bleed 16:9 food photo banner */
+.recipe-image-band {
+  width: 100%;
+  height: 56mm;
   overflow: hidden;
+  flex-shrink: 0;
   position: relative;
   background: {{ accent_color }}0e;
 }
@@ -464,26 +460,36 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
-.recipe-photo-placeholder {
+.recipe-image-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5mm;
+  padding: 6mm;
 }
 
-.recipe-photo-placeholder-text {
+.recipe-image-placeholder-text {
   font-family: 'Lora', serif;
   font-style: italic;
-  font-size: 7.5pt;
+  font-size: 9pt;
   color: {{ accent_color }};
-  opacity: 0.45;
+  opacity: 0.4;
   text-align: center;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+/* Padded content area: all text and columns below the photo */
+.recipe-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4mm 16mm 0;
+  min-height: 0;
 }
 
 .recipe-number {
@@ -493,16 +499,18 @@ body {
   text-transform: uppercase;
   color: {{ accent_color }};
   margin-bottom: 1.5mm;
+  flex-shrink: 0;
 }
 
 .recipe-name {
   font-family: 'Playfair Display', serif;
   font-weight: 900;
-  font-size: 21pt;
+  font-size: 22pt;
   color: #2c2c2c;
   line-height: 1.05;
   letter-spacing: -0.01em;
   margin-bottom: 2mm;
+  flex-shrink: 0;
 }
 
 .recipe-description {
@@ -512,13 +520,14 @@ body {
   color: #5a5040;
   line-height: 1.5;
   margin-bottom: 2.5mm;
+  flex-shrink: 0;
 }
 
 .recipe-meta {
   display: flex;
   gap: 4mm;
   flex-wrap: wrap;
-  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .meta-chip {
@@ -535,7 +544,8 @@ body {
 .recipe-rule {
   height: 0.5pt;
   background: #d8d0c8;
-  margin-bottom: 5mm;
+  margin: 3mm 0 4mm;
+  flex-shrink: 0;
 }
 
 /* two-column body */
@@ -681,18 +691,19 @@ body {
   text-align: right;
 }
 
-/* Two-column grid for sections */
+/* Two-column grid — always fills both columns regardless of section count */
 .master-shop-body {
   flex: 1;
   min-height: 0;
-  column-count: 2;
-  column-gap: 8mm;
-  column-fill: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm 8mm;
+  align-content: start;
+  overflow: hidden;
 }
 
 .master-shop-section {
-  break-inside: avoid;
-  margin-bottom: 4mm;
+  min-width: 0;
 }
 
 .master-shop-section-label {
@@ -1001,66 +1012,71 @@ body {
 <!-- ── RECIPE PAGES ── -->
 {% for recipe in recipes %}
 <div class="recipe-page">
-  <div class="page-eyebrow">
-    <span class="eyebrow-guide">{{ guide_title }}</span>
-    <span class="eyebrow-page">{{ loop.index + 1 }} / {{ recipes|length + 3 }}</span>
+
+  <!-- Eyebrow in padded wrapper -->
+  <div class="recipe-eyebrow-wrap">
+    <div class="page-eyebrow">
+      <span class="eyebrow-guide">{{ guide_title }}</span>
+      <span class="eyebrow-page">{{ loop.index + 1 }} / {{ recipes|length + 3 }}</span>
+    </div>
   </div>
 
-  <!-- Header: text left, food photo right -->
-  <div class="recipe-header">
-    <div class="recipe-header-text">
-      <div class="recipe-number">Recipe {{ "%02d"|format(loop.index) }}</div>
-      <div class="recipe-name">{{ recipe.name }}</div>
-      <div class="recipe-description">{{ recipe.description }}</div>
-      <div class="recipe-meta">
-        <span class="meta-chip">Serves {{ recipe.serves }}</span>
-        <span class="meta-chip">{{ recipe.time }}</span>
-        {% if recipe.label %}<span class="meta-chip">{{ recipe.label }}</span>{% endif %}
+  <!-- Full-bleed food photo (16:9, 56mm tall) -->
+  <div class="recipe-image-band">
+    {% if recipe.image_url %}
+    <img class="recipe-photo" src="{{ recipe.image_url }}" alt="{{ recipe.name }}">
+    {% else %}
+    <div class="recipe-image-placeholder">
+      <div class="recipe-image-placeholder-text">{{ recipe.name }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- All text content below the photo -->
+  <div class="recipe-content">
+    <div class="recipe-number">Recipe {{ "%02d"|format(loop.index) }}</div>
+    <div class="recipe-name">{{ recipe.name }}</div>
+    <div class="recipe-description">{{ recipe.description }}</div>
+    <div class="recipe-meta">
+      <span class="meta-chip">Serves {{ recipe.serves }}</span>
+      <span class="meta-chip">{{ recipe.time }}</span>
+      {% if recipe.label %}<span class="meta-chip">{{ recipe.label }}</span>{% endif %}
+    </div>
+
+    <div class="recipe-rule"></div>
+
+    <div class="recipe-body">
+      <div class="ingredients-col">
+        <div class="col-label">Ingredients</div>
+        <ul class="ingredient-list">
+          {% for ing in recipe['ingredients'] %}
+          <li>{{ ing }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="col-divider"></div>
+
+      <div class="steps-col">
+        <div class="col-label">Method</div>
+        <ol class="step-list">
+          {% for step in recipe.steps %}
+          <li>
+            <span class="step-num">{{ loop.index }}.</span>
+            <span>{{ step }}</span>
+          </li>
+          {% endfor %}
+        </ol>
       </div>
     </div>
-    <div class="recipe-photo-wrap">
-      {% if recipe.image_url %}
-      <img class="recipe-photo" src="{{ recipe.image_url }}" alt="{{ recipe.name }}">
-      {% else %}
-      <div class="recipe-photo-placeholder">
-        <div class="recipe-photo-placeholder-text">{{ recipe.name }}</div>
-      </div>
-      {% endif %}
+
+    {% if recipe.note %}
+    <div class="recipe-note">
+      <div class="recipe-note-text">{{ recipe.note }}</div>
     </div>
+    {% endif %}
   </div>
 
-  <div class="recipe-rule"></div>
-
-  <div class="recipe-body">
-    <div class="ingredients-col">
-      <div class="col-label">Ingredients</div>
-      <ul class="ingredient-list">
-        {% for ing in recipe['ingredients'] %}
-        <li>{{ ing }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="col-divider"></div>
-
-    <div class="steps-col">
-      <div class="col-label">Method</div>
-      <ol class="step-list">
-        {% for step in recipe.steps %}
-        <li>
-          <span class="step-num">{{ loop.index }}.</span>
-          <span>{{ step }}</span>
-        </li>
-        {% endfor %}
-      </ol>
-    </div>
-  </div>
-
-  {% if recipe.note %}
-  <div class="recipe-note">
-    <div class="recipe-note-text">{{ recipe.note }}</div>
-  </div>
-  {% endif %}
 </div>
 {% endfor %}
 
