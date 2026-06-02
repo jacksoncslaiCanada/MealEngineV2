@@ -1904,11 +1904,17 @@ def preview_system_guide(
     slug: SystemGuideSlug,
     _: None = Depends(_require_cron_secret),
 ):
-    """Preview a System Guide PDF in the browser."""
+    """Preview a System Guide PDF in the browser.
+
+    Uses pre-generated Supabase images where available; renders HTML placeholders
+    for any that are missing instead of calling Flux (so the response is fast).
+    Run POST /internal/generate-system-guide-cover-images first if you want real
+    photos in the preview.
+    """
     from app.system_guide_generator import generate_system_guide_pdf
     from fastapi.responses import Response
 
-    pdf_bytes = generate_system_guide_pdf(slug)
+    pdf_bytes = generate_system_guide_pdf(slug, preview=True)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
