@@ -673,8 +673,21 @@ def _resolve_image(supabase_url: str, name: str, description: str) -> str:
     return _generate_recipe_image(name, description)
 
 
-def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) -> bytes:
-    """Render a System Guide to a multi-page A4 PDF and return the bytes."""
+def generate_system_guide_pdf(
+    slug: str,
+    *,
+    cover_image_url: str | None = None,
+    preview: bool = False,
+) -> bytes:
+    """Render a System Guide to a multi-page A4 PDF and return the bytes.
+
+    Args:
+        slug: Guide slug from SYSTEM_GUIDES.
+        cover_image_url: Pre-resolved cover image data URI. None means auto-resolve.
+        preview: When True, only use pre-generated Supabase images; show HTML
+                 placeholders for any that are missing instead of calling Flux.
+                 Makes the endpoint fast (< 15 s) for human review.
+    """
     if slug not in SYSTEM_GUIDES:
         raise ValueError(
             f"Unknown system guide slug: {slug!r}. "
@@ -683,7 +696,7 @@ def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) 
 
     from jinja2 import Environment, FileSystemLoader
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor
 
     # Build predictable Supabase base URL for pre-generated images
     base_img_url = ""
@@ -701,36 +714,59 @@ def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) 
     guide_data = copy.deepcopy(SYSTEM_GUIDES[slug])
 
     # ── Resolve all images in parallel ───────────────────────────────────────
-    # Each call tries Supabase first, then generates via Flux if missing.
-    # Parallel execution keeps total wait time to ~5–8s even when generating fresh.
     cover_supabase_url = f"{base_img_url}/system-guide-{slug}.webp" if base_img_url else ""
     recipe_supabase_urls = [
         f"{base_img_url}/system-guide-{slug}-recipe-{i:02d}.webp" if base_img_url else ""
         for i in range(1, len(guide_data["recipes"]) + 1)
     ]
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        # Cover image — always attempt (Supabase fast-path, Flux fallback)
-        cover_future = pool.submit(
-            _resolve_image,
-            cover_supabase_url,
-            guide_data["guide_title"],
-            guide_data.get("guide_description", ""),
-        ) if cover_image_url is None else None
+    if preview:
+        # Fast path: only fetch pre-generated images, never call Flux.
+        # Missing images fall through to the HTML placeholder elements.
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            cover_future = (
+                pool.submit(_image_to_data_uri, cover_supabase_url)
+                if (cover_image_url is None and cover_supabase_url)
+                else None
+            )
+            recipe_futures = [
+                pool.submit(_image_to_data_uri, url) if url else None
+                for url in recipe_supabase_urls
+            ]
 
-        # Recipe images — always submit for every recipe regardless of Supabase URL
-        recipe_futures = [
-            pool.submit(_resolve_image, url, r["name"], r["description"])
-            for url, r in zip(recipe_supabase_urls, guide_data["recipes"])
-        ]
+            if cover_future is not None:
+                cover_image_url = cover_future.result() or ""
+            elif cover_image_url is None:
+                cover_image_url = ""
 
-        if cover_future is not None:
-            cover_image_url = cover_future.result() or ""
-        elif cover_image_url is None:
-            cover_image_url = ""
+            for recipe, future in zip(guide_data["recipes"], recipe_futures):
+                recipe["image_url"] = (future.result() if future is not None else "") or ""
+    else:
+        # Full path: Supabase fast-path, Flux Schnell fallback per image.
+        # Parallel execution keeps total wait time to ~5–8 s even when generating fresh.
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            cover_future = (
+                pool.submit(
+                    _resolve_image,
+                    cover_supabase_url,
+                    guide_data["guide_title"],
+                    guide_data.get("guide_description", ""),
+                )
+                if cover_image_url is None
+                else None
+            )
+            recipe_futures = [
+                pool.submit(_resolve_image, url, r["name"], r["description"])
+                for url, r in zip(recipe_supabase_urls, guide_data["recipes"])
+            ]
 
-        for recipe, future in zip(guide_data["recipes"], recipe_futures):
-            recipe["image_url"] = future.result() or ""
+            if cover_future is not None:
+                cover_image_url = cover_future.result() or ""
+            elif cover_image_url is None:
+                cover_image_url = ""
+
+            for recipe, future in zip(guide_data["recipes"], recipe_futures):
+                recipe["image_url"] = future.result() or ""
 
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True)
@@ -746,7 +782,10 @@ def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(**launch_kwargs)
         page = browser.new_page()
-        page.set_content(html, wait_until="networkidle")
+        # Use "load" rather than "networkidle" so the call doesn't block on
+        # external resources (Google Fonts CDN) that may be slow or unreachable
+        # in the server environment.
+        page.set_content(html, wait_until="load", timeout=60_000)
         pdf_bytes = page.pdf(
             format="A4",
             print_background=True,
