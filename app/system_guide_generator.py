@@ -5,6 +5,7 @@ Each guide: cover → 1-page intro → 5 recipe cards → shopping list → back
 """
 from __future__ import annotations
 
+import copy
 import logging
 import os
 from enum import Enum
@@ -582,22 +583,33 @@ def generate_system_guide_pdf(slug: str, *, cover_image_url: str | None = None) 
     from jinja2 import Environment, FileSystemLoader
 
     # Compute cover image URL from predictable Supabase path if not supplied
-    if cover_image_url is None:
-        try:
-            from app.config import settings
-            if settings.supabase_url and settings.supabase_images_bucket:
-                cover_image_url = (
-                    f"{settings.supabase_url}/storage/v1/object/public/"
-                    f"{settings.supabase_images_bucket}/cover-images/system-guide-{slug}.webp"
-                )
-        except Exception:
-            cover_image_url = ""
+    base_img_url = ""
+    try:
+        from app.config import settings
+        if settings.supabase_url and settings.supabase_images_bucket:
+            base_img_url = (
+                f"{settings.supabase_url}/storage/v1/object/public/"
+                f"{settings.supabase_images_bucket}/cover-images"
+            )
+    except Exception:
+        pass
 
-    guide = SYSTEM_GUIDES[slug]
+    if cover_image_url is None:
+        cover_image_url = f"{base_img_url}/system-guide-{slug}.webp" if base_img_url else ""
+
+    # Deep-copy so we never mutate the module-level SYSTEM_GUIDES constant
+    guide_data = copy.deepcopy(SYSTEM_GUIDES[slug])
+
+    # Auto-populate recipe image URLs (empty string = placeholder shown until cron runs)
+    if base_img_url:
+        for i, recipe in enumerate(guide_data["recipes"], 1):
+            if not recipe.get("image_url"):
+                recipe["image_url"] = f"{base_img_url}/system-guide-{slug}-recipe-{i:02d}.webp"
+
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     env = Environment(loader=FileSystemLoader(templates_dir), autoescape=True)
     template = env.get_template("system_guide.html")
-    html = template.render(**guide, cover_image_url=cover_image_url or "")
+    html = template.render(**guide_data, cover_image_url=cover_image_url or "")
 
     launch_kwargs: dict = {}
     if ep := os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
