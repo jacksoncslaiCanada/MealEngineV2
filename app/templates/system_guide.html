@@ -792,14 +792,15 @@ body {
 .shopping-body {
   flex: 1;
   min-height: 0;
-  column-count: 2;
-  column-gap: 8mm;
-  column-fill: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm 8mm;
+  align-content: start;
+  overflow: hidden;
 }
 
 .shopping-section {
-  break-inside: avoid;
-  margin-bottom: 4mm;
+  min-width: 0;
 }
 
 .shopping-section-label {
@@ -809,44 +810,45 @@ body {
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: {{ accent_color }};
-  padding-bottom: 2mm;
+  padding-bottom: 1.5mm;
   border-bottom: 0.5pt solid {{ accent_color }}55;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
 }
 
-.shopping-table {
-  width: 100%;
-  border-collapse: collapse;
+.shop-breakdown-items {
+  display: flex;
+  flex-direction: column;
 }
 
-.shopping-table td {
+.shop-breakdown-item {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  padding: 1.5mm 0;
+  border-bottom: 0.4pt solid #ede8e0;
   font-family: 'Lora', serif;
   font-size: 9pt;
   color: #2c2c2c;
-  padding: 1.5mm 2mm;
-  vertical-align: top;
-  border-bottom: 0.5pt solid #ede8e0;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
-.shopping-table tr:last-child td {
+.shop-breakdown-item:last-child {
   border-bottom: none;
 }
 
-.shopping-table td:first-child {
-  font-weight: 600;
-  width: 58mm;
+.shop-breakdown-name {
+  flex: 1;
+  min-width: 0;
 }
 
-.shopping-table td:nth-child(2) {
-  color: #5a5040;
-  width: 30mm;
-}
-
-.shopping-table td:nth-child(3) {
+.shop-breakdown-right {
+  font-size: 7.5pt;
   color: #7a6a5a;
+  text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding-left: 2mm;
   font-style: italic;
-  font-size: 8pt;
 }
 
 .shopping-note {
@@ -1124,15 +1126,18 @@ body {
     {% for section in shopping.sections %}
     <div class="shopping-section">
       <div class="shopping-section-label">{{ section.label }}</div>
-      <table class="shopping-table">
+      <div class="shop-breakdown-items">
         {% for row in section['items'] %}
-        <tr>
-          <td>{{ row.item }}</td>
-          <td>{{ row.qty }}</td>
-          <td>{{ row.note }}</td>
-        </tr>
+        <div class="shop-breakdown-item">
+          <span class="shop-breakdown-name">{{ row.item }}</span>
+          <span class="shop-breakdown-right">
+            {%- if row.qty %}{{ row.qty }}{% endif %}
+            {%- if row.qty and row.note %} · {% endif %}
+            {%- if row.note %}{{ row.note }}{% endif -%}
+          </span>
+        </div>
         {% endfor %}
-      </table>
+      </div>
     </div>
     {% endfor %}
   </div>
