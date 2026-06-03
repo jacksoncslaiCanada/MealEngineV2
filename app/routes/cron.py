@@ -1945,7 +1945,13 @@ def generate_system_guide_cover_images(
     if not settings.replicate_api_key:
         raise HTTPException(400, "REPLICATE_API_KEY not set in environment")
 
-    slugs_to_generate = [slug] if slug else list(SYSTEM_GUIDES.keys())
+    # Normalise to plain strings regardless of whether a SystemGuideSlug enum
+    # member or a bare string was passed.
+    slugs_to_generate = (
+        [slug.value if hasattr(slug, "value") else slug]
+        if slug
+        else list(SYSTEM_GUIDES.keys())
+    )
     results: dict[str, dict] = {}
 
     for s in slugs_to_generate:
@@ -1961,25 +1967,30 @@ def generate_system_guide_cover_images(
 
         logger.info("generate_system_guide_cover_images: generating %s", s)
         try:
-            resp = _httpx.post(
-                "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
-                headers={
-                    "Authorization": f"Bearer {settings.replicate_api_key}",
-                    "Content-Type": "application/json",
-                    "Prefer": "wait",
-                },
-                json={
-                    "input": {
-                        "prompt": prompt,
-                        "aspect_ratio": "2:3",
-                        "output_format": "webp",
-                        "output_quality": 95,
-                        "num_outputs": 1,
-                    }
-                },
-                timeout=120,
-            )
-            resp.raise_for_status()
+            for _attempt in range(4):
+                resp = _httpx.post(
+                    "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+                    headers={
+                        "Authorization": f"Bearer {settings.replicate_api_key}",
+                        "Content-Type": "application/json",
+                        "Prefer": "wait",
+                    },
+                    json={
+                        "input": {
+                            "prompt": prompt,
+                            "aspect_ratio": "2:3",
+                            "output_format": "webp",
+                            "output_quality": 95,
+                            "num_outputs": 1,
+                        }
+                    },
+                    timeout=120,
+                )
+                if resp.status_code == 429 and _attempt < 3:
+                    _time.sleep(10 * (2 ** _attempt))  # 10 s, 20 s, 40 s
+                    continue
+                resp.raise_for_status()
+                break
             data = resp.json()
 
             # Poll if not immediately done
@@ -2047,7 +2058,13 @@ def generate_system_guide_recipe_images(
     if not settings.replicate_api_key:
         raise HTTPException(400, "REPLICATE_API_KEY not set in environment")
 
-    slugs_to_process = [slug] if slug else list(SYSTEM_GUIDES.keys())
+    # Normalise to plain strings regardless of whether a SystemGuideSlug enum
+    # member or a bare string was passed.
+    slugs_to_process = (
+        [slug.value if hasattr(slug, "value") else slug]
+        if slug
+        else list(SYSTEM_GUIDES.keys())
+    )
     results: dict[str, dict] = {}
 
     for s in slugs_to_process:
@@ -2071,25 +2088,35 @@ def generate_system_guide_recipe_images(
             img_slug = f"system-guide-{s}-recipe-{i:02d}"
             logger.info("generate_system_guide_recipe_images: %s recipe %02d — %s", s, i, name)
             try:
-                resp = _httpx.post(
-                    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-                    headers={
-                        "Authorization": f"Bearer {settings.replicate_api_key}",
-                        "Content-Type": "application/json",
-                        "Prefer": "wait",
-                    },
-                    json={
-                        "input": {
-                            "prompt": prompt,
-                            "aspect_ratio": "16:9",
-                            "output_format": "webp",
-                            "output_quality": 90,
-                            "num_outputs": 1,
-                        }
-                    },
-                    timeout=90,
-                )
-                resp.raise_for_status()
+                for _attempt in range(4):
+                    resp = _httpx.post(
+                        "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
+                        headers={
+                            "Authorization": f"Bearer {settings.replicate_api_key}",
+                            "Content-Type": "application/json",
+                            "Prefer": "wait",
+                        },
+                        json={
+                            "input": {
+                                "prompt": prompt,
+                                "aspect_ratio": "16:9",
+                                "output_format": "webp",
+                                "output_quality": 90,
+                                "num_outputs": 1,
+                            }
+                        },
+                        timeout=90,
+                    )
+                    if resp.status_code == 429 and _attempt < 3:
+                        wait = 10 * (2 ** _attempt)  # 10 s, 20 s, 40 s
+                        logger.warning(
+                            "generate_system_guide_recipe_images: 429 for %s attempt %d — retrying in %ds",
+                            img_slug, _attempt + 1, wait,
+                        )
+                        _time.sleep(wait)
+                        continue
+                    resp.raise_for_status()
+                    break
                 data = resp.json()
 
                 # Poll if not immediately done
@@ -2123,7 +2150,7 @@ def generate_system_guide_recipe_images(
                 logger.error("generate_system_guide_recipe_images: %s failed — %s", img_slug, exc, exc_info=True)
                 recipe_results.append({"recipe": name, "status": "error", "detail": str(exc)})
 
-            _time.sleep(1)
+            _time.sleep(5)  # Replicate rate-limit window; 1 s was too short
 
         ok_count = sum(1 for r in recipe_results if r["status"] == "ok")
         results[s] = {"generated": ok_count, "total": len(recipe_results), "recipes": recipe_results}
