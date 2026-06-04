@@ -682,12 +682,17 @@ def generate_system_guide_pdf(
     """Render a System Guide to a multi-page A4 PDF and return the bytes.
 
     Args:
-        slug: Guide slug from SYSTEM_GUIDES.
+        slug: Guide slug from SYSTEM_GUIDES (plain string or SystemGuideSlug enum).
         cover_image_url: Pre-resolved cover image data URI. None means auto-resolve.
         preview: When True, only use pre-generated Supabase images; show HTML
                  placeholders for any that are missing instead of calling Flux.
                  Makes the endpoint fast (< 15 s) for human review.
     """
+    # Accept SystemGuideSlug enum members or plain strings.  In Python 3.10
+    # f-strings render str-enum members as "ClassName.member_name" instead of
+    # the value, so normalise to a bare string here once and for all.
+    if hasattr(slug, "value"):
+        slug = slug.value
     if slug not in SYSTEM_GUIDES:
         raise ValueError(
             f"Unknown system guide slug: {slug!r}. "

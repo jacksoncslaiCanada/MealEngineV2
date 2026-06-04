@@ -1879,7 +1879,11 @@ def generate_system_guides(
     from app.system_guide_generator import generate_system_guide_pdf, SYSTEM_GUIDES
     from app.storage import upload_system_guide_pdf
 
-    slugs_to_generate = [slug] if slug else list(SYSTEM_GUIDES.keys())
+    slugs_to_generate = (
+        [slug.value if hasattr(slug, "value") else slug]
+        if slug
+        else list(SYSTEM_GUIDES.keys())
+    )
 
     results = {}
     for s in slugs_to_generate:
